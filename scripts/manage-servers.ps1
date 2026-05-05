@@ -120,7 +120,7 @@ function Get-ProjectProcessCandidates {
   try {
     $projectProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
       Where-Object {
-        $_.Name -in @("cmd.exe", "node.exe", "python.exe", "powershell.exe") -and
+        $_.Name -in @("cmd.exe", "node.exe", "python.exe") -and
         $_.CommandLine -like "*D:\project\wisdom_procurement*"
       } |
       Select-Object -ExpandProperty ProcessId -Unique

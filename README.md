@@ -5,6 +5,7 @@
 
 이 프로젝트는 단계적으로 확장됩니다.
 - Phase 1: 업로드, 관리, 요약 MVP
+- Phase 1.5: 나라장터 게시판, 공고 API 조회, 첨부 다운로드, 공고 자동 분석
 - Phase 2: 기준 PDF 관리와 로컬 RAG 준비
 - Phase 3: 판단 엔진과 조달 공고 자동 수집
 
@@ -21,6 +22,22 @@
 - AI 요약
 - 구조화 결과 저장
 - 재분석 버튼
+
+### Phase 1.5
+- 나라장터 게시판
+- 공고 검색 진입 시 최근 1개월 기준 자동 조회
+- 공고 리스트/상세 조회
+- 기본 검색 및 상세검색
+- 공고 첨부파일 목록 표시
+- PDF/DOCX 첨부파일 다운로드
+- 라디오 박스로 공고 1개 선택
+- `공고 상세 저장` 액션
+- `저장한 공고` 게시판
+- 공고 메타데이터 저장
+- 첨부 PDF/DOCX 자동 다운로드
+- 기존 문서 파싱/요약 파이프라인 재사용
+- 저장된 공고 분석 결과 조회
+- 설정 > API 연동에서 나라장터 API 키 설정/연결 상태 확인
 
 ### Phase 2
 - 기준 PDF 별도 메뉴
@@ -50,6 +67,8 @@
 - 메타데이터 포함 파일 업로드
 - 문서 분석 결과 페이지
 - 검색/필터/상세/수정/삭제
+- 나라장터 공고 검색/상세/저장/분석 설계
+- 나라장터 API 설정 상태 확인 설계
 - 기준 PDF 별도 지식 자산 관리
 - 향후 판단 엔진 확장을 고려한 구조
 
@@ -82,6 +101,7 @@ wisdom_procurement/
   docs/
     technical-design.md
     ux-design.md
+    narajangteo-board-design.md
   README.md
   AGENTS.md
 ```
@@ -93,13 +113,19 @@ wisdom_procurement/
 - File Storage: Local filesystem
 - OCR: Local OCR pipeline
 - Parsing: PDF, DOCX only
+  - PDF 기본 추출 엔진은 `PyMuPDF`
+  - DOCX는 `python-docx` 유지
+  - 스캔/이미지형 PDF는 추출 텍스트 부족 시 OCR fallback 적용
 - AI: External LLM API
 - Future Vector Store: Qdrant 우선, Chroma 대안
 
 ## 추천 AI/API 전략
 - 주 모델: `OpenAI GPT-5.1`
 - 저비용 보조 모델: `GPT-5 mini`
-- OCR은 로컬에서 처리한 뒤 정규화 텍스트를 모델에 전달
+- PDF는 `PyMuPDF`로 텍스트/블록/페이지 구조를 먼저 추출
+- OCR은 텍스트 레이어가 부족한 PDF에만 fallback으로 적용
+- OCR fallback은 `PaddleOCR` 우선 검토, 경량 대안으로 `Tesseract(kor+eng)` 유지
+- 정규화된 추출 텍스트를 모델에 전달
 - 요약은 JSON 구조화 출력 + 사용자용 마크다운 병행 저장
 - 재분석은 프롬프트 버전/입력 해시 기반으로 캐시 제어
 
@@ -122,6 +148,10 @@ OPENAI_API_KEY=your_key_here
 OPENAI_MODEL_PRIMARY=gpt-5.1
 OPENAI_MODEL_SECONDARY=gpt-5-mini
 OCR_LANGUAGES=kor+eng
+NARA_API_SERVICE_KEY=your_nara_api_key_here
+NARA_BID_PUBLIC_API_BASE_URL=https://apis.data.go.kr/1230000/ad/BidPublicInfoService
+NARA_PUBDATA_API_BASE_URL=https://apis.data.go.kr/1230000/ao/PubDataOpnStdService
+NARA_API_RESPONSE_TYPE=json
 ```
 
 프론트엔드 `.env`
@@ -152,6 +182,21 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
 ```
 스모크 스크립트는 백엔드 서버를 기동하고 `법인 생성 -> 프로젝트 생성 -> 문서 업로드 -> 분석 -> 결과 조회`를 자동 검증합니다.
 
+### 나라장터 API 테스트 실행
+```bash
+cd D:\project\wisdom_procurement
+$env:NARA_API_SERVICE_KEY="your_key_here"
+backend\.venv\Scripts\python.exe scripts\test-nara-api.py --date 20260505 --num-of-rows 10
+```
+실제 인증키는 Git에 커밋하지 말고 환경변수 또는 `backend/.env`로만 관리합니다.
+
+### 백엔드 단위 테스트 실행
+```bash
+cd backend
+.venv/Scripts/python -m unittest discover -s tests -v
+```
+현재 단위 테스트는 `PyMuPDF` 기반 PDF 추출, OCR 후보 판정, DOCX 추출 경로를 검증합니다.
+
 ### 서버 관리 스크립트
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
@@ -165,6 +210,10 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - [기술 설계서](/D:/project/wisdom_procurement/docs/technical-design.md)
 - [UX 설계서](/D:/project/wisdom_procurement/docs/ux-design.md)
 - [AI API 세팅 가이드](/D:/project/wisdom_procurement/docs/ai-api-setup.md)
+- [핵심 기술 요소 및 활용 기술 정리](/D:/project/wisdom_procurement/docs/technology-summary.md)
+- [나라장터 API 분석](/D:/project/wisdom_procurement/docs/narajangteo-api-analysis.md)
+- [나라장터 API 테스트 결과](/D:/project/wisdom_procurement/docs/narajangteo-api-test-result-20260505.md)
+- [나라장터 게시판 설계](/D:/project/wisdom_procurement/docs/narajangteo-board-design.md)
 - [작업 로그](/D:/project/wisdom_procurement/docs/work-log.md)
 - [에이전트 가이드](/D:/project/wisdom_procurement/AGENTS.md)
 
@@ -185,8 +234,9 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 1. 문서 설계 확정
 2. 저장소 스캐폴딩 생성
 3. Phase 1 MVP 구현
-4. 기준문서 파이프라인 추가
-5. 판단 엔진 및 크롤러 확장
+4. Phase 1.5 나라장터 게시판과 공고 자동 분석 추가
+5. 기준문서 파이프라인 추가
+6. 판단 엔진 및 크롤러 확장
 
 ---
 
@@ -197,6 +247,7 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 
 ## Phase Plan
 - Phase 1: upload/manage/summarize MVP
+- Phase 1.5: Nara Marketplace board, API notice search, attachment download, notice analysis
 - Phase 2: basis PDF management and local RAG preparation
 - Phase 3: judgment engine and procurement notice auto-collection
 
@@ -205,7 +256,9 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - Backend: FastAPI, SQLAlchemy, Pydantic
 - DB: SQLite
 - Storage: local filesystem
-- OCR: local OCR pipeline
+- PDF extraction: PyMuPDF as the default PDF reader/extractor
+- DOCX extraction: python-docx
+- OCR: PaddleOCR preferred fallback, Tesseract as a lighter fallback option
 - LLM: GPT-5.1 primary, GPT-5 mini secondary
 - Future vector DB: Qdrant preferred, Chroma optional
 

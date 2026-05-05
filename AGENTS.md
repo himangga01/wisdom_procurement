@@ -17,13 +17,17 @@
 
 ## 단계 분리 규칙
 - Phase 1에서는 로그인, 크롤러, 최종 판단 엔진, 근거 조항 출력 기능을 구현하지 않는다.
+- Phase 1.5의 나라장터 게시판은 공공데이터 API 기반 조회/저장/첨부 다운로드/요약까지만 허용한다.
+- Phase 1.5에서는 나라장터 HTML 크롤링, 최종 자격 판단, 근거 조항 출력, 법인-공고 자동 매칭을 구현하지 않는다.
 - Phase 2에서는 기준문서 업로드/청킹/인덱싱까지만 구현한다.
 - Phase 3 이전에는 자격 판단 결과를 확정 기능처럼 노출하지 않는다.
 
 ## 아키텍처 가드레일
 - 일반 업로드 문서와 기준문서는 반드시 분리된 도메인으로 유지한다.
+- 나라장터 저장 공고는 MVP에서 프로젝트 문서와 분리된 도메인으로 유지한다.
 - 모든 일반 업로드 문서는 프로젝트에 속해야 한다.
 - 기준문서는 프로젝트 소속이 아닌 재사용 가능한 지식 자산이다.
+- 나라장터 API 키 전체 값은 프론트엔드 응답, 로그, 문서에 노출하지 않는다.
 - 파싱, OCR, 요약, 청킹, 인덱싱은 분리된 서비스/파이프라인으로 유지한다.
 - 향후 인증 추가를 위해 사용자 컨텍스트를 주입할 수 있는 구조를 유지한다.
 - 향후 크롤러 확장을 위해 `source_type` 확장 가능성을 열어둔다.
@@ -115,3 +119,12 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 - keep auth-ready seams
 - keep manual and crawler ingestion compatible downstream
 - future judgment must support evidence citations and uncertainty notes
+
+## Phase 1.5 Nara Board Rules
+- API-based Nara board ingestion is allowed before Phase 3.
+- Do not implement HTML crawling in Phase 1.5.
+- Saved Nara notices are separate from project documents unless the user explicitly asks to link them.
+- Download and analyze PDF/DOCX attachments only.
+- Store HWP/HWPX/XLSX as unsupported attachment metadata.
+- Do not expose eligibility verdicts before the judgment engine phase.
+- Nara API settings screens may show configured status and masked keys only; never return full keys to the frontend.

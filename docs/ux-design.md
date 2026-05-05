@@ -28,7 +28,10 @@
 - Analysis Detail
 - Basis PDF Management
 - Basis PDF Detail
-- Future Notice Dashboard
+- 나라장터 게시판
+- 나라장터 저장 공고 상세
+- Settings
+- API Integrations
 
 ## 페이지 목록
 - `/dashboard`
@@ -38,6 +41,13 @@
 - `/projects/new`
 - `/projects/:id`
 - `/documents/:id/analysis`
+- `/nara-board`
+- `/nara-saved-notices`
+- `/nara-saved-notices/:id`
+- `/nara-saved-notices/:id/analysis`
+- `/settings`
+- `/settings/integrations`
+- `/settings/integrations/nara`
 - `/basis-documents`
 - `/basis-documents/:id`
 
@@ -46,7 +56,12 @@
   - Dashboard
   - Corporations
   - Projects
+  - Nara Board
+  - Nara Board > 공고 검색
+  - Nara Board > 저장한 공고
   - Basis PDFs
+  - Settings
+  - Settings > API 연동
 - 상단 바
   - 검색
   - 최근 작업
@@ -139,6 +154,127 @@
   - 원문 추출 텍스트
 - AI 결과와 원문은 시각적으로 분리
 
+## 나라장터 게시판 UX
+- 목적은 나라장터 공고를 포탈 안에서 검색하고, 1개 공고를 선택해 저장과 자동 분석을 실행하는 것이다.
+- 상단에는 `나라장터 게시판` 제목, API 조회 상태, 마지막 조회 시각을 표시한다.
+- 화면은 `검색 영역`, `공고 리스트`, `상세 미리보기`, `하단 액션 바`로 구성한다.
+- 공고 리스트는 테이블 중심으로 제공하고, 각 행의 첫 컬럼에 라디오 버튼을 둔다.
+- 사용자가 라디오로 1개 공고를 선택해야 `공고 상세 저장` 버튼이 활성화된다.
+
+주요 테이블 컬럼:
+- 선택
+- 공고명
+- 공고기관
+- 수요기관
+- 공고일시
+- 입찰마감
+- 추정가격
+- 지역
+- 업종제한
+- 첨부 수
+- 저장 여부
+- 분석 상태
+
+## 나라장터 공고 검색 UX
+- 기본 검색은 공고명, 조회 기간, 지역명, 마감 공고 제외 여부만 노출한다.
+- `공고 검색` 페이지에 진입하면 즉시 기본 조건으로 공고 목록을 자동 조회한다.
+- 기본 조회 기간은 최근 1개월이다.
+- 예: 오늘이 `2026-05-05`이면 `2026-04-05 00:00`부터 `2026-05-05 23:59`까지 조회한다.
+- API 키가 미설정이면 자동 조회 대신 `설정 > API 연동`으로 이동하는 안내 배너를 보여준다.
+- 상세검색은 드로어 또는 접이식 패널로 제공한다.
+- 상세검색 필드는 공고기관명, 수요기관명, 참가제한지역명, 업종명, 추정가격 범위, 공고게시일/개찰일 기준, 페이지 크기를 포함한다.
+- 적용된 필터는 검색 영역 아래에 칩으로 보여준다.
+- 필터 초기화 버튼을 제공한다.
+
+## 나라장터 공고 상세 UX
+- 행 클릭 시 우측 패널 또는 하단 패널에서 상세 미리보기를 제공한다.
+- 상세 미리보기는 공고 기본정보, 일정, 금액, 참가 제한 힌트, 첨부파일, 원문 링크로 나눈다.
+- 기초금액, 면허제한, 참가가능지역은 상세 조회 시 보강된 정보로 표시한다.
+- 원문 링크는 새 창으로 열되, 실제 첨부 분석은 백엔드가 저장한 로컬 파일 기준으로 진행한다.
+
+## 나라장터 첨부파일 다운로드 UX
+- 첨부파일 목록에는 파일명, 확장자, 출처 필드, 지원 상태, 다운로드 상태, 액션을 표시한다.
+- PDF/DOCX는 `다운로드` 버튼을 제공한다.
+- HWP/HWPX/XLSX 등은 `지원 제외` 배지와 안내 툴팁을 표시한다.
+- 저장 전에는 외부 URL 기준 다운로드 테스트 또는 미리보기 다운로드를 제공할 수 있다.
+- 저장 후에는 로컬에 저장된 파일을 다운로드하게 한다.
+
+## 공고 상세 저장 UX
+- `공고 상세 저장`은 라디오로 선택한 1개 공고에만 실행한다.
+- 클릭 시 확인 모달을 띄운다.
+- 모달에는 PDF/DOCX만 분석하고 HWP/HWPX/XLSX는 메타데이터만 저장한다는 안내를 포함한다.
+- 작업 시작 후 진행 상태 패널을 표시한다.
+
+진행 단계:
+- 공고 상세 조회
+- 기초금액/면허제한/참가가능지역 조회
+- 공고 저장
+- 첨부파일 다운로드
+- PDF/DOCX 파싱
+- AI 요약
+- 결과 저장
+
+완료 후 CTA:
+- `분석 결과 보기`
+- `저장된 공고 보기`
+- `나라장터 게시판으로 돌아가기`
+
+## 저장된 공고 분석 결과 UX
+- 상단에는 공고명, 공고번호/차수, 저장 상태, 분석 상태, 재분석 버튼을 둔다.
+- 본문은 공고 메타데이터 요약, 첨부파일 상태, 분석 결과, 원문 추출 텍스트, API 원본 JSON으로 구성한다.
+- 분석 결과는 한줄 요약, 공고 핵심 내용, 주요 일정, 금액 정보, 참가 제한 조건, 제출/준비 필요사항, 첨부파일별 요약, 확인 필요 항목으로 나눈다.
+- 최종 지원 가능/불가능 판단처럼 보이는 표현은 Phase 1.5에서 사용하지 않는다.
+
+## 저장한 공고 게시판 UX
+- `저장한 공고`는 사용자가 `공고 상세 저장`으로 저장한 공고문만 보여주는 내부 게시판이다.
+- API 검색 결과와 다르게 DB에 저장된 공고, 다운로드한 첨부파일, 분석 상태, 분석 결과를 기준으로 보여준다.
+- 권장 경로는 `/nara-saved-notices`이다.
+
+목록 컬럼:
+- 공고명
+- 공고번호/차수
+- 공고기관
+- 수요기관
+- 입찰마감
+- 첨부 다운로드 상태
+- 분석 상태
+- 저장일
+- 최근 분석일
+
+액션:
+- 상세 보기
+- 분석 결과 보기
+- 재분석
+- 로컬 첨부파일 다운로드
+- 삭제
+
+## 설정/API 연동 UX
+- `설정 > API 연동` 메뉴에서 나라장터 API 키 설정 여부와 연결 상태를 확인한다.
+- API 키 전체 값은 절대 표시하지 않고 마스킹된 값만 보여준다.
+- 프론트엔드로 전체 API 키를 내려주지 않는다.
+- 연결 테스트 버튼을 제공한다.
+
+나라장터 API 카드 표시 정보:
+- 설정 상태
+- 마스킹된 키
+- 공고 API base URL
+- 표준 데이터 API base URL
+- 응답 형식
+- 마지막 연결 테스트 시각
+- 마지막 연결 테스트 결과
+
+액션:
+- 연결 테스트
+- 공고 API 테스트
+- 첨부 PDF 다운로드 테스트
+- 설정 다시 불러오기
+
+상태 메시지:
+- 정상: `나라장터 API 연결이 정상입니다.`
+- 키 미설정: `NARA_API_SERVICE_KEY가 설정되어 있지 않습니다.`
+- 인증 실패: `인증키가 유효하지 않거나 인코딩 키 선택이 잘못되었을 수 있습니다.`
+- 승인 필요: `공공데이터포털에서 해당 API 활용신청/승인 상태를 확인해주세요.`
+
 ## 재분석 UX
 - 재분석 버튼 클릭 시 확인 모달
 - 안내 문구: 기존 결과는 보관되고 최신 결과만 대표값으로 갱신
@@ -218,6 +354,12 @@
 - `AnalysisSectionCard`
 - `ProcessingTimeline`
 - `ConfirmDialog`
+- `NaraNoticeSearchForm`
+- `NaraAdvancedSearchDrawer`
+- `NaraNoticeTable`
+- `NaraNoticePreviewPanel`
+- `NaraAttachmentList`
+- `NaraSaveProgressDialog`
 
 ## 미래 판단 결과 페이지 컨셉
 - 상단: 판단 결과 배지
@@ -274,12 +416,17 @@ Design a modern admin portal for a non-technical administrator who manages corpo
 - Corporations
 - Projects
 - Analysis Detail
+- Nara Board
+- Saved Nara Notices
 - Basis PDFs
-- Future Notice Dashboard
+- Settings
+- API Integrations
 
 ## Navigation
 - left sidebar for major modules
 - top bar for search and quick status
+- Nara Board should expose `Search Notices` and `Saved Notices` as child items or tabs.
+- Settings should expose `API Integrations`, including Nara API status and connection tests.
 
 ## Key UX Rules
 - uploads are never raw-file-only actions
@@ -293,8 +440,27 @@ Design a modern admin portal for a non-technical administrator who manages corpo
 - checklist panel
 - confidence/uncertainty note
 
+## Nara Board UX
+- Provide a search-first notice board backed by the public data API.
+- On page entry, automatically fetch notices with a default one-month date range.
+- Use a table with one radio-select column so only one notice can be saved/analyzed per action.
+- Support basic search plus an advanced search drawer.
+- Show notice detail preview, enrichment data, and attachment list before saving.
+- `Save Notice Detail` starts a progress-tracked job: fetch detail -> enrich -> save -> download PDF/DOCX -> parse -> summarize -> persist.
+- HWP/HWPX/XLSX attachments must be marked unsupported in the UI.
+- Saved notice analysis must not present a final eligibility verdict in Phase 1.5.
+- Saved Notices is a separate internal board for locally persisted notices and their download/analysis status.
+
+## Settings UX
+- Provide `Settings > API Integrations > Nara`.
+- Show configured/unconfigured status, masked key, base URLs, response type, last test time, and last test result.
+- Never expose the full API key to the frontend.
+- Provide connection, notice API, and attachment PDF download test actions.
+
 ## Open Questions
 - dashboard KPI priority
 - project status taxonomy
 - export/print need
 - basis version visibility policy
+- whether saved Nara notices should immediately connect to projects
+- whether construction notices only are enough for the first release

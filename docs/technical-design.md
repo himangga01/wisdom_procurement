@@ -39,6 +39,27 @@
 - 조달청 사이트 크롤링
 - 인증/권한 체계
 
+### Phase 1.5 범위: 나라장터 게시판
+- 나라장터 공공데이터 API 기반 공고 검색
+- 공고 리스트/상세 화면
+- 기본 검색 및 상세검색
+- 공고 첨부파일 목록 표시
+- PDF/DOCX 첨부파일 다운로드
+- 공고 1개 선택 후 `공고 상세 저장`
+- 공고 상세/기초금액/면허제한/참가가능지역 API 재조회
+- 공고 메타데이터 저장
+- 공고 첨부 PDF/DOCX 자동 다운로드
+- 기존 PyMuPDF/DOCX 파싱 파이프라인 재사용
+- 공고 단위 AI 요약 및 구조화 결과 저장
+- 설정 메뉴에서 나라장터 API 키 설정/연결 상태 확인
+
+### Phase 1.5 비범위
+- 최종 지원 가능/불가능 판정
+- 법인-공고 요건 자동 매칭
+- 기준문서 RAG 근거 검색
+- HWP/HWPX 파싱
+- 나라장터 HTML 크롤링
+
 ### Phase 2 범위
 - 기준 PDF 관리 메뉴
 - 기준문서 CRUD
@@ -83,6 +104,9 @@
 - 프로젝트 상태 관리가 필요한가
 - 분석 결과 내보내기 기능이 필요한가
 - 기준문서 분류 체계를 누가 정의하는가
+- 저장된 나라장터 공고를 기존 프로젝트에 즉시 연결해야 하는가
+- 나라장터 게시판 1차 범위가 공사 공고만인지, 물품/용역까지 포함해야 하는가
+- 나라장터 API 키를 UI에서 직접 저장/수정할지, 상태 확인만 제공할지
 
 ## 사용자 유형
 - 현재: 행정사 1인 관리자
@@ -96,6 +120,8 @@
 5. 분석 결과 검토
 6. 필요 시 재분석
 7. Phase 2부터 기준 PDF 별도 업로드 및 재처리
+8. Phase 1.5부터 나라장터 게시판에서 공고 검색
+9. 공고 1개 선택 후 상세 저장 및 자동 분석
 
 ## 기능 요구사항
 
@@ -149,6 +175,28 @@ MVP 필드 제안
 - 결과 페이지
 - 결과 캐시
 - 재분석 버튼
+
+### 나라장터 게시판
+- 공공데이터 API 기반 공고 목록 조회
+- 공고 검색 페이지 진입 시 최근 1개월 기본 조건으로 자동 조회
+- 기본 검색과 상세검색
+- 공고 상세 미리보기
+- 첨부파일 목록 표시
+- 지원 가능 첨부파일 다운로드
+- 라디오 박스로 공고 1개 선택
+- 선택 공고 저장 및 자동 분석
+- 저장/다운로드/파싱/요약 진행 상태 표시
+- 저장된 공고 상세 및 분석 결과 조회
+
+### 설정/API 연동
+- 나라장터 API 키 설정 여부 확인
+- 마스킹된 키 표시
+- 공고 API base URL 확인
+- 표준 데이터 API base URL 확인
+- 연결 테스트 실행
+- 공고 API 테스트 실행
+- 첨부 PDF 다운로드 테스트 실행
+- 마지막 테스트 결과와 시각 저장
 
 ### 기준 PDF 관리
 - 별도 메뉴 제공
@@ -279,6 +327,81 @@ React Admin Portal
 - error_message
 - created_at
 
+### procurement_notices
+- id
+- bid_ntce_no
+- bid_ntce_ord
+- title
+- notice_institution_name
+- demand_institution_name
+- bid_notice_datetime
+- bid_begin_datetime
+- bid_close_datetime
+- opening_datetime
+- estimated_price
+- budget_amount
+- basis_amount
+- industry_limit_yn
+- construction_site_region
+- notice_url
+- detail_url
+- source_api
+- raw_notice_json
+- raw_enrichment_json
+- save_status
+- analysis_status
+- latest_analysis_id
+- created_at
+- updated_at
+
+### procurement_notice_attachments
+- id
+- notice_id
+- source_field
+- original_file_name
+- file_url
+- file_extension
+- support_status
+- download_status
+- stored_file_path
+- mime_type
+- file_size
+- file_hash
+- parse_status
+- parsed_text_path
+- parser_metadata_json
+- error_message
+- created_at
+- updated_at
+
+### procurement_notice_analyses
+- id
+- notice_id
+- analysis_type
+- model_provider
+- model_name
+- prompt_version
+- input_hash
+- output_json
+- output_markdown
+- token_usage_json
+- status
+- error_message
+- created_at
+
+### procurement_notice_jobs
+- id
+- notice_id
+- job_type
+- status
+- current_step
+- progress_percent
+- message
+- error_message
+- started_at
+- finished_at
+- created_at
+
 ### basis_documents
 - id
 - title
@@ -322,12 +445,17 @@ React Admin Portal
 - project 1:N project_documents
 - project_document 1:N analyses
 - basis_document 1:N basis_document_chunks
+- procurement_notice 1:N procurement_notice_attachments
+- procurement_notice 1:N procurement_notice_analyses
+- procurement_notice 1:N procurement_notice_jobs
 
 ## 프로젝트/법인/파일 관계
 - 프로젝트는 하나의 법인에 연결된다.
 - 일반 업로드 파일은 반드시 하나의 프로젝트에 속한다.
 - 분석 결과는 파일 단위로 버전 누적 저장한다.
 - 기준문서는 프로젝트에 속하지 않는 별도 지식 자산이다.
+- 나라장터 저장 공고는 MVP에서 프로젝트와 분리된 외부 공고 도메인으로 관리한다.
+- 향후 저장 공고에서 프로젝트를 생성하거나 법인과 연결하는 확장을 열어둔다.
 
 ## 기준문서 모델
 - 목적: 향후 자격 판단, 근거 조항 검색, 내부 기준 관리
@@ -362,6 +490,20 @@ React Admin Portal
 - GET `/api/analyses/{id}`
 - GET `/api/documents/{id}/latest-analysis`
 
+### Nara Board
+- GET `/api/nara/notices/search`
+- GET `/api/nara/notices/preview`
+- POST `/api/nara/notices/save-and-analyze`
+- GET `/api/nara/notice-jobs/{job_id}`
+- GET `/api/nara/saved-notices`
+- GET `/api/nara/saved-notices/{notice_id}`
+- GET `/api/nara/saved-notices/{notice_id}/attachments/{attachment_id}/download`
+- POST `/api/nara/saved-notices/{notice_id}/reanalyze`
+
+### Settings / Integrations
+- GET `/api/settings/integrations/nara/status`
+- POST `/api/settings/integrations/nara/test`
+
 ### Basis Documents
 - GET `/api/basis-documents`
 - POST `/api/basis-documents`
@@ -383,17 +525,82 @@ React Admin Portal
 9. LLM 분석 수행
 10. 결과 저장 및 최신 분석 연결
 
+## 나라장터 공고 저장/분석 생명주기
+1. 사용자가 `나라장터 게시판 > 공고 검색`에 진입
+2. 프론트엔드가 기본 조회 조건을 구성
+   - 기준 기간: 최근 1개월
+   - 예: 오늘이 `2026-05-05`이면 `2026-04-05 00:00` ~ `2026-05-05 23:59`
+   - 페이지 크기: 20
+3. 백엔드가 `getBidPblancListInfoCnstwkPPSSrch`로 목록 조회
+4. 사용자가 검색 조건을 변경하면 변경 조건으로 다시 조회
+5. 사용자가 라디오 박스로 공고 1개 선택
+6. 사용자가 `공고 상세 저장` 클릭
+7. 백엔드가 공고 상세/기초금액/면허제한/참가가능지역 API 재조회
+8. `procurement_notices`에 공고 메타데이터 upsert
+9. 첨부파일 URL과 파일명을 정규화하여 `procurement_notice_attachments`에 upsert
+10. PDF/DOCX 첨부만 자동 다운로드
+11. 다운로드 파일을 로컬 저장소에 저장하고 해시 계산
+12. 기존 PyMuPDF/python-docx 파싱 파이프라인 실행
+13. 공고 메타데이터와 추출 텍스트를 결합해 요약 입력 구성
+14. AI 요약 또는 fallback 요약 실행
+15. `procurement_notice_analyses`에 결과 저장
+16. `procurement_notice_jobs` 상태를 완료 또는 부분 실패로 갱신
+
+## 나라장터 API 설정 확인 흐름
+1. 사용자가 `설정 > API 연동 > 나라장터` 진입
+2. 백엔드가 환경변수 또는 로컬 설정에서 `NARA_API_SERVICE_KEY` 존재 여부 확인
+3. 프론트엔드에는 전체 키가 아니라 마스킹된 키와 설정 상태만 반환
+4. 사용자가 `연결 테스트` 클릭
+5. 백엔드가 최근 1개월 기본 조건으로 공고 목록 테스트 호출
+6. 대표 공고가 있으면 상세 API와 첨부 PDF 다운로드 테스트를 선택 수행
+7. 마지막 테스트 결과, 오류 메시지, 테스트 시각을 반환
+
+## 나라장터 게시판 파이프라인 상태값
+- `queued`
+- `fetching_notice`
+- `saving_notice`
+- `downloading_attachments`
+- `parsing_documents`
+- `summarizing`
+- `completed`
+- `partial_failed`
+- `failed`
+
+## 나라장터 첨부파일 정책
+- `.pdf`, `.docx`는 다운로드와 분석 대상이다.
+- `.hwp`, `.hwpx`, `.xlsx`, `.xls`, `.zip`, 확장자 불명 파일은 메타데이터만 저장한다.
+- 다운로드 검증은 HTTP 상태, Content-Type, 파일 크기, PDF `%PDF` 시그니처 또는 DOCX zip 시그니처로 수행한다.
+- 일부 첨부 다운로드가 실패해도 다른 첨부 처리는 계속하고 전체 작업은 `partial_failed`가 될 수 있다.
+
 ## 파싱 파이프라인
 - PDF
-  - 텍스트 레이어 존재 여부 확인
-  - 존재 시 직접 추출
-  - 미존재 시 OCR 경로 전환
+  - Phase 1 개선 결정: 기존 `pypdf` 중심 추출에서 `PyMuPDF` 중심 추출로 교체한다.
+  - `PyMuPDF`로 페이지별 텍스트, 블록, 좌표, 읽기 순서 후보를 함께 추출한다.
+  - 텍스트 레이어가 충분하면 OCR 없이 정규화와 조달문서 후처리 단계로 이동한다.
+  - 텍스트 양이 부족하거나 이미지형 페이지로 판단되면 OCR fallback 경로로 전환한다.
+  - 기존 `pypdf`는 필요 시 비교/백업용 후보로만 남기고, 기본 엔진으로 사용하지 않는다.
 - DOCX
   - 문단/표 텍스트 추출
   - 줄바꿈 정규화
 - 공통
   - 문서 해시 생성
   - 추출 텍스트 저장
+  - 페이지 번호, 블록 순서, 추출 엔진, 추출 문자 수, OCR 필요 여부를 메타데이터로 남긴다.
+
+### PDF 추출 엔진 교체 구현 계획
+1. 의존성에 `PyMuPDF`를 추가한다.
+2. `extract_text()`를 PDF/DOCX 분기만 처리하는 단순 함수에서 PDF 전용 추출 함수와 DOCX 추출 함수로 분리한다.
+3. PDF 추출 결과는 원문 텍스트 문자열뿐 아니라 페이지별 메타데이터를 함께 생성한다.
+4. 조달 공고문에서 자주 뭉개지는 표/항목을 보정하기 위해 공백, 항목 번호, 날짜/금액 주변 줄바꿈을 정규화한다.
+5. 추출 문자 수가 임계값 미만이면 `ocr_status=needs_ocr` 또는 OCR fallback으로 넘긴다.
+6. 기존 스모크 테스트에 실제 PDF 샘플 또는 텍스트 레이어가 있는 테스트 PDF를 추가해 회귀를 막는다.
+7. 이후 PaddleOCR 연결 시 `PyMuPDF`가 페이지 이미지를 렌더링하고 OCR 엔진이 해당 이미지를 읽는 구조로 확장한다.
+
+### 조달 PDF 샘플 기준 결정
+- 사용자 제공 샘플은 4페이지이며 기존 `pypdf`로도 약 5,414자 추출 가능했다.
+- 문제는 스캔 OCR이 아니라 표, 제목, 항목 번호, 본문 경계가 붙는 레이아웃 손실이다.
+- 따라서 Phase 1의 첫 개선은 OCR 엔진 교체가 아니라 `PyMuPDF` 기반 레이아웃 인식 추출로 한다.
+- OCR은 텍스트 레이어가 부족한 PDF에만 fallback으로 적용한다.
 
 ## OCR 파이프라인
 - 대상: 스캔 PDF
@@ -403,8 +610,9 @@ React Admin Portal
   - 페이지별 텍스트 병합
   - 품질 기준 미달 시 경고 상태 기록
 - 권장
-  - MVP: Tesseract `kor+eng`
-  - 대안: PaddleOCR
+  - Phase 1 기본 fallback 후보: PaddleOCR
+  - 경량 대안: Tesseract `kor+eng`
+  - Stirling PDF: 메인 추출 엔진이 아니라 향후 PDF 전처리/OCR 보조 서버로 선택 연동 가능
 
 ## AI / API 요구사항 설계
 
@@ -420,11 +628,14 @@ React Admin Portal
 ### PDF/DOCX 입력 처리
 - MVP는 파일 원본 자체보다 파싱/정규화된 텍스트를 주 입력으로 사용
 - 필요 시 파일 입력 지원은 별도 실험 가능
+- PDF 텍스트 추출 기본 엔진은 `PyMuPDF`로 한다.
+- DOCX는 `python-docx`를 유지한다.
 
 ### OCR 전략
 - 스캔 PDF는 로컬 OCR 우선
 - OCR 결과를 정규화 텍스트로 저장
 - 원본 추출 텍스트와 OCR 텍스트를 구분 보관
+- OCR은 모든 PDF에 무조건 적용하지 않고, `PyMuPDF` 추출 결과가 부족한 경우에만 fallback으로 적용한다.
 
 ### 요약 프롬프트 전략
 - 역할: 조달문서 분석 보조관
@@ -556,6 +767,8 @@ React Admin Portal
 
 ## 보안/개인정보 고려사항
 - API 키는 환경 변수 관리
+- 나라장터 API 키 전체 값은 프론트엔드에 반환하지 않는다.
+- 설정 화면에는 마스킹된 키와 연결 상태만 표시한다.
 - 로컬 저장소 접근 최소화
 - 삭제 시 원본/파생 데이터 함께 삭제
 - 외부 API 전송 텍스트 최소화
@@ -606,10 +819,12 @@ wisdom_procurement/
     storage/
       uploads/
       basis/
+      nara_notices/
       cache/
   docs/
     technical-design.md
     ux-design.md
+    narajangteo-board-design.md
   README.md
   AGENTS.md
 ```
@@ -619,7 +834,7 @@ wisdom_procurement/
 # AI / Engineering Version (English)
 
 ## Summary
-Local-first admin portal for one administrator to manage corporations, projects, procurement documents, OCR, AI summarization, and later basis-document RAG, judgment, and procurement crawling.
+Local-first admin portal for one administrator to manage corporations, projects, procurement documents, Nara Marketplace notice browsing, OCR, AI summarization, and later basis-document RAG and eligibility judgment.
 
 ## Assumptions
 - single admin only in phase 1
@@ -642,12 +857,18 @@ Local-first admin portal for one administrator to manage corporations, projects,
 - Project
 - ProjectDocument
 - Analysis
+- ProcurementNotice
+- ProcurementNoticeAttachment
+- ProcurementNoticeAnalysis
+- ProcurementNoticeJob
 - BasisDocument
 - BasisDocumentChunk
 - AuditLog
 
 ## Key Pipelines
 - target document pipeline: upload -> parse -> OCR if needed -> summarize -> cache -> persist
+- Nara notice pipeline: API search -> select notice -> detail/enrichment lookup -> upsert notice -> download PDF/DOCX attachments -> parse -> summarize -> persist
+- settings pipeline: read local env/config -> return masked integration status -> run Nara connection tests on demand
 - basis pipeline: upload -> parse -> OCR -> normalize -> chunk -> embed -> index
 
 ## Open Questions
@@ -656,6 +877,9 @@ Local-first admin portal for one administrator to manage corporations, projects,
 - project status taxonomy
 - export requirements
 - basis taxonomy ownership
+- whether saved Nara notices should immediately link to projects
+- whether the first Nara board release should include goods/services notices or construction only
+- whether the Nara API key should be editable in the UI or status-check only
 
 ## References
 - OpenAI Models: [https://platform.openai.com/docs/models](https://platform.openai.com/docs/models)

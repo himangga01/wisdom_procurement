@@ -1,0 +1,26 @@
+오픈API 에러코드
+에러메세지	설명
+
+Unauthorized	API 인증키가 존재하지 않거나 유효하지 않습니다.
+공공데이터포털에서 발급받은 인증키 정보를 확인해 주세요.
+
+Forbidden	API 서비스에 대한 신청내역이 확인되지 않습니다.
+해당 API의 활용신청 여부와 승인 상태를 확인해 주세요.
+
+API not found	API 서비스가 존재하지 않습니다.
+호출 URL에 오타가 없는지, 폐기된 API는 아닌지 확인해 주세요.
+
+Error forwarding request to backend server	기관 API 서버와의 연결에 실패했습니다.
+일시적인 네트워크 오류일 수 있으니 잠시 후 다시 시도해 주세요.
+
+Error receiving response from backend server	기관 API 서버로부터 응답을 받지 못했습니다.
+문제가 계속될 경우, '관리부서 전화번호' 혹은 '오류신고 및 문의'를 통해 제공기관에 문의바랍니다.
+
+API rate limit exceeded	현재 많은 사용자가 API를 호출하고 있어, 서버의 최대 동시 요청 수를 초과하였습니다.
+잠시 후 다시 호출해주시기 바랍니다.
+
+API token quota exceeded	API 서비스의 일일 호출 허용량을 초과하였습니다.
+초기화된 이후 다시 이용 바랍니다.
+
+Unexpected error	일시적인 시스템 오류가 발생하였습니다.
+문제가 반복될 경우 활용지원센터로 문의바랍니다.

@@ -6,11 +6,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from docx import Document
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from pypdf import PdfReader
+
+from app.pipelines.parser import extract_document
 
 load_dotenv()
 
@@ -26,7 +26,7 @@ def _resolve_local_path(raw_value: str) -> Path:
 
 
 STORAGE_ROOT = _resolve_local_path(os.getenv("STORAGE_ROOT", "./storage"))
-MEMORY_DB_URI = "file:smart_phase1?mode=memory&cache=shared"
+SQLITE_PATH = _resolve_local_path(os.getenv("SQLITE_PATH", "./app.db"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL_PRIMARY = os.getenv("OPENAI_MODEL_PRIMARY", "gpt-5.1")
 
@@ -35,7 +35,8 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 app = Flask(__name__)
 CORS(app)
 
-GLOBAL_CONN = sqlite3.connect(MEMORY_DB_URI, uri=True, check_same_thread=False)
+SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+GLOBAL_CONN = sqlite3.connect(str(SQLITE_PATH), check_same_thread=False)
 GLOBAL_CONN.row_factory = sqlite3.Row
 
 
@@ -128,14 +129,7 @@ def one_or_404(conn: sqlite3.Connection, query: str, params: tuple):
 
 
 def extract_text(file_path: Path) -> str:
-    ext = file_path.suffix.lower()
-    if ext == ".pdf":
-        reader = PdfReader(str(file_path))
-        return "\n".join([(p.extract_text() or "") for p in reader.pages]).strip()
-    if ext == ".docx":
-        doc = Document(str(file_path))
-        return "\n".join([p.text for p in doc.paragraphs if p.text]).strip()
-    raise ValueError("Unsupported file format")
+    return extract_document(file_path).text
 
 
 def summarize_with_fallback(text: str) -> tuple[dict, str, dict]:
@@ -204,7 +198,9 @@ def run_analysis(document_id: int, force: bool = False) -> tuple[dict, int]:
             return {"detail": "Document not found"}, 404
 
         file_path = Path(doc["stored_file_path"])
-        text = extract_text(file_path)
+        parsed = extract_document(file_path)
+        text = parsed.text
+        ocr_status = "needs_ocr" if parsed.metadata.get("needs_ocr") else "skipped"
         input_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
         if not force:
@@ -215,7 +211,7 @@ def run_analysis(document_id: int, force: bool = False) -> tuple[dict, int]:
             if cached:
                 conn.execute(
                     "UPDATE project_documents SET parsing_status=?, ocr_status=?, analysis_status=?, latest_analysis_id=?, updated_at=? WHERE id=?",
-                    ("completed", "skipped", "cached", cached["id"], now_iso(), document_id),
+                    ("completed", ocr_status, "cached", cached["id"], now_iso(), document_id),
                 )
                 conn.commit()
                 return {"analysis_id": cached["id"], "status": "completed", "message": "Analysis completed (cache)"}, 200
@@ -227,6 +223,8 @@ def run_analysis(document_id: int, force: bool = False) -> tuple[dict, int]:
                 output_json, output_md, usage = summarize_with_fallback(text)
         else:
             output_json, output_md, usage = summarize_with_fallback(text)
+
+        usage["extraction"] = parsed.metadata
 
         cur = conn.execute(
             """
@@ -249,7 +247,7 @@ def run_analysis(document_id: int, force: bool = False) -> tuple[dict, int]:
 
         conn.execute(
             "UPDATE project_documents SET parsing_status=?, ocr_status=?, analysis_status=?, latest_analysis_id=?, updated_at=? WHERE id=?",
-            ("completed", "skipped", "completed", analysis_id, now_iso(), document_id),
+            ("completed", ocr_status, "completed", analysis_id, now_iso(), document_id),
         )
         conn.commit()
 
