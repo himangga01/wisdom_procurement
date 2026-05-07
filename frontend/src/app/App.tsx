@@ -4,39 +4,107 @@ import { AnalysisPage } from "../pages/AnalysisPage";
 import { CorporationsPage } from "../pages/CorporationsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
+import { NaraBoardPage } from "../pages/NaraBoardPage";
+import { NaraSavedNoticeDetailPage } from "../pages/NaraSavedNoticeDetailPage";
+import { NaraSavedNoticesPage } from "../pages/NaraSavedNoticesPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
+import { SettingsPage } from "../pages/SettingsPage";
 
-const navItems = [
-  { to: "/", label: "대시보드", note: "오늘 해야 할 일과 전체 현황" },
-  { to: "/corporations", label: "법인 관리", note: "법인 정보와 기본 자격 맥락" },
-  { to: "/projects", label: "프로젝트 관리", note: "프로젝트 단위로 업무 흐름 구성" },
-  { to: "/documents", label: "문서 업로드", note: "분석 대상 파일 업로드와 이력 관리" },
+type NavItem = {
+  to?: string;
+  icon: string;
+  label: string;
+  note: string;
+  disabled?: boolean;
+};
+
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    title: "업무 현황",
+    items: [{ to: "/", icon: "OV", label: "대시보드", note: "오늘 처리할 일과 시스템 상태" }],
+  },
+  {
+    title: "공고 업무",
+    items: [
+      { to: "/nara-board", icon: "NB", label: "나라장터 공고 검색", note: "API 조회, 선택 저장, 자동 분석" },
+      { to: "/nara-saved-notices", icon: "SN", label: "저장한 공고", note: "저장 공고와 첨부 처리 상태" },
+    ],
+  },
+  {
+    title: "문서 분석",
+    items: [{ to: "/documents", icon: "DC", label: "문서 업로드", note: "PDF/DOCX 업로드와 분석 이력" }],
+  },
+  {
+    title: "기준문서 / RAG",
+    items: [
+      {
+        icon: "RG",
+        label: "기준문서 관리",
+        note: "Phase 2에서 업로드/청킹/인덱싱 예정",
+        disabled: true,
+      },
+    ],
+  },
+  {
+    title: "내부 관리",
+    items: [
+      { to: "/corporations", icon: "CO", label: "법인 관리", note: "법인 정보와 기본 자격 맥락" },
+      { to: "/projects", icon: "PR", label: "프로젝트 관리", note: "프로젝트 단위 업무 흐름" },
+    ],
+  },
+  {
+    title: "설정",
+    items: [{ to: "/settings/integrations/nara", icon: "ST", label: "API 설정", note: "나라장터 API 키와 연결 상태" }],
+  },
 ];
 
 const pageMeta = [
   {
     match: (pathname: string) => pathname === "/",
-    eyebrow: "Phase 1 MVP",
-    title: "산뜻하게 정리하는 조달 포탈",
-    description: "법인 등록, 프로젝트 생성, 문서 업로드, 분석 확인까지 한 흐름으로 이어집니다.",
+    eyebrow: "Operations Overview",
+    title: "오늘 처리할 조달 업무를 한눈에",
+    description: "공고, 문서, 분석 상태를 운영형 대시보드로 정리해 다음 액션을 빠르게 찾습니다.",
   },
   {
     match: (pathname: string) => pathname.startsWith("/corporations"),
     eyebrow: "Corporation Workspace",
-    title: "법인 기본 정보를 먼저 단단하게",
-    description: "법인 정보가 이후 판단 엔진의 기준이 되므로, 실무에서 자주 보는 항목을 빠르게 정리할 수 있게 구성했습니다.",
+    title: "법인 기본 정보 관리",
+    description: "향후 지원 가능성 판단에 필요한 법인 프로필을 안정적으로 관리합니다.",
   },
   {
     match: (pathname: string) => pathname.startsWith("/projects"),
     eyebrow: "Project Workflow",
-    title: "프로젝트 중심으로 문서 이력 관리",
-    description: "파일이 아니라 프로젝트를 기준으로 흐름을 잡아, 나중에 근거와 결과를 다시 찾기 쉽도록 개선했습니다.",
+    title: "프로젝트 중심 문서 이력",
+    description: "공고 대응 업무를 프로젝트 단위로 묶어 문서와 분석 결과를 추적합니다.",
   },
   {
     match: (pathname: string) => pathname.startsWith("/documents"),
-    eyebrow: "Upload + Analysis",
-    title: "업로드부터 분석까지 한 화면에서",
-    description: "파일 선택 전에 프로젝트와 문서 성격을 명확히 고르게 해서, 나중에 이력이 더 읽기 쉬워지도록 다듬었습니다.",
+    eyebrow: "Document Analysis",
+    title: "문서 업로드와 분석 관리",
+    description: "PDF/DOCX 업로드, 분석 실행, 결과 확인 흐름을 한곳에서 관리합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/settings"),
+    eyebrow: "Integration Settings",
+    title: "외부 API 연결 상태",
+    description: "나라장터 API 키는 전체 값을 노출하지 않고 설정 여부와 테스트 결과만 확인합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/nara-board"),
+    eyebrow: "Nara Marketplace",
+    title: "나라장터 공고 검색",
+    description: "공공데이터 API에서 공고를 조회하고 선택한 공고를 저장해 분석합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/nara-saved-notices"),
+    eyebrow: "Saved Notices",
+    title: "저장한 공고 관리",
+    description: "로컬 DB에 저장한 공고, 첨부 다운로드 상태, 분석 결과를 확인합니다.",
   },
 ];
 
@@ -56,27 +124,48 @@ export function App() {
           <div>
             <p className="eyebrow eyebrow--soft">SMART Procurement</p>
             <h1>SMART 조달청 계산기</h1>
-            <p className="brand-copy">
-              벚꽃 시즌처럼 산뜻한 흐름으로 문서를 정리하고, 다음 액션을 더 빨리 보이게 만드는 Phase 1 포탈입니다.
-            </p>
+            <p className="brand-copy">문서 분석, 공고 저장, 기준문서 확장을 위한 로컬 운영 포탈</p>
           </div>
         </div>
 
         <nav className="nav-stack" aria-label="Primary Navigation">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === "/"} className="nav-card">
-              <span className="nav-label">{item.label}</span>
-              <span className="nav-note">{item.note}</span>
-            </NavLink>
+          {navGroups.map((group) => (
+            <div className="nav-section" key={group.title}>
+              <p className="nav-section-title">{group.title}</p>
+              {group.items.map((item) =>
+                item.to ? (
+                  <NavLink
+                    key={item.label}
+                    to={item.to}
+                    end={item.to === "/"}
+                    className={({ isActive }) => `nav-card${isActive ? " active" : ""}`}
+                  >
+                    <span className="nav-icon">{item.icon}</span>
+                    <span>
+                      <span className="nav-label">{item.label}</span>
+                      <span className="nav-note">{item.note}</span>
+                    </span>
+                  </NavLink>
+                ) : (
+                  <div key={item.label} className="nav-card nav-card--disabled" aria-disabled="true">
+                    <span className="nav-icon">{item.icon}</span>
+                    <span>
+                      <span className="nav-label">{item.label}</span>
+                      <span className="nav-note">{item.note}</span>
+                    </span>
+                  </div>
+                ),
+              )}
+            </div>
           ))}
         </nav>
 
         <div className="sidebar-note">
-          <p className="eyebrow eyebrow--soft">추천 흐름</p>
+          <p className="eyebrow eyebrow--soft">운영 순서</p>
           <ol className="mini-flow">
-            <li>법인을 먼저 등록합니다.</li>
-            <li>프로젝트를 만든 뒤 대상 문서를 업로드합니다.</li>
-            <li>분석 결과에서 핵심 요구사항과 리스크를 검토합니다.</li>
+            <li>나라장터 공고를 검색합니다.</li>
+            <li>필요한 공고를 저장해 분석합니다.</li>
+            <li>프로젝트/법인 맥락으로 대응을 정리합니다.</li>
           </ol>
         </div>
       </aside>
@@ -89,9 +178,9 @@ export function App() {
             <p className="hero-description">{currentPage.description}</p>
           </div>
           <div className="hero-chip-group">
-            <span className="hero-chip">Single Admin</span>
-            <span className="hero-chip hero-chip--petal">Project First</span>
-            <span className="hero-chip hero-chip--leaf">AI Summary Ready</span>
+            <span className="hero-chip">Local PC</span>
+            <span className="hero-chip hero-chip--petal">Phase 1.5</span>
+            <span className="hero-chip hero-chip--leaf">RAG Ready Next</span>
           </div>
         </header>
 
@@ -102,6 +191,10 @@ export function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/:documentId/analysis" element={<AnalysisPage />} />
+            <Route path="/nara-board" element={<NaraBoardPage />} />
+            <Route path="/nara-saved-notices" element={<NaraSavedNoticesPage />} />
+            <Route path="/nara-saved-notices/:id" element={<NaraSavedNoticeDetailPage />} />
+            <Route path="/settings/integrations/nara" element={<SettingsPage />} />
           </Routes>
         </section>
       </main>

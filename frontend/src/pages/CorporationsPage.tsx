@@ -3,19 +3,54 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "../app/api";
 import type { Corporation } from "../app/types";
 
+const emptyForm = {
+  name: "",
+  business_category: "",
+  region: "",
+  certifications_json: "",
+  company_size_classification: "",
+  internal_notes: "",
+};
+
+function parseCertifications(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.join(", ");
+    }
+  } catch {
+    return value;
+  }
+  return value;
+}
+
+function serializeCertifications(value: string) {
+  return value
+    ? JSON.stringify(
+        value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      )
+    : "[]";
+}
+
 export function CorporationsPage() {
   const [list, setList] = useState<Corporation[]>([]);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    business_category: "",
-    region: "",
-    certifications_json: "",
-    company_size_classification: "",
-    internal_notes: "",
-  });
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
 
-  const refresh = () => api.listCorporations().then(setList).catch(console.error);
+  const refresh = () =>
+    api
+      .listCorporations()
+      .then((data) => {
+        setList(data);
+        setError("");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "법인 목록을 불러오지 못했습니다."));
 
   useEffect(() => {
     refresh();
@@ -23,26 +58,57 @@ export function CorporationsPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    await api.createCorporation({
-      ...form,
-      certifications_json: form.certifications_json
-        ? JSON.stringify(
-            form.certifications_json
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean),
-          )
-        : "[]",
+    try {
+      await api.createCorporation({
+        ...form,
+        certifications_json: serializeCertifications(form.certifications_json),
+      });
+      setForm(emptyForm);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "법인 등록에 실패했습니다.");
+    }
+  };
+
+  const startEdit = (item: Corporation) => {
+    setEditingId(item.id);
+    setEditForm({
+      name: item.name,
+      business_category: item.business_category,
+      region: item.region,
+      certifications_json: parseCertifications(item.certifications_json),
+      company_size_classification: item.company_size_classification,
+      internal_notes: item.internal_notes,
     });
-    setForm({
-      name: "",
-      business_category: "",
-      region: "",
-      certifications_json: "",
-      company_size_classification: "",
-      internal_notes: "",
-    });
-    refresh();
+  };
+
+  const onUpdate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+
+    try {
+      await api.updateCorporation(editingId, {
+        ...editForm,
+        certifications_json: serializeCertifications(editForm.certifications_json),
+      });
+      setEditingId(null);
+      setEditForm(emptyForm);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "법인 수정에 실패했습니다.");
+    }
+  };
+
+  const onDelete = async (item: Corporation) => {
+    if (!window.confirm(`${item.name} 법인을 삭제할까요? 연결된 프로젝트가 있으면 삭제되지 않습니다.`)) return;
+    try {
+      await api.deleteCorporation(item.id);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "법인 삭제에 실패했습니다.");
+    }
   };
 
   const filtered = list.filter((item) => {
@@ -151,6 +217,13 @@ export function CorporationsPage() {
         </aside>
       </div>
 
+      {error ? (
+        <div className="empty-state empty-state--warning">
+          <strong>작업을 완료하지 못했습니다.</strong>
+          <p>{error}</p>
+        </div>
+      ) : null}
+
       <div className="surface-card">
         <div className="section-heading">
           <div>
@@ -180,6 +253,7 @@ export function CorporationsPage() {
                   <th>지역</th>
                   <th>회사 규모</th>
                   <th>최근 수정</th>
+                  <th>액션</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,6 +266,16 @@ export function CorporationsPage() {
                     <td>{item.region || "-"}</td>
                     <td>{item.company_size_classification || "-"}</td>
                     <td>{new Date(item.updated_at).toLocaleString("ko-KR")}</td>
+                    <td>
+                      <div className="row">
+                        <button type="button" className="button-secondary" onClick={() => startEdit(item)}>
+                          편집
+                        </button>
+                        <button type="button" className="button-danger" onClick={() => onDelete(item)}>
+                          삭제
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -199,6 +283,80 @@ export function CorporationsPage() {
           </div>
         )}
       </div>
+
+      {editingId ? (
+        <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Edit Corporation</p>
+              <h3>법인 정보 편집</h3>
+              <p className="section-copy">선택한 법인의 기본 정보를 바로 수정합니다.</p>
+            </div>
+            <button type="button" className="button-secondary" onClick={() => setEditingId(null)}>
+              취소
+            </button>
+          </div>
+
+          <div className="form-grid">
+            <label className="field">
+              <span>법인명</span>
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="field">
+              <span>업종/분류</span>
+              <input
+                value={editForm.business_category}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, business_category: e.target.value }))}
+              />
+            </label>
+
+            <label className="field">
+              <span>지역</span>
+              <input
+                value={editForm.region}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, region: e.target.value }))}
+              />
+            </label>
+
+            <label className="field">
+              <span>회사 규모</span>
+              <input
+                value={editForm.company_size_classification}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, company_size_classification: e.target.value }))
+                }
+              />
+            </label>
+
+            <label className="field field--full">
+              <span>인증/면허</span>
+              <input
+                value={editForm.certifications_json}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, certifications_json: e.target.value }))}
+                placeholder="쉼표로 구분해 입력하세요."
+              />
+            </label>
+
+            <label className="field field--full">
+              <span>내부 메모</span>
+              <textarea
+                value={editForm.internal_notes}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, internal_notes: e.target.value }))}
+                rows={4}
+              />
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit">수정 저장</button>
+          </div>
+        </form>
+      ) : null}
     </section>
   );
 }

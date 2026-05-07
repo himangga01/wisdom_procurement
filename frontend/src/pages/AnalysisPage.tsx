@@ -58,6 +58,9 @@ export function AnalysisPage() {
     try {
       await api.reanalyzeDocument(Number(documentId));
       await loadAnalysis();
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "재분석에 실패했습니다.");
     } finally {
       setReloading(false);
     }

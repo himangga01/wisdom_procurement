@@ -129,6 +129,25 @@ try {
   if (-not $latest.id) { throw "Latest analysis lookup failed." }
   Write-SmokeLog "latest_analysis_loaded id=$($latest.id)"
 
+  $naraBody = @{
+    notice = @{
+      bidNtceNo = "SMOKE-$runId"
+      bidNtceOrd = "000"
+      bidNtceNm = "Smoke Test Nara Notice"
+      ntceInsttNm = "Smoke Test Agency"
+      dminsttNm = "Smoke Test Demand Agency"
+      bidNtceDt = "2026-05-05 10:00"
+      bidClseDt = "2026-05-20 17:00"
+      presmptPrce = "1000000"
+      ntceSpecFileNm1 = "unsupported.hwp"
+      ntceSpecDocUrl1 = ""
+    }
+  } | ConvertTo-Json -Depth 4
+
+  $nara = Invoke-RestMethod -Uri "$backendBase/api/nara/notices/save-and-analyze" -Method Post -ContentType "application/json" -Body $naraBody
+  if (-not $nara.notice.id) { throw "Nara save-and-analyze smoke flow failed." }
+  Write-SmokeLog "nara_notice_saved id=$($nara.notice.id)"
+
   Write-Output "SMOKE_OK"
   Write-Output "backend_pid=$($backendProcess.Id)"
   Write-Output "frontend_pid=$($frontendProcess.Id)"
@@ -136,6 +155,7 @@ try {
   Write-Output "project_id=$($proj.id)"
   Write-Output "document_id=$($doc.id)"
   Write-Output "analysis_id=$($latest.id)"
+  Write-Output "nara_notice_id=$($nara.notice.id)"
 }
 finally {
   Write-SmokeLog "stopping_servers"

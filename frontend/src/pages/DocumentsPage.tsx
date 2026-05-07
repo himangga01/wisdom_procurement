@@ -23,6 +23,13 @@ export function DocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    document_type: "general",
+    memo: "",
+    revision_note: "",
+  });
 
   const refresh = async () => {
     setLoading(true);
@@ -40,7 +47,7 @@ export function DocumentsPage() {
         setProjectId(projectList[0].id);
       }
     } catch (error) {
-      console.error(error);
+      setError(error instanceof Error ? error.message : "문서 이력을 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
@@ -61,16 +68,60 @@ export function DocumentsPage() {
     formData.append("revision_note", revisionNote);
     formData.append("file", file);
 
-    await api.uploadDocument(formData);
-    setMemo("");
-    setRevisionNote("");
-    setFile(null);
-    refresh();
+    try {
+      await api.uploadDocument(formData);
+      setMemo("");
+      setRevisionNote("");
+      setFile(null);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "문서 업로드에 실패했습니다.");
+    }
   };
 
   const onAnalyze = async (id: number) => {
-    await api.analyzeDocument(id);
-    refresh();
+    try {
+      await api.analyzeDocument(id);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "문서 분석에 실패했습니다.");
+    }
+  };
+
+  const onDelete = async (item: DocumentRecord) => {
+    if (!window.confirm(`${item.original_file_name} 문서를 삭제할까요? 분석 결과도 함께 삭제됩니다.`)) return;
+    try {
+      await api.deleteDocument(item.id);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "문서 삭제에 실패했습니다.");
+    }
+  };
+
+  const startEdit = (item: DocumentRecord) => {
+    setEditingId(item.id);
+    setEditForm({
+      document_type: item.document_type,
+      memo: item.memo,
+      revision_note: item.revision_note,
+    });
+  };
+
+  const onUpdate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+
+    try {
+      await api.updateDocument(editingId, editForm);
+      setEditingId(null);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "문서 메타데이터 수정에 실패했습니다.");
+    }
   };
 
   const projectMap = projects.reduce<Record<number, Project>>((acc, item) => {
@@ -188,6 +239,13 @@ export function DocumentsPage() {
         </aside>
       </div>
 
+      {error ? (
+        <div className="empty-state empty-state--warning">
+          <strong>작업을 완료하지 못했습니다.</strong>
+          <p>{error}</p>
+        </div>
+      ) : null}
+
       <div className="surface-card">
         <div className="section-heading">
           <div>
@@ -256,9 +314,15 @@ export function DocumentsPage() {
                           <button type="button" onClick={() => onAnalyze(d.id)}>
                             분석
                           </button>
+                          <button type="button" className="button-secondary" onClick={() => startEdit(d)}>
+                            편집
+                          </button>
                           <Link to={`/documents/${d.id}/analysis`} className="link-button link-button--soft">
                             결과
                           </Link>
+                          <button type="button" className="button-danger" onClick={() => onDelete(d)}>
+                            삭제
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -269,6 +333,56 @@ export function DocumentsPage() {
           </div>
         )}
       </div>
+
+      {editingId ? (
+        <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Edit Document Metadata</p>
+              <h3>문서 메타데이터 편집</h3>
+              <p className="section-copy">원본 파일은 유지하고 문서 유형, 메모, 개정 메모만 수정합니다.</p>
+            </div>
+            <button type="button" className="button-secondary" onClick={() => setEditingId(null)}>
+              취소
+            </button>
+          </div>
+
+          <div className="form-grid">
+            <label className="field">
+              <span>문서 유형</span>
+              <select
+                value={editForm.document_type}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, document_type: e.target.value }))}
+              >
+                <option value="notice">공고문</option>
+                <option value="spec">제안요청/규격</option>
+                <option value="general">일반 문서</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>개정 메모</span>
+              <input
+                value={editForm.revision_note}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, revision_note: e.target.value }))}
+              />
+            </label>
+
+            <label className="field field--full">
+              <span>업로드 메모</span>
+              <textarea
+                value={editForm.memo}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, memo: e.target.value }))}
+                rows={4}
+              />
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit">수정 저장</button>
+          </div>
+        </form>
+      ) : null}
     </section>
   );
 }

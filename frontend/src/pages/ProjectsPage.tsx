@@ -11,9 +11,23 @@ export function ProjectsPage() {
   const [notes, setNotes] = useState("");
   const [search, setSearch] = useState("");
   const [corporationId, setCorporationId] = useState<number | "">("");
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    corporation_id: 0,
+    status: "active",
+    notes: "",
+  });
 
   const refresh = () => {
-    api.listProjects().then(setProjects).catch(console.error);
+    api
+      .listProjects()
+      .then((data) => {
+        setProjects(data);
+        setError("");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "프로젝트 목록을 불러오지 못했습니다."));
     api
       .listCorporations()
       .then((data) => {
@@ -22,7 +36,7 @@ export function ProjectsPage() {
           setCorporationId(data[0].id);
         }
       })
-      .catch(console.error);
+      .catch((err) => setError(err instanceof Error ? err.message : "법인 목록을 불러오지 못했습니다."));
   };
 
   useEffect(() => {
@@ -32,10 +46,49 @@ export function ProjectsPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!corporationId) return;
-    await api.createProject({ name, corporation_id: corporationId, notes, status: "active" });
-    setName("");
-    setNotes("");
-    refresh();
+    try {
+      await api.createProject({ name, corporation_id: corporationId, notes, status: "active" });
+      setName("");
+      setNotes("");
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "프로젝트 생성에 실패했습니다.");
+    }
+  };
+
+  const onDelete = async (item: Project) => {
+    if (!window.confirm(`${item.name} 프로젝트를 삭제할까요? 연결 문서와 분석 결과도 함께 삭제됩니다.`)) return;
+    try {
+      await api.deleteProject(item.id);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "프로젝트 삭제에 실패했습니다.");
+    }
+  };
+
+  const startEdit = (item: Project) => {
+    setEditingId(item.id);
+    setEditForm({
+      name: item.name,
+      corporation_id: item.corporation_id,
+      status: item.status,
+      notes: item.notes,
+    });
+  };
+
+  const onUpdate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+
+    try {
+      await api.updateProject(editingId, editForm);
+      setEditingId(null);
+      setError("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "프로젝트 수정에 실패했습니다.");
+    }
   };
 
   const corporationMap = corporations.reduce<Record<number, Corporation>>((acc, item) => {
@@ -120,6 +173,13 @@ export function ProjectsPage() {
         </aside>
       </div>
 
+      {error ? (
+        <div className="empty-state empty-state--warning">
+          <strong>작업을 완료하지 못했습니다.</strong>
+          <p>{error}</p>
+        </div>
+      ) : null}
+
       <div className="surface-card">
         <div className="section-heading">
           <div>
@@ -152,11 +212,85 @@ export function ProjectsPage() {
                 </div>
                 <p className="project-meta">연결 법인: {corporationMap[item.corporation_id]?.name ?? `#${item.corporation_id}`}</p>
                 <p className="project-copy">{item.notes || "아직 프로젝트 메모가 없습니다."}</p>
+                <div className="row">
+                  <button type="button" className="button-secondary" onClick={() => startEdit(item)}>
+                    편집
+                  </button>
+                  <button type="button" className="button-danger" onClick={() => onDelete(item)}>
+                    프로젝트 삭제
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
       </div>
+
+      {editingId ? (
+        <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Edit Project</p>
+              <h3>프로젝트 정보 편집</h3>
+              <p className="section-copy">프로젝트명, 연결 법인, 상태, 메모를 수정합니다.</p>
+            </div>
+            <button type="button" className="button-secondary" onClick={() => setEditingId(null)}>
+              취소
+            </button>
+          </div>
+
+          <div className="form-grid">
+            <label className="field">
+              <span>프로젝트명</span>
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="field">
+              <span>연결 법인</span>
+              <select
+                value={editForm.corporation_id}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, corporation_id: Number(e.target.value) }))}
+                required
+              >
+                {corporations.map((corp) => (
+                  <option key={corp.id} value={corp.id}>
+                    {corp.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>상태</span>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value }))}
+              >
+                <option value="active">active</option>
+                <option value="paused">paused</option>
+                <option value="archived">archived</option>
+              </select>
+            </label>
+
+            <label className="field field--full">
+              <span>프로젝트 메모</span>
+              <textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
+                rows={4}
+              />
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit">수정 저장</button>
+          </div>
+        </form>
+      ) : null}
     </section>
   );
 }

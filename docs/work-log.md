@@ -811,3 +811,1132 @@ Per user request, it must be updated whenever new work is performed in this thre
   - frontend/backend/DB/document-processing/AI/Nara API/RAG/testing tools
 - Note:
   - The documented architecture recommends FastAPI, while current Phase 1 runtime is Flask; the summary explicitly distinguishes this.
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 현재 코드 전체를 리뷰하고 Phase 1 운영에 바로 영향을 주는 부족한 부분을 우선 수정
+- 주요 리뷰 결과
+  - 실제 실행 백엔드는 현재 Flask 기반 `backend/app/main.py`이며, 일부 FastAPI 골격 파일은 아직 런타임에 연결되어 있지 않다.
+  - 문서에는 나라장터 API 설정 메뉴가 필요하다고 정리되어 있었지만 실제 화면/엔드포인트가 없었다.
+  - 법인/프로젝트/문서의 수정·삭제 흐름이 프론트엔드에서 충분히 제공되지 않았다.
+  - 문서 파일 삭제 시 분석 결과 정리와 로컬 파일 정리 안정성이 부족했다.
+  - 분석 캐시가 모델/프롬프트 기준을 충분히 구분하지 않아 향후 AI 모델 변경 시 재사용 기준이 모호했다.
+  - 업로드 파일이 사라졌거나 파싱 중 오류가 발생했을 때 상태값 갱신과 사용자 오류 메시지가 부족했다.
+- 수정 내역
+  - 백엔드에 법인/프로젝트/문서 상세 조회, 수정, 삭제 API를 보강했다.
+  - 프로젝트 삭제 시 연결 문서, 분석 결과, 로컬 저장 파일을 함께 정리하도록 개선했다.
+  - 문서 삭제 시 분석 결과를 먼저 삭제하고 파일은 저장소 내부 경로일 때만 안전하게 삭제하도록 개선했다.
+  - 문서 분석 전 저장 파일 존재 여부와 파싱 예외를 처리하고 실패 상태를 DB에 남기도록 개선했다.
+  - 분석 캐시 기준에 `model_name`과 `prompt_version`을 포함했다.
+  - OpenAI 호출 실패 후 fallback 요약을 사용할 경우 실제 provider/model 정보와 fallback 사유를 저장하도록 개선했다.
+  - 나라장터 API 설정 상태 조회/연결 테스트 API를 추가했다.
+  - 프론트엔드에 `API 설정` 메뉴와 나라장터 API 설정 상태 화면을 추가했다.
+  - 법인/프로젝트/문서 화면에 삭제 액션과 사용자 오류 메시지를 추가했다.
+  - 대시보드와 분석 결과 화면의 오류 표시를 보강했다.
+  - SQLite journal 파일이 git 변경사항에 잡히지 않도록 `.gitignore`에 `*.db-journal`을 추가했다.
+- 검증 결과
+  - 백엔드 문법 검사 성공
+  - 백엔드 파서 단위 테스트 3건 성공
+  - 프론트엔드 `npm run build` 성공
+  - 스모크 테스트 성공
+  - 나라장터 API 설정 상태 엔드포인트는 API 키 미설정 상태에서 정상 응답 확인
+- 남은 주요 범위
+  - 나라장터 게시판의 실제 공고 검색, 저장한 공고 목록, 첨부 자동 다운로드, 저장 후 분석 파이프라인은 아직 별도 구현 대상이다.
+  - 현재 백엔드 런타임이 Flask이므로 FastAPI 권장 설계와 실제 구현의 정합성은 추후 별도 정리 또는 마이그레이션 결정이 필요하다.
+
+## Additional Update (2026-05-06)
+- Reviewed the current codebase and fixed Phase 1 gaps that directly affect local MVP usability and reliability.
+- Main findings:
+  - The active backend runtime is Flask in `backend/app/main.py`; some FastAPI scaffold files are not wired into runtime yet.
+  - Documentation required a Nara API settings menu, but the actual endpoint and UI were missing.
+  - Corporation/project/document edit/delete flows were incomplete in the frontend.
+  - Document deletion did not fully clean up linked analyses and local files safely.
+  - Analysis cache matching did not include enough model/prompt context.
+  - Missing files and parsing failures did not update DB status clearly enough.
+- Changes:
+  - Added backend detail/update/delete APIs for corporations, projects, and documents.
+  - Improved project deletion cleanup for linked documents, analyses, and local stored files.
+  - Improved document deletion cleanup and restricted local file unlinking to the configured storage root.
+  - Added missing-file and parser-exception handling to the analysis flow.
+  - Included `model_name` and `prompt_version` in analysis cache matching.
+  - Stored actual provider/model data and fallback reason when OpenAI summarization falls back to local summary.
+  - Added Nara API integration status and connection-test endpoints.
+  - Added frontend `API Settings` navigation and Nara integration status page.
+  - Added delete actions and visible error messages to corporation, project, and document pages.
+  - Improved dashboard and analysis error handling.
+  - Added `*.db-journal` to `.gitignore`.
+- Verification:
+  - backend syntax check passed
+  - backend parser unit tests passed, 3 tests
+  - frontend `npm run build` passed
+  - smoke test passed
+  - Nara API settings status endpoint returned a valid response without exposing any full API key
+- Remaining scope:
+  - Full Nara board implementation, notice search, saved notices, attachment auto-download, and save-and-analyze pipeline remain separate implementation work.
+  - Because the current runtime is Flask while architecture docs recommend FastAPI, the team should later choose whether to keep Flask for MVP or migrate to FastAPI.
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 `Phase 1 마무리 -> Phase 1 코드 리뷰 -> Phase 1.5 개발 -> Phase 1.5 코드 리뷰` 순서로 작업 진행
+
+### Phase 1 마무리
+- 법인 관리 화면에 편집 UI 추가
+  - 법인명, 업종/분류, 지역, 회사 규모, 인증/면허, 내부 메모 수정 가능
+- 프로젝트 관리 화면에 편집 UI 추가
+  - 프로젝트명, 연결 법인, 상태, 메모 수정 가능
+- 문서 업로드 화면에 문서 메타데이터 편집 UI 추가
+  - 문서 유형, 업로드 메모, 개정 메모 수정 가능
+- 공통 스타일 추가
+  - 보조 버튼
+  - 인라인 편집 카드
+- 백엔드 API 회귀 테스트 추가
+  - 법인/프로젝트/문서 생성, 수정, 삭제 흐름
+  - 프로젝트 삭제 시 연결 문서/분석/파일 정리 검증
+  - 나라장터 API 설정 상태에서 키 전체값 미노출 검증
+- Phase 1 코드 리뷰 결과
+  - 차단 이슈 없음
+  - 남은 리스크: 실제 OCR 엔진 품질과 복잡한 스캔 PDF는 추가 샘플 기반 검증 필요
+
+### Phase 1.5 개발
+- 나라장터 공고 저장용 DB 테이블 추가
+  - `nara_notices`
+  - `nara_notice_attachments`
+- 나라장터 공고 검색 API 추가
+  - 최근 1개월 기본 조회는 프론트에서 제공
+  - 백엔드는 `getBidPblancListInfoCnstwkPPSSrch` 기반 검색 지원
+  - API 키 미설정 시 명확한 오류 반환
+- 공고 상세 저장/분석 API 추가
+  - 선택한 공고 원본 데이터를 저장
+  - 가능하면 상세/기초금액/면허제한/참가가능지역/첨부 API를 재조회
+  - 첨부 PDF/DOCX 자동 다운로드
+  - HWP/HWPX/XLSX 등은 지원 제외 메타데이터로 저장
+  - 다운로드한 PDF/DOCX 파싱 후 기존 요약 파이프라인 재사용
+  - 저장한 공고에 분석 요약 저장
+- 저장한 공고 관리 API 추가
+  - 목록
+  - 상세
+  - 재분석
+  - 삭제
+- 프론트엔드 나라장터 화면 추가
+  - `나라장터 공고 검색`
+  - `저장한 공고`
+  - `저장한 공고 상세`
+- 서버 스모크 테스트에 나라장터 저장/분석 흐름 추가
+- Phase 1.5 코드 리뷰 결과
+  - 차단 이슈 없음
+  - API 키 전체값은 프론트 응답/문서/로그에 노출하지 않는 구조 유지
+  - 남은 리스크: 일부 나라장터 첨부 URL이 확장자 또는 직접 파일 서명을 제공하지 않는 경우 실제 API 샘플 기반 보정 필요
+  - 남은 리스크: 현재는 건설공사 공고 검색 API를 우선 연결했으므로 용역/물품 등 확장 검색은 후속 작업 필요
+
+### 검증 결과
+- 백엔드 문법 검사 성공
+- 백엔드 단위 테스트 8건 성공
+- 프론트엔드 `npm run build` 성공
+- 전체 스모크 테스트 성공
+  - 법인 생성
+  - 프로젝트 생성
+  - PDF 업로드
+  - 문서 분석
+  - 최신 분석 조회
+  - 나라장터 공고 저장/분석
+
+## Additional Update (2026-05-06)
+- Per user request, completed work in this order: `Phase 1 wrap-up -> Phase 1 code review -> Phase 1.5 implementation -> Phase 1.5 code review`.
+
+### Phase 1 Wrap-Up
+- Added corporation edit UI.
+  - editable fields: name, business category, region, company size, certifications/licenses, internal notes
+- Added project edit UI.
+  - editable fields: name, linked corporation, status, notes
+- Added document metadata edit UI.
+  - editable fields: document type, memo, revision note
+- Added shared UI styling.
+  - secondary button
+  - inline edit card
+- Added backend API regression tests.
+  - corporation/project/document create-update-delete flow
+  - project deletion cleanup for linked documents, analyses, and files
+  - Nara API settings status does not expose full keys
+- Phase 1 code review result:
+  - no blocking issues found
+  - remaining risk: real OCR quality and complex scanned PDFs still require sample-based verification
+
+### Phase 1.5 Implementation
+- Added DB tables for saved Nara notices.
+  - `nara_notices`
+  - `nara_notice_attachments`
+- Added Nara notice search API.
+  - frontend provides the default one-month range
+  - backend uses `getBidPblancListInfoCnstwkPPSSrch`
+  - missing API key returns a clear error
+- Added save-and-analyze API.
+  - stores the selected raw notice payload
+  - attempts detail, basis amount, license limit, eligible region, and attachment API enrichment
+  - downloads supported PDF/DOCX attachments
+  - stores HWP/HWPX/XLSX as unsupported metadata
+  - reuses the existing parsing and summarization pipeline
+  - stores summary output on the saved notice
+- Added saved notice APIs.
+  - list
+  - detail
+  - reanalyze
+  - delete
+- Added frontend Nara pages.
+  - `Nara Notice Search`
+  - `Saved Notices`
+  - `Saved Notice Detail`
+- Extended the smoke test with the Nara save-and-analyze flow.
+- Phase 1.5 code review result:
+  - no blocking issues found
+  - full API keys remain hidden from frontend responses, docs, and logs
+  - remaining risk: some Nara attachment URLs may not expose reliable extensions or direct file signatures, requiring sample-based adjustment
+  - remaining risk: construction notices are connected first; services/goods search expansion remains future work
+
+### Verification
+- backend syntax check passed
+- backend unit tests passed, 8 tests
+- frontend `npm run build` passed
+- full smoke test passed
+  - create corporation
+  - create project
+  - upload PDF
+  - analyze document
+  - fetch latest analysis
+  - save/analyze Nara notice
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 Phase 2 개발 전에 현재 코드 더블체크 리뷰와 포탈 UX 개선 방향 조사를 진행
+- 코드 리뷰에서 발견 후 수정한 내용
+  - 나라장터 기본 조회 기간 계산이 UTC 날짜 기준으로 동작할 수 있어 한국 시간(KST) 기준으로 보정
+  - 나라장터 API 설정 테스트가 JSON 응답만 정상 파싱하던 구조를 JSON/XML 공통 파서 사용 방식으로 보정
+  - 프론트엔드 나라장터 검색 기본 날짜 계산이 `toISOString()` 기반이라 한국 로컬 날짜와 어긋날 수 있어 로컬 날짜 포맷 방식으로 보정
+- UX 레퍼런스 조사
+  - Tabler Admin: 차분한 카드, 테이블, 사이드바, 상태/위젯 밀도 참고
+  - shadcn/ui Blocks: 사이드바 + 데이터 테이블 + 섹션 카드 구조 참고
+  - Shadcn Admin: React/Vite 기반 관리형 레이아웃 방향 참고
+- UX 개선 계획 초안
+  - 현재 벚꽃 테마의 강한 배경/그라데이션을 줄이고 더 차분한 `warm neutral + soft cherry accent`로 변경
+  - 메뉴를 업무 흐름 기준으로 그룹화
+  - 대시보드에는 전체 카운트보다 `오늘 해야 할 일`, `처리 대기`, `최근 저장 공고`, `분석 실패/부분 실패`를 우선 표시
+  - 나라장터/문서/기준문서가 늘어날 것을 고려해 사이드바를 그룹형 내비게이션으로 정리
+- 검증 결과
+  - 백엔드 단위 테스트 8건 성공
+  - 프론트엔드 `npm run build` 성공
+  - 전체 스모크 테스트 성공
+
+## Additional Update (2026-05-06)
+- Before starting Phase 2, reviewed the current code again and researched calmer portal UX directions.
+- Fixes from the double-check review:
+  - Nara default search date range now uses Korean local time (KST), not UTC dates.
+  - Nara integration test now uses the shared JSON/XML public-data parser.
+  - Frontend Nara default date formatting now uses local date fields instead of `toISOString()`.
+- UX references:
+  - Tabler Admin: calm cards, tables, sidebar, status/widget density
+  - shadcn/ui Blocks: sidebar + data table + section card structure
+  - Shadcn Admin: React/Vite admin layout direction
+- UX improvement draft:
+  - reduce strong sakura gradients and move toward `warm neutral + soft cherry accent`
+  - group navigation by actual admin workflow
+  - prioritize actionable dashboard sections: next work, pending processing, recent saved notices, failed/partial analyses
+  - reorganize sidebar groups before adding Phase 2 basis-document menus
+- Verification:
+  - backend unit tests passed, 8 tests
+  - frontend `npm run build` passed
+  - full smoke test passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 승인에 따라 Tabler Admin/Tabler Preview를 참고한 포탈 UX 수정 작업 진행
+- 수정 목표
+  - 기존 벚꽃 테마의 산뜻함은 일부 유지하되, 장시간 업무용으로 보기 편한 차분한 관리자 포탈 톤으로 조정
+  - 메뉴를 단순 나열이 아니라 업무 흐름별 그룹으로 재구성
+  - 대시보드에서 단순 카운트보다 처리 대기, 실패/부분 실패, 최근 저장 공고, 최근 문서를 먼저 확인할 수 있게 변경
+- 수정 내역
+  - 사이드바 메뉴 그룹화
+    - 업무 현황
+    - 공고 업무
+    - 문서 분석
+    - 기준문서/RAG
+    - 내부 관리
+    - 설정
+  - Phase 2 기준문서 관리를 비활성 메뉴로 미리 배치
+  - 대시보드 재구성
+    - 다음 추천 액션
+    - 처리 대기/주의 현황
+    - 나라장터 API 연동 상태
+    - 법인/프로젝트/문서/저장 공고 KPI
+    - 빠른 액션
+    - 최근 저장 공고
+    - 최근 업로드 문서
+  - 공통 디자인 토큰 재정리
+    - warm neutral 배경
+    - soft cherry accent
+    - 낮은 shadow
+    - 더 얇은 border
+    - Tabler 스타일에 가까운 테이블/카드/상태 배지
+- 수정 파일
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/DashboardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 백엔드 단위 테스트 8건 성공
+  - 프론트엔드 `npm run build` 성공
+  - 전체 스모크 테스트 성공
+- 메모
+  - 브라우저에서 실제 화면을 열어 최종 시각 QA를 하면 여백/밀도는 한 번 더 미세조정 가능
+
+## Additional Update (2026-05-06)
+- Per user approval, updated the portal UX using Tabler Admin/Tabler Preview as references.
+- Goals:
+  - keep a small amount of the sakura identity while moving toward a calmer long-running admin portal
+  - reorganize navigation by workflow groups
+  - make the dashboard prioritize pending work, failed/partial work, recent saved notices, and recent documents over simple counts
+- Changes:
+  - grouped sidebar navigation:
+    - Operations Overview
+    - Nara Notice Work
+    - Document Analysis
+    - Basis Documents / RAG
+    - Internal Management
+    - Settings
+  - added a disabled Phase 2 basis-document navigation placeholder
+  - rebuilt the dashboard:
+    - next recommended action
+    - processing queue/warnings
+    - Nara API integration status
+    - corporation/project/document/saved-notice KPIs
+    - quick actions
+    - recent saved notices
+    - recent uploaded documents
+  - refreshed shared design tokens:
+    - warm neutral background
+    - soft cherry accent
+    - lower shadows
+    - lighter borders
+    - more Tabler-like tables/cards/status badges
+- Updated files:
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/DashboardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - backend unit tests passed, 8 tests
+  - frontend `npm run build` passed
+  - full smoke test passed
+- Note:
+  - final visual QA in a browser would help fine-tune spacing and density.
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 포탈 전체 글씨 크기를 약 20% 낮추는 방향으로 조정
+- 수정 내용
+  - 전역 `body` 폰트 기준 크기 축소
+  - 브랜드 타이틀, 히어로 타이틀, 메뉴 라벨/설명, KPI 숫자, 작업 상태 항목, 빠른 액션 설명, 상태 배지 크기 축소
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+  - FE/BE 서버 실행 상태 정상 확인
+
+## Additional Update (2026-05-06)
+- Reduced overall portal typography by roughly 20% per user request.
+- Changes:
+  - lowered global `body` font baseline
+  - reduced brand title, hero title, nav labels/notes, KPI numbers, task rows, quick action notes, and status badge typography
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+  - FE/BE server status confirmed running
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 포탈 전체 폰트 패밀리 변경
+- 적용 폰트
+  - `Malgun Gothic`
+  - `맑은 고딕`
+  - `Dotum`
+  - `돋움`
+  - `sans-serif`
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Updated the portal-wide font family per user request.
+- Font stack:
+  - `Malgun Gothic`
+  - `맑은 고딕`
+  - `Dotum`
+  - `돋움`
+  - `sans-serif`
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 직전 폰트 크기 기준에서 약 10% 확대
+- 수정 내용
+  - 전역 `body` 기준 폰트 크기 확대
+  - 브랜드 타이틀, 히어로 타이틀, 메뉴 라벨/설명, KPI 숫자, 작업 상태 항목, 빠른 액션 설명, 상태 배지 크기 비례 조정
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Increased portal typography by roughly 10% from the previous reduced size.
+- Changes:
+  - increased global `body` font baseline
+  - proportionally adjusted brand title, hero title, nav labels/notes, KPI numbers, task rows, quick action notes, and status badges
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백에 따라 `나라장터 공고 검색` 화면의 `공고 상세 저장` 버튼 위치 수정
+- 수정 내용
+  - 검색 조건 폼 하단에 있던 `공고 상세 저장` 버튼 제거
+  - 공고 목록 테이블 카드의 오른쪽 상단으로 이동
+  - 선택 공고가 없거나 저장/분석 중이면 비활성화 유지
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Moved the `Save Notice Detail` action based on user feedback.
+- Changes:
+  - removed the button from the search form footer
+  - placed it in the top-right area of the notice results table card
+  - kept disabled behavior when no notice is selected or save/analyze is running
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 공고 검색 `페이지 크기` 옵션 확장
+- 수정 내용
+  - 프론트 옵션에 `100건`, `150건`, `200건` 추가
+  - 백엔드 검색 API의 `page_size` 상한을 `100`에서 `200`으로 확대
+  - 백엔드 테스트가 실제 로컬 `.env`의 나라장터 키에 영향받지 않도록 테스트 환경 격리 보강
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+  - 백엔드 단위 테스트 8건 성공
+
+## Additional Update (2026-05-06)
+- Expanded Nara notice search `page size` options per user request.
+- Changes:
+  - added `100`, `150`, and `200` options to the frontend selector
+  - increased backend `page_size` cap from `100` to `200`
+  - isolated backend tests from the real local `.env` Nara API key
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+  - backend unit tests passed, 8 tests
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `공고 목록` 테이블 첫 컬럼에 순번 추가
+- 수정 내용
+  - 현재 조회 결과 기준으로 `1`부터 시작하는 `No.` 컬럼 표시
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added a row number column to the Nara notice results table.
+- Changes:
+  - displays a `No.` column starting from `1` for the current result list
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `공고 목록` 테이블 정렬 기능 추가
+- API 지원 여부 확인
+  - 현재 저장소의 나라장터 API 문서/분석 자료에서는 `마감`, `금액` 정렬을 위한 명시적인 서버 sort/order 파라미터가 확인되지 않음
+  - 따라서 현재 조회된 결과 목록 기준의 프론트엔드 정렬로 구현
+- 수정 내용
+  - `마감` 컬럼 클릭 시 오름차순/내림차순 토글
+  - `금액` 컬럼 클릭 시 오름차순/내림차순 토글
+  - 정렬 상태를 컬럼명 옆 `↑`, `↓`로 표시
+  - 순번은 정렬된 화면 순서 기준으로 다시 표시
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added sorting to the Nara notice results table.
+- API support check:
+  - current local Nara API docs/analysis do not show explicit server-side sort/order parameters for deadline or amount
+  - implemented frontend sorting for the currently fetched result list
+- Changes:
+  - deadline column toggles ascending/descending sort
+  - amount column toggles ascending/descending sort
+  - active sort direction is shown with `↑` or `↓`
+  - row numbers are recalculated based on the sorted display order
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 질문 반영: 공고 상세 첨부 목록에 `standard_notice.pdf`가 `unsupported`로 표시되는 원인 확인 및 수정
+- 원인
+  - 나라장터 응답의 `stdNtceDocUrl` 값이 비어 있어도 시스템이 임의 파일명 `standard_notice.pdf`를 붙여 첨부 항목을 생성하고 있었음
+  - 실제 다운로드 URL이 없기 때문에 PDF 확장자처럼 보여도 `unsupported`로 표시됨
+- 수정 내용
+  - `stdNtceDocUrl` 값이 실제로 있을 때만 `standard_notice.pdf` 첨부 항목을 생성하도록 수정
+  - URL이 없는 표준공고문 placeholder가 다시 생성되지 않도록 백엔드 테스트 보강
+- 수정 파일
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- 검증 결과
+  - 백엔드 단위 테스트 8건 성공
+
+## Additional Update (2026-05-06)
+- Investigated and fixed why `standard_notice.pdf` appeared as `unsupported` in notice attachment details.
+- Cause:
+  - the system created a placeholder attachment named `standard_notice.pdf` even when `stdNtceDocUrl` was empty
+  - because there was no actual download URL, the attachment was marked `unsupported` despite looking like a PDF
+- Changes:
+  - only create the `standard_notice.pdf` attachment when `stdNtceDocUrl` actually exists
+  - added a backend regression assertion to prevent URL-less standard notice placeholders
+- Updated files:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- Verification:
+  - backend unit tests passed, 8 tests
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 공고 검색 기본 조회 조건 변경
+- 수정 내용
+  - `조회 시작일` 기본값을 오늘 기준 3일 전으로 변경
+  - `조회 종료일` 기본값을 오늘 날짜로 유지
+  - 페이지 크기 최대값을 `100`으로 조정
+  - 백엔드 검색 API의 `page_size` 상한도 `100`으로 조정
+  - 화면 안내 문구를 `최근 3일` 기준으로 변경
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `backend/app/main.py`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+  - 백엔드 단위 테스트 8건 성공
+
+## Additional Update (2026-05-06)
+- Updated default Nara notice search conditions per user request.
+- Changes:
+  - default `start date` is now today minus 3 days
+  - default `end date` remains today
+  - maximum page size is now `100`
+  - backend `page_size` cap is also set to `100`
+  - helper copy now says the default range is recent 3 days
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `backend/app/main.py`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+  - backend unit tests passed, 8 tests
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `공고 목록` 테이블 정렬 UX 개선
+- 수정 내용
+  - `마감`, `금액` 컬럼에 정렬 가능 여부를 바로 알 수 있는 아이콘 추가
+  - 정렬 미적용 상태는 `↕` 아이콘 표시
+  - 정렬 적용 상태는 `↑`, `↓` 아이콘 표시
+  - `마감`, `금액` 두 컬럼 정렬을 동시에 적용 가능하도록 변경
+  - 다중 정렬 시 적용 우선순위를 작은 숫자 배지로 표시
+  - 같은 컬럼 클릭 흐름: 오름차순 -> 내림차순 -> 정렬 해제
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Improved sorting UX for the Nara notice results table.
+- Changes:
+  - added always-visible sort affordance icons for `deadline` and `amount`
+  - unsorted state shows `↕`
+  - sorted state shows `↑` or `↓`
+  - deadline and amount sorting can now be applied together
+  - multi-sort priority is shown with a small numeric badge
+  - repeated clicks cycle through ascending -> descending -> off
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `공고 목록` 테이블에 `등록 날짜` 컬럼 추가
+- API 응답 확인
+  - 나라장터 공고 응답의 `bidNtceDt` 값을 등록/공고 일시로 사용
+  - 프론트 정규화 모델에서는 `bid_ntce_dt`로 사용 중
+- 수정 내용
+  - `등록 날짜` 컬럼 추가
+  - `YYYY-MM-DD HH:mm` 형태로 날짜+시간 표시
+  - `등록 날짜` 정렬 추가
+  - 기존 `마감`, `금액`과 함께 다중 정렬 가능
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added a `Posted At` column to the Nara notice results table.
+- API response note:
+  - uses Nara response field `bidNtceDt` as the posted/notice datetime
+  - frontend normalized field is `bid_ntce_dt`
+- Changes:
+  - added posted datetime column
+  - displays date and time as `YYYY-MM-DD HH:mm`
+  - added posted datetime sorting
+  - supports multi-sort together with deadline and amount
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `공고 목록` 페이지네이션 기능 추가
+- 수정 내용
+  - API의 `pageNo` 파라미터와 프론트 페이지 상태 연결
+  - 현재 페이지/전체 페이지 표시
+  - `처음`, `이전`, 페이지 번호, `다음`, `마지막` 버튼 추가
+  - 페이지 크기 변경 시 1페이지로 초기화
+  - 페이지 이동 시 해당 페이지의 공고 목록 재조회
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added pagination to the Nara notice results table.
+- Changes:
+  - connected frontend page state to the API `pageNo` parameter
+  - displays current page and total pages
+  - added first, previous, page number, next, and last controls
+  - resets to page 1 when page size changes
+  - refetches notices on page navigation
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 질문 반영: 나라장터 `상세 미리보기` 첨부파일 클릭/열기 기능 추가
+- 수정 내용
+  - 첨부파일 URL이 있는 경우 파일명을 링크로 표시
+  - `열기` 버튼을 추가해 새 탭에서 첨부 URL을 열 수 있도록 변경
+  - 첨부 URL이 없는 경우 `URL 없음` 배지 표시
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added clickable attachment links in the Nara notice preview.
+- Changes:
+  - file names become links when an attachment URL exists
+  - added an `Open` button that opens the attachment URL in a new tab
+  - displays a `No URL` badge when no attachment URL exists
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 질문 반영: 나라장터 첨부 PDF를 다운로드 대신 브라우저에서 바로 열 수 있도록 개선
+- 원인
+  - 기존 `열기` 버튼은 나라장터 원본 첨부 URL을 직접 열었기 때문에 원본 서버가 다운로드 헤더를 내려주면 브라우저가 파일을 다운로드함
+- 수정 내용
+  - 백엔드에 첨부파일 preview 프록시 API 추가
+  - PDF 첨부는 백엔드가 원본 파일을 받아 `Content-Disposition: inline`으로 다시 내려주도록 처리
+  - PDF는 `브라우저 열기` 버튼으로 새 탭에서 열도록 변경
+  - DOCX 등 브라우저 자체 렌더링이 어려운 파일은 기존처럼 다운로드 동작 유지
+  - URL 누락 요청에 대한 백엔드 테스트 추가
+- 수정 파일
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+  - 백엔드 단위 테스트 9건 성공
+  - FE/BE 서버 재시작 및 실행 상태 확인
+
+## Additional Update (2026-05-06)
+- Improved Nara PDF attachments so they can open inline in the browser instead of always downloading.
+- Cause:
+  - the previous `Open` button navigated directly to the original Nara attachment URL, so browser behavior followed the upstream download headers
+- Changes:
+  - added a backend attachment preview proxy endpoint
+  - PDF files are fetched by the backend and returned with `Content-Disposition: inline`
+  - PDF attachments now use a `Browser Open` action in a new tab
+  - DOCX and other browser-unfriendly formats still use download behavior
+  - added backend test coverage for missing preview URL requests
+- Updated files:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+  - backend unit tests passed, 9 tests
+  - FE/BE servers restarted and confirmed running
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `상세 미리보기` 정보량 확대
+- 수정 내용
+  - 공고번호/차수 추가
+  - 등록 날짜, 입찰 시작, 입찰 마감, 개찰 일시 표시
+  - 추정가격, 예산금액, 기초금액 표시
+  - 지역, 면허/업종, 입찰방식, 계약방법, 공동수급 힌트 표시
+  - 나라장터 원문 링크 표시
+  - API 원본 주요값을 접기/펼치기 영역에서 확인 가능하도록 추가
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Expanded the Nara notice detail preview based on user feedback.
+- Changes:
+  - added notice number/order
+  - added posted date, bid start, bid deadline, and opening datetime
+  - added estimated price, budget amount, and basis amount
+  - added region, license/industry, bid method, contract method, and joint supply hints
+  - added original Nara notice link
+  - added collapsible raw API value preview
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 왼쪽 네비게이션 사이드바에 세로 스크롤 추가
+- 원인
+  - 사이드바가 `100vh` 높이에 고정되어 있었지만 내부 `overflow-y` 처리가 없어 하단 `운영 순서` 영역으로 이동할 수 없었음
+- 수정 내용
+  - 사이드바에 `overflow-y: auto` 적용
+  - 스크롤바 표시 공간 안정화를 위해 `scrollbar-gutter: stable` 적용
+  - WebKit 계열 브라우저용 차분한 스크롤바 스타일 추가
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added vertical scrolling to the left navigation sidebar based on user feedback.
+- Cause:
+  - sidebar was fixed at `100vh` but had no internal `overflow-y`, making the lower operation guide inaccessible
+- Changes:
+  - added `overflow-y: auto`
+  - added `scrollbar-gutter: stable`
+  - added subtle WebKit scrollbar styling
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 대시보드 연동 상태가 실제 API 설정을 반영하지 않는 문제 확인 및 수정
+- 원인
+  - `frontend/.env`에 예전 API 주소 `http://127.0.0.1:8000`이 남아 있었음
+  - 관리 스크립트가 실행 시 `VITE_API_BASE_URL=http://127.0.0.1:18111`을 넘기더라도 Vite가 `.env` 값을 우선 적용하면서 대시보드가 잘못된 백엔드 상태를 볼 수 있었음
+- 수정 내용
+  - `frontend/.env`를 `http://127.0.0.1:18111`로 변경
+  - UTF-8 BOM 없이 재작성
+  - FE/BE 서버 재시작
+- 검증 결과
+  - 나라장터 설정 상태 API 응답에서 `configured=true` 확인
+  - FE/BE 서버 정상 실행 확인
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Fixed dashboard integration status not reflecting the configured Nara API key.
+- Cause:
+  - `frontend/.env` still pointed to the old API URL `http://127.0.0.1:8000`
+  - even though the management script passed `VITE_API_BASE_URL=http://127.0.0.1:18111`, Vite could prefer `.env`, causing the dashboard to query the wrong backend
+- Changes:
+  - updated `frontend/.env` to `http://127.0.0.1:18111`
+  - rewrote it without UTF-8 BOM
+  - restarted FE/BE servers
+- Verification:
+  - Nara settings status API returns `configured=true`
+  - FE/BE servers are running
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 연결 테스트 결과가 저장되지 않아 `not_run`으로 보이는 문제 수정
+- 원인
+  - 기존 연결 테스트 API는 결과를 응답으로만 반환하고 DB에 저장하지 않았음
+  - 설정 화면/대시보드가 다시 상태 API를 조회하면 마지막 테스트 결과가 없어 `not_run`으로 표시됨
+- 수정 내용
+  - `integration_test_results` 테이블 추가
+  - 나라장터 연결 테스트 실행 시 상태, HTTP 상태, API 결과 코드, 메시지, 조회 건수, 테스트 시각 저장
+  - 설정 상태 API가 최신 연결 테스트 결과를 반환하도록 변경
+  - 설정 화면에서 테스트 실행 후 상태를 다시 불러오도록 변경
+  - 저장된 최근 테스트 결과 상세 표시 추가
+  - 테스트 결과 저장/조회 백엔드 테스트 추가
+- 수정 파일
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/pages/SettingsPage.tsx`
+  - `docs/work-log.md`
+- 검증 결과
+  - 백엔드 단위 테스트 10건 성공
+  - 프론트엔드 `npm run build` 성공
+  - FE/BE 서버 재시작 및 실행 상태 확인
+
+## Additional Update (2026-05-06)
+- Fixed the Nara connection test result not being persisted, which caused `not_run` to keep showing.
+- Cause:
+  - the previous connection test endpoint returned the result but did not store it
+  - status screens later had no persisted latest test result, so they displayed `not_run`
+- Changes:
+  - added `integration_test_results` table
+  - persisted Nara test status, HTTP status, API result code/message, total count, and tested timestamp
+  - updated the integration status API to return the latest saved test result
+  - settings page now reloads status after running a test
+  - added saved latest test details display
+  - added backend test coverage for saved test result lookup
+- Updated files:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/pages/SettingsPage.tsx`
+  - `docs/work-log.md`
+- Verification:
+  - backend unit tests passed, 10 tests
+  - frontend `npm run build` passed
+  - FE/BE servers restarted and confirmed running
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 요청에 따라 나라장터 `상세 미리보기` 패널에 독립 스크롤 추가
+- 수정 내용
+  - `Selected Notice / 상세 미리보기` 패널을 화면 높이 기준으로 제한
+  - 패널 내부에 `overflow-y: auto` 적용
+  - 상세 패널 헤더를 sticky 처리해 스크롤 중에도 제목 유지
+  - 패널 전용 스크롤바 스타일 추가
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Added independent scrolling to the Nara selected notice preview panel.
+- Changes:
+  - constrained the `Selected Notice / Detail Preview` panel to viewport height
+  - applied internal `overflow-y: auto`
+  - made the preview panel header sticky
+  - added panel-specific scrollbar styling
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 공고 상세 첨부 목록에 `standard_notice.pdf`가 계속 보이는 문제 정리
+- 원인
+  - `stdNtceDocUrl` 값이 실제로 존재하는 경우 표준공고문 첨부를 표시하는 것은 정상 동작
+  - 다만 시스템이 표시명을 `standard_notice.pdf`로 고정해 사용하고 있어 사용자 입장에서 불필요한 기술명처럼 보였음
+- 수정 내용
+  - `stdNtceDocUrl` 첨부 표시명을 `standard_notice.pdf`에서 `표준공고문.pdf`로 변경
+  - URL이 있는 표준공고문은 계속 PDF 첨부로 표시하고 브라우저 열기 대상이 되도록 유지
+  - 표준공고문 표시명 회귀 테스트 추가
+- 수정 파일
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- 검증 결과
+  - 백엔드 단위 테스트 11건 성공
+  - 프론트엔드 `npm run build` 성공
+  - FE/BE 서버 재시작 및 실행 상태 확인
+- 주의
+  - 이미 저장된 기존 공고의 첨부명은 DB에 남아 있으므로 삭제 후 다시 저장하거나 재분석해야 새 표시명이 반영됨
+
+## Additional Update (2026-05-06)
+- Cleaned up the remaining `standard_notice.pdf` display in Nara notice attachment details.
+- Cause:
+  - when `stdNtceDocUrl` exists, showing the standard notice attachment is expected
+  - however the fixed display name `standard_notice.pdf` looked like an internal technical placeholder
+- Changes:
+  - changed `stdNtceDocUrl` attachment display name from `standard_notice.pdf` to `표준공고문.pdf`
+  - kept real standard notice URLs as supported PDF attachments and browser preview targets
+  - added regression test coverage for the display name
+- Updated files:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `docs/work-log.md`
+- Verification:
+  - backend unit tests passed, 11 tests
+  - frontend `npm run build` passed
+  - FE/BE servers restarted and confirmed running
+- Note:
+  - existing saved notices may still have the old attachment name in DB; delete and save again or reanalyze to refresh the stored attachment metadata.
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 제보 반영: 나라장터 `Selected Notice / 상세 미리보기` 패널에서 상단 정보가 헤더에 가려지는 스크롤 버그 수정
+- 원인
+  - 패널 전체에 `overflow-y: auto`를 적용한 상태에서 헤더도 `sticky`로 고정되어 본문 첫 번째 항목이 헤더 아래에 겹쳐 보였음
+  - 헤더의 음수 margin 처리 때문에 스크롤 시작 위치와 실제 본문 시작 위치가 어긋났음
+- 수정 내용
+  - 상세 미리보기 패널을 `헤더 영역`과 `본문 스크롤 영역`으로 분리
+  - 스크롤은 본문 영역(`notice-preview-panel__body`)에만 적용
+  - 패널 헤더의 sticky/음수 margin 처리를 제거해 첫 번째 항목이 정상적으로 보이도록 변경
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Fixed a scroll overlap bug in the Nara `Selected Notice / Detail Preview` panel.
+- Cause:
+  - the full panel had `overflow-y: auto` while the header was also sticky, causing the first detail row to render underneath the header
+  - negative header margins made the scroll start offset inconsistent with the body content start
+- Changes:
+  - split the preview panel into a fixed header area and a body-only scroll area
+  - moved vertical scrolling to `notice-preview-panel__body`
+  - removed sticky/negative-margin behavior from the panel header
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `공고 목록`에서 공고를 선택했을 때 `상세 미리보기` 변경 시인성이 부족한 문제 개선
+- 수정 내용
+  - 선택된 공고 키가 바뀔 때 상세 미리보기 본문이 다시 마운트되도록 처리
+  - 미리보기 본문에 짧은 슬라이드/페이드 인 애니메이션 추가
+  - 첫 번째 상세 정보 행에 벚꽃 톤 하이라이트 애니메이션을 추가해 변경 피드백 강화
+  - `prefers-reduced-motion` 환경에서는 애니메이션을 비활성화하도록 접근성 고려
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Improved visual feedback when selecting a notice in the Nara notice results table.
+- Changes:
+  - remount the detail preview body when the selected notice key changes
+  - added a short slide/fade-in animation to the preview body
+  - added a cherry-blossom-toned highlight animation to the first detail row
+  - disabled the animation for `prefers-reduced-motion` users
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `상세 미리보기` 선택 변경 애니메이션 조정
+- 수정 내용
+  - 상세 미리보기 본문이 위로 들어오는 속도를 더 느리고 부드럽게 조정
+  - 첫 번째 상세 정보 행 하이라이트 애니메이션 제거
+  - 선택 변경 시 상단에 짧은 벚꽃 톤 로딩/전환 바가 나타나도록 변경
+  - `prefers-reduced-motion` 환경에서는 전환 바도 숨기도록 접근성 처리 유지
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Tuned the Nara detail preview selection-change animation based on user feedback.
+- Changes:
+  - slowed down and softened the upward enter animation
+  - removed the first-row highlight animation
+  - added a short cherry-blossom-toned loading/transition bar at the top of the preview
+  - kept reduced-motion handling by hiding the transition bar when motion is reduced
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `상세 미리보기` 선택 변경 로딩 표시 위치와 형태 수정
+- 수정 내용
+  - 상단 로딩/전환 바 제거
+  - 선택 변경 시 상세 미리보기 카드 중앙에 짧게 나타나는 회전 로더 추가
+  - 로더는 약 1초 후 사라지며, 선택된 공고가 바뀔 때마다 다시 재생되도록 처리
+  - `prefers-reduced-motion` 환경에서는 중앙 로더 애니메이션도 숨김
+- 수정 파일
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Updated the Nara detail preview selection-change loading indicator based on user feedback.
+- Changes:
+  - removed the top loading/transition bar
+  - added a short centered spinning loader in the detail preview card
+  - the loader fades out after about one second and replays whenever the selected notice changes
+  - hides the centered loader animation for `prefers-reduced-motion` users
+- Updated files:
+  - `frontend/src/pages/NaraBoardPage.tsx`
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `상세 미리보기` 중앙 로딩 인디케이터 표시 시간을 0.5초로 단축
+- 수정 내용
+  - 중앙 로더 박스 애니메이션을 `1050ms`에서 `500ms`로 변경
+  - 짧은 표시 시간 안에서도 회전이 인지되도록 스핀 속도를 `360ms`로 조정
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Shortened the Nara detail preview centered loading indicator to 0.5 seconds.
+- Changes:
+  - changed the loader box animation from `1050ms` to `500ms`
+  - adjusted spinner speed to `360ms` so the rotation remains visible in the shorter duration
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `상세 미리보기` 본문 전환 이동 폭 축소
+- 수정 내용
+  - 본문이 위로 들어오는 이동 폭을 `16px` 수준에서 `4px` 수준으로 축소
+  - 스케일/블러 효과를 제거해 화면이 크게 움직이는 느낌을 줄임
+  - opacity 변화도 약하게 조정해 중앙 로더가 주 피드백이 되도록 정리
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Reduced the movement distance of the Nara detail preview body transition.
+- Changes:
+  - reduced the upward enter movement from about `16px` to about `4px`
+  - removed scale/blur effects to avoid a large page-shift feeling
+  - softened opacity changes so the centered loader remains the primary feedback
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-06)
+- 사용자 피드백 반영: 나라장터 `상세 미리보기` 본문 전환 모션 삭제
+- 수정 내용
+  - 상세 미리보기 본문 슬라이드/페이드 전환 애니메이션 제거
+  - 선택 변경 피드백은 중앙 로딩 인디케이터만 남기도록 단순화
+  - 사용자가 공고를 선택할 때 화면이 움직이는 느낌을 없앰
+- 수정 파일
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- 검증 결과
+  - 프론트엔드 `npm run build` 성공
+
+## Additional Update (2026-05-06)
+- Removed the Nara detail preview body transition animation.
+- Changes:
+  - removed the detail preview slide/fade transition
+  - kept only the centered loading indicator as selection-change feedback
+  - eliminated visible page movement when selecting a notice
+- Updated files:
+  - `frontend/src/styles.css`
+  - `docs/work-log.md`
+- Verification:
+  - frontend `npm run build` passed
+
+## 추가 업데이트 (2026-05-07)
+- 사용자 요청에 따라 올인원 서버 관리 스크립트로 FE/BE 서버 실행
+- 실행 명령
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\manage-servers.ps1 start`
+- 실행 상태
+  - 백엔드 실행 중: `http://127.0.0.1:18111`
+  - 프론트엔드 실행 중: `http://127.0.0.1:5199`
+  - 스크립트 상태 확인 결과 FE/BE 모두 `running`
+- 검증 결과
+  - `manage-servers.ps1 status` 확인 완료
+  - `18111`, `5199` 포트 Listen 상태 확인 완료
+
+## Additional Update (2026-05-07)
+- Started FE/BE servers using the all-in-one server management script.
+- Command:
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\manage-servers.ps1 start`
+- Runtime status:
+  - backend running: `http://127.0.0.1:18111`
+  - frontend running: `http://127.0.0.1:5199`
+  - script status reports both FE/BE as `running`
+- Verification:
+  - confirmed via `manage-servers.ps1 status`
+  - confirmed listening ports `18111` and `5199`
