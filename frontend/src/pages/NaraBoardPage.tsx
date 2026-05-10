@@ -2,7 +2,16 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../app/api";
-import type { NaraNoticeSearchItem, NaraNoticeSearchResponse } from "../app/types";
+import {
+  defaultSelection,
+  loadStoredSelection,
+  optionsFromSettings,
+  keyToSelection,
+  saveStoredSelection,
+  selectionToKey,
+} from "../app/aiModel";
+import type { AiModelSelection, AiModelSettings, NaraNoticeSearchItem, NaraNoticeSearchResponse } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 type SortKey = "postedAt" | "deadline" | "amount";
 type SortDirection = "asc" | "desc";
@@ -119,6 +128,7 @@ function previewRows(item: NaraNoticeSearchItem) {
 }
 
 export function NaraBoardPage() {
+  const { runWithOverlay } = useWorkOverlay();
   const range = defaultRange();
   const [keyword, setKeyword] = useState("");
   const [startDate, setStartDate] = useState(range.start);
@@ -127,13 +137,16 @@ export function NaraBoardPage() {
   const [pageNo, setPageNo] = useState(1);
   const [result, setResult] = useState<NaraNoticeSearchResponse | null>(null);
   const [selectedKey, setSelectedKey] = useState("");
+  const [aiSettings, setAiSettings] = useState<AiModelSettings | null>(null);
+  const [aiSelection, setAiSelection] = useState<AiModelSelection>(defaultSelection());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedNoticeId, setSavedNoticeId] = useState<number | null>(null);
   const [sortRules, setSortRules] = useState<SortRule[]>([]);
 
-  const search = async (nextPageNo = pageNo) => {
+  const search = async (nextPageNo = pageNo, showOverlay = false) => {
+    const executeSearch = async () => {
     setLoading(true);
     setSavedNoticeId(null);
     try {
@@ -155,15 +168,50 @@ export function NaraBoardPage() {
     } finally {
       setLoading(false);
     }
+    };
+
+    if (showOverlay) {
+      await runWithOverlay(
+        {
+          title: "나라장터 공고 조회 중",
+          description: "공공데이터 API에서 공고 목록을 가져와 표와 미리보기를 갱신합니다.",
+          steps: ["조회 조건 확인", "나라장터 API 호출", "응답 데이터 정리", "공고 목록 갱신"],
+          successMessage: "나라장터 공고 조회가 완료되었습니다.",
+          failureMessage: "나라장터 공고 조회를 완료하지 못했습니다.",
+        },
+        executeSearch,
+      );
+      return;
+    }
+
+    await executeSearch();
   };
 
   useEffect(() => {
     search();
   }, []);
 
+  useEffect(() => {
+    api
+      .getAiModelSettings()
+      .then((settings) => {
+        setAiSettings(settings);
+        setAiSelection(loadStoredSelection(settings));
+      })
+      .catch(() => {
+        setAiSelection(loadStoredSelection(null));
+      });
+  }, []);
+
+  const onAiModelChange = (value: string) => {
+    const next = keyToSelection(value);
+    setAiSelection(next);
+    saveStoredSelection(next);
+  };
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    search(1);
+    void search(1, true);
   };
 
   const onPageSizeChange = (nextPageSize: number) => {
@@ -221,19 +269,31 @@ export function NaraBoardPage() {
   const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => pageWindowStart + index).filter(
     (page) => page <= totalPages,
   );
+  const aiOptions = optionsFromSettings(aiSettings);
 
   const onSave = async () => {
     if (!selectedNotice) return;
     const ok = window.confirm(
-      "선택한 공고를 저장하고 첨부 PDF/DOCX를 자동 다운로드한 뒤 분석합니다. HWP/HWPX/XLSX는 메타데이터만 저장합니다.",
+      "선택한 공고를 저장하고 백그라운드에서 첨부 PDF/DOCX 다운로드와 분석을 진행합니다. HWP/HWPX/XLSX는 메타데이터만 저장합니다.",
     );
     if (!ok) return;
 
     setSaving(true);
     try {
-      const response = await api.saveAndAnalyzeNaraNotice(selectedNotice);
-      setSavedNoticeId(response.notice.id);
-      setError("");
+      await runWithOverlay(
+        {
+          title: "공고 저장 작업 등록 중",
+          description: "선택한 공고를 저장하고 첨부파일 다운로드/분석 백그라운드 작업을 시작합니다.",
+          steps: ["공고 상세 저장", "첨부파일 처리 작업 등록", "분석 파이프라인 시작", "상태 화면 준비"],
+          successMessage: "공고 저장/분석 작업이 시작되었습니다.",
+          failureMessage: "공고 저장 작업을 시작하지 못했습니다.",
+        },
+        async () => {
+          const response = await api.saveAndAnalyzeNaraNotice(selectedNotice, aiSelection);
+          setSavedNoticeId(response.notice.id);
+          setError("");
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "공고 상세 저장에 실패했습니다.");
     } finally {
@@ -279,6 +339,18 @@ export function NaraBoardPage() {
             <span>조회 종료일</span>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </label>
+          <label className="field">
+            <span>AI 분석 모델</span>
+            <select value={selectionToKey(aiSelection)} onChange={(e) => onAiModelChange(e.target.value)}>
+              {aiOptions.map((option) => (
+                <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`}>
+                  {option.label}
+                  {option.recommended ? " 추천" : ""}
+                  {option.configured ? "" : " · 키 미설정"}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="form-actions">
@@ -300,10 +372,10 @@ export function NaraBoardPage() {
 
       {savedNoticeId ? (
         <div className="empty-state">
-          <strong>공고 저장과 분석 파이프라인을 실행했습니다.</strong>
-          <p>첨부 파일 상태와 분석 결과는 저장한 공고 상세에서 확인할 수 있습니다.</p>
+          <strong>공고 저장/분석 작업을 백그라운드로 시작했습니다.</strong>
+          <p>다른 페이지로 이동해도 작업은 계속 진행됩니다. 저장한 공고 상세에서 처리 상태가 자동 갱신됩니다.</p>
           <Link to={`/nara-saved-notices/${savedNoticeId}`} className="link-button">
-            분석 결과 보기
+            처리 상태 보기
           </Link>
         </div>
       ) : null}
@@ -320,9 +392,6 @@ export function NaraBoardPage() {
                   : "조회 결과가 여기에 표시됩니다."}
               </p>
             </div>
-            <button type="button" className="button-secondary" disabled={!selectedNotice || saving} onClick={onSave}>
-              {saving ? "저장/분석 중..." : "공고 상세 저장"}
-            </button>
           </div>
 
           {loading ? (
@@ -336,6 +405,20 @@ export function NaraBoardPage() {
               <p>검색어 또는 조회 기간을 조정해보세요.</p>
             </div>
           ) : (
+            <div className="nara-table-shell">
+              <div className="sticky-action-bar">
+                <div>
+                  <strong>{selectedNotice ? selectedNotice.bid_ntce_nm || "선택한 공고" : "공고를 1개 선택하세요"}</strong>
+                  <span>
+                    {selectedNotice
+                      ? `${selectedNotice.bid_ntce_no}-${selectedNotice.bid_ntce_ord} · 첨부 ${selectedNotice.supported_attachment_count}/${selectedNotice.attachment_count}`
+                      : "라디오 버튼으로 선택한 공고만 저장/분석됩니다."}
+                  </span>
+                </div>
+                <button type="button" disabled={!selectedNotice || saving} onClick={onSave}>
+                  {saving ? "작업 등록 중..." : "공고 상세 저장"}
+                </button>
+              </div>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -412,18 +495,19 @@ export function NaraBoardPage() {
                 </tbody>
               </table>
             </div>
+            </div>
           )}
 
           {result && result.total_count > result.page_size ? (
             <div className="pagination-bar">
-              <button type="button" className="button-secondary" disabled={loading || pageNo <= 1} onClick={() => search(1)}>
+              <button type="button" className="button-secondary" disabled={loading || pageNo <= 1} onClick={() => search(1, true)}>
                 처음
               </button>
               <button
                 type="button"
                 className="button-secondary"
                 disabled={loading || pageNo <= 1}
-                onClick={() => search(pageNo - 1)}
+                onClick={() => search(pageNo - 1, true)}
               >
                 이전
               </button>
@@ -434,7 +518,7 @@ export function NaraBoardPage() {
                     key={page}
                     className={`pagination-page ${page === pageNo ? "pagination-page--active" : ""}`}
                     disabled={loading || page === pageNo}
-                    onClick={() => search(page)}
+                    onClick={() => search(page, true)}
                   >
                     {page}
                   </button>
@@ -444,7 +528,7 @@ export function NaraBoardPage() {
                 type="button"
                 className="button-secondary"
                 disabled={loading || pageNo >= totalPages}
-                onClick={() => search(pageNo + 1)}
+                onClick={() => search(pageNo + 1, true)}
               >
                 다음
               </button>
@@ -452,7 +536,7 @@ export function NaraBoardPage() {
                 type="button"
                 className="button-secondary"
                 disabled={loading || pageNo >= totalPages}
-                onClick={() => search(totalPages)}
+                onClick={() => search(totalPages, true)}
               >
                 마지막
               </button>

@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../app/api";
-import type { SavedNaraNotice } from "../app/types";
+import {
+  defaultSelection,
+  loadStoredSelection,
+  optionsFromSettings,
+  keyToSelection,
+  saveStoredSelection,
+  selectionToKey,
+} from "../app/aiModel";
+import type { AiModelSelection, AiModelSettings, SavedNaraNotice } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 function statusTone(status: string) {
   if (status === "completed" || status === "saved") return "active";
@@ -18,17 +27,46 @@ function parseJson(value: string) {
   }
 }
 
+function parseJsonObject(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function isPipelineRunning(notice: SavedNaraNotice | null) {
+  if (!notice) return false;
+  return [notice.save_status, notice.download_status, notice.analysis_status].some((status) =>
+    ["saving", "pending", "queued"].includes(status),
+  );
+}
+
 export function NaraSavedNoticeDetailPage() {
   const { id } = useParams();
   const noticeId = Number(id);
+  const { runWithOverlay } = useWorkOverlay();
   const [notice, setNotice] = useState<SavedNaraNotice | null>(null);
+  const [aiSettings, setAiSettings] = useState<AiModelSettings | null>(null);
+  const [aiSelection, setAiSelection] = useState<AiModelSelection>(defaultSelection());
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
 
-  const refresh = async () => {
+  const refresh = async (showLoading = true) => {
     if (!noticeId) return;
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const data = await api.getSavedNaraNotice(noticeId);
       setNotice(data);
@@ -36,7 +74,9 @@ export function NaraSavedNoticeDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 공고 상세를 불러오지 못했습니다.");
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -44,13 +84,50 @@ export function NaraSavedNoticeDetailPage() {
     refresh();
   }, [noticeId]);
 
+  useEffect(() => {
+    if (!isPipelineRunning(notice)) return;
+    const timer = window.setInterval(() => {
+      refresh(false);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [noticeId, notice?.save_status, notice?.download_status, notice?.analysis_status]);
+
+  useEffect(() => {
+    api
+      .getAiModelSettings()
+      .then((settings) => {
+        setAiSettings(settings);
+        setAiSelection(loadStoredSelection(settings));
+      })
+      .catch(() => {
+        setAiSelection(loadStoredSelection(null));
+      });
+  }, []);
+
+  const onAiModelChange = (value: string) => {
+    const next = keyToSelection(value);
+    setAiSelection(next);
+    saveStoredSelection(next);
+  };
+
   const onReanalyze = async () => {
     if (!noticeId) return;
     setProcessing(true);
     try {
-      const response = await api.reanalyzeSavedNaraNotice(noticeId);
-      setNotice(response.notice);
-      setError("");
+      await runWithOverlay(
+        {
+          title: "저장 공고 재분석 시작 중",
+          description: "저장된 첨부 텍스트를 기준으로 AI 분석 작업을 다시 등록합니다.",
+          steps: ["저장 공고 확인", "재분석 작업 등록", "상태 갱신"],
+          successMessage: "저장 공고 재분석 작업이 시작되었습니다.",
+          failureMessage: "저장 공고 재분석을 시작하지 못했습니다.",
+        },
+        async () => {
+          const response = await api.reanalyzeSavedNaraNotice(noticeId, aiSelection);
+          setNotice(response.notice);
+          setError("");
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "공고 재분석에 실패했습니다.");
     } finally {
@@ -83,6 +160,14 @@ export function NaraSavedNoticeDetailPage() {
     );
   }
 
+  const aiOptions = optionsFromSettings(aiSettings);
+  const summaryPayload = parseJsonObject(notice.analysis_summary_json);
+  const noticeRequirements = objectValue(summaryPayload.notice_requirements);
+  const requirementMoney = objectValue(noticeRequirements.money);
+  const requirementDates = objectValue(noticeRequirements.dates);
+  const hasRequirementCandidates = Object.keys(noticeRequirements).length > 0;
+  const pipelineRunning = isPipelineRunning(notice);
+
   return (
     <section className="content-stack">
       <div className="surface-card analysis-hero">
@@ -94,8 +179,22 @@ export function NaraSavedNoticeDetailPage() {
           </p>
         </div>
         <div className="row">
-          <button type="button" onClick={onReanalyze} disabled={processing}>
-            {processing ? "재분석 중..." : "재분석"}
+          <select
+            className="ai-model-select"
+            value={selectionToKey(aiSelection)}
+            onChange={(e) => onAiModelChange(e.target.value)}
+            title="재분석에 사용할 AI 모델"
+          >
+            {aiOptions.map((option) => (
+              <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`}>
+                {option.label}
+                {option.recommended ? " 추천" : ""}
+                {option.configured ? "" : " · 키 미설정"}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={onReanalyze} disabled={processing || pipelineRunning}>
+            {processing || pipelineRunning ? "처리 중..." : "재분석"}
           </button>
           <Link to="/nara-saved-notices" className="link-button link-button--soft">
             목록
@@ -107,6 +206,13 @@ export function NaraSavedNoticeDetailPage() {
         <div className="empty-state empty-state--warning">
           <strong>작업을 완료하지 못했습니다.</strong>
           <p>{error}</p>
+        </div>
+      ) : null}
+
+      {pipelineRunning ? (
+        <div className="empty-state empty-state--info">
+          <strong>백그라운드에서 저장/분석 작업이 진행 중입니다.</strong>
+          <p>다른 페이지로 이동해도 서버 작업은 계속 진행됩니다. 이 화면은 2초마다 상태를 자동 갱신합니다.</p>
         </div>
       ) : null}
 
@@ -205,6 +311,53 @@ export function NaraSavedNoticeDetailPage() {
         <h3>공고 분석 요약</h3>
         <pre className="analysis-pre">{notice.analysis_summary_markdown || "아직 분석 결과가 없습니다."}</pre>
       </div>
+
+      {hasRequirementCandidates ? (
+        <div className="surface-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Requirement Candidates</p>
+              <h3>요구조건 구조화 후보</h3>
+              <p className="section-copy">
+                Phase 1.6에서는 지원 가능 여부를 판정하지 않고, 향후 비교에 필요한 요구조건 후보만 정리합니다.
+              </p>
+            </div>
+          </div>
+          <div className="requirement-candidate-grid">
+            <article>
+              <span>지역</span>
+              <strong>{stringList(noticeRequirements.regions).join(", ") || "원문 확인 필요"}</strong>
+            </article>
+            <article>
+              <span>면허/업종</span>
+              <strong>{stringList(noticeRequirements.licenses).join(", ") || "원문 확인 필요"}</strong>
+            </article>
+            <article>
+              <span>기업유형</span>
+              <strong>{stringList(noticeRequirements.company_types).join(", ") || "원문 확인 필요"}</strong>
+            </article>
+            <article>
+              <span>제출/증빙서류</span>
+              <strong>{stringList(noticeRequirements.required_documents).join(", ") || "원문 확인 필요"}</strong>
+            </article>
+            <article>
+              <span>추정가격</span>
+              <strong>{String(requirementMoney.presmpt_prce || notice.presmpt_prce || "-")}</strong>
+            </article>
+            <article>
+              <span>입찰마감</span>
+              <strong>{String(requirementDates.bid_clse_dt || notice.bid_clse_dt || "-")}</strong>
+            </article>
+          </div>
+          {stringList(noticeRequirements.requirement_lines).length ? (
+            <ul className="requirement-lines">
+              {stringList(noticeRequirements.requirement_lines).slice(0, 6).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <details className="surface-card">
         <summary>API 원본 JSON 보기</summary>

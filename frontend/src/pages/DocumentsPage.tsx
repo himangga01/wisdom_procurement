@@ -2,7 +2,16 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../app/api";
-import type { Corporation, DocumentRecord, Project } from "../app/types";
+import {
+  defaultSelection,
+  loadStoredSelection,
+  optionsFromSettings,
+  keyToSelection,
+  saveStoredSelection,
+  selectionToKey,
+} from "../app/aiModel";
+import type { AiModelSelection, AiModelSettings, Corporation, DocumentRecord, Project } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 function statusTone(status: string) {
   if (status === "completed" || status === "cached") return "active";
@@ -11,9 +20,12 @@ function statusTone(status: string) {
 }
 
 export function DocumentsPage() {
+  const { runWithOverlay } = useWorkOverlay();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [corporations, setCorporations] = useState<Corporation[]>([]);
+  const [aiSettings, setAiSettings] = useState<AiModelSettings | null>(null);
+  const [aiSelection, setAiSelection] = useState<AiModelSelection>(defaultSelection());
   const [loading, setLoading] = useState(true);
 
   const [projectId, setProjectId] = useState<number | "">("");
@@ -57,6 +69,24 @@ export function DocumentsPage() {
     refresh();
   }, []);
 
+  useEffect(() => {
+    api
+      .getAiModelSettings()
+      .then((settings) => {
+        setAiSettings(settings);
+        setAiSelection(loadStoredSelection(settings));
+      })
+      .catch(() => {
+        setAiSelection(loadStoredSelection(null));
+      });
+  }, []);
+
+  const onAiModelChange = (value: string) => {
+    const next = keyToSelection(value);
+    setAiSelection(next);
+    saveStoredSelection(next);
+  };
+
   const onUpload = async (e: FormEvent) => {
     e.preventDefault();
     if (!file || !projectId) return;
@@ -69,12 +99,23 @@ export function DocumentsPage() {
     formData.append("file", file);
 
     try {
-      await api.uploadDocument(formData);
-      setMemo("");
-      setRevisionNote("");
-      setFile(null);
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "문서 업로드 처리 중",
+          description: "파일과 메타데이터를 저장하고 문서 이력을 새로 고칩니다.",
+          steps: ["파일 업로드", "문서 메타데이터 저장", "업로드 이력 갱신"],
+          successMessage: "문서 업로드가 완료되었습니다.",
+          failureMessage: "문서 업로드를 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.uploadDocument(formData);
+          setMemo("");
+          setRevisionNote("");
+          setFile(null);
+          setError("");
+          await refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "문서 업로드에 실패했습니다.");
     }
@@ -82,9 +123,21 @@ export function DocumentsPage() {
 
   const onAnalyze = async (id: number) => {
     try {
-      await api.analyzeDocument(id);
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "문서 분석 중",
+          description: "PDF/DOCX 텍스트 추출, OCR 확인, AI 요약을 순서대로 처리합니다.",
+          steps: ["문서 텍스트 추출", "OCR 필요 여부 확인", "AI 요약 생성", "분석 결과 저장"],
+          successMessage: "문서 분석이 완료되었습니다.",
+          failureMessage: "문서 분석을 완료하지 못했습니다.",
+          minVisibleMs: 650,
+        },
+        async () => {
+          await api.analyzeDocument(id, aiSelection);
+          setError("");
+          await refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "문서 분석에 실패했습니다.");
     }
@@ -93,9 +146,19 @@ export function DocumentsPage() {
   const onDelete = async (item: DocumentRecord) => {
     if (!window.confirm(`${item.original_file_name} 문서를 삭제할까요? 분석 결과도 함께 삭제됩니다.`)) return;
     try {
-      await api.deleteDocument(item.id);
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "문서 삭제 중",
+          steps: ["삭제 요청 전송", "연결된 분석 결과 정리", "문서 이력 갱신"],
+          successMessage: "문서를 삭제했습니다.",
+          failureMessage: "문서 삭제를 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.deleteDocument(item.id);
+          setError("");
+          await refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "문서 삭제에 실패했습니다.");
     }
@@ -115,10 +178,20 @@ export function DocumentsPage() {
     if (!editingId) return;
 
     try {
-      await api.updateDocument(editingId, editForm);
-      setEditingId(null);
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "문서 메타데이터 저장 중",
+          steps: ["수정 내용 검증", "메타데이터 저장", "문서 이력 갱신"],
+          successMessage: "문서 메타데이터를 저장했습니다.",
+          failureMessage: "문서 메타데이터 저장을 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.updateDocument(editingId, editForm);
+          setEditingId(null);
+          setError("");
+          await refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "문서 메타데이터 수정에 실패했습니다.");
     }
@@ -151,6 +224,7 @@ export function DocumentsPage() {
   const selectedCorporation = selectedProject
     ? corporationMap[selectedProject.corporation_id]
     : null;
+  const aiOptions = optionsFromSettings(aiSettings);
 
   return (
     <section className="content-stack">
@@ -264,6 +338,20 @@ export function DocumentsPage() {
               <option value="pending">pending</option>
               <option value="completed">completed</option>
               <option value="cached">cached</option>
+            </select>
+            <select
+              className="ai-model-select"
+              value={selectionToKey(aiSelection)}
+              onChange={(e) => onAiModelChange(e.target.value)}
+              title="분석 실행에 사용할 AI 모델"
+            >
+              {aiOptions.map((option) => (
+                <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`}>
+                  {option.label}
+                  {option.recommended ? " 추천" : ""}
+                  {option.configured ? "" : " · 키 미설정"}
+                </option>
+              ))}
             </select>
           </div>
         </div>

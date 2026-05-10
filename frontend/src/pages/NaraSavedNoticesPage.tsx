@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { api } from "../app/api";
 import type { SavedNaraNotice } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 function statusTone(status: string) {
   if (status === "completed" || status === "saved") return "active";
@@ -11,6 +12,7 @@ function statusTone(status: string) {
 }
 
 export function NaraSavedNoticesPage() {
+  const { runWithOverlay } = useWorkOverlay();
   const [items, setItems] = useState<SavedNaraNotice[]>([]);
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,11 +35,35 @@ export function NaraSavedNoticesPage() {
     refresh();
   }, []);
 
+  const onSearch = async () => {
+    await runWithOverlay(
+      {
+        title: "저장 공고 검색 중",
+        steps: ["검색 조건 확인", "저장 공고 조회", "목록 갱신"],
+        successMessage: "저장 공고 검색이 완료되었습니다.",
+        failureMessage: "저장 공고 검색을 완료하지 못했습니다.",
+      },
+      async () => {
+        await refresh();
+      },
+    );
+  };
+
   const onDelete = async (item: SavedNaraNotice) => {
     if (!window.confirm(`${item.bid_ntce_nm} 저장 공고를 삭제할까요? 다운로드한 첨부 파일도 함께 정리됩니다.`)) return;
     try {
-      await api.deleteSavedNaraNotice(item.id);
-      refresh();
+      await runWithOverlay(
+        {
+          title: "저장 공고 삭제 중",
+          steps: ["삭제 요청 전송", "첨부/분석 이력 정리", "저장 공고 목록 갱신"],
+          successMessage: "저장 공고를 삭제했습니다.",
+          failureMessage: "저장 공고 삭제를 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.deleteSavedNaraNotice(item.id);
+          await refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 공고 삭제에 실패했습니다.");
     }
@@ -66,7 +92,7 @@ export function NaraSavedNoticesPage() {
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="공고명, 기관명, 공고번호 검색"
           />
-          <button type="button" className="button-secondary" onClick={refresh}>
+          <button type="button" className="button-secondary" onClick={onSearch}>
             검색
           </button>
         </div>

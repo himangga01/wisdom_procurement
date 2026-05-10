@@ -10,18 +10,34 @@ $frontendPort = 5199
 $backendBase = "http://127.0.0.1:$backendPort"
 $frontendBase = "http://127.0.0.1:$frontendPort"
 $manageScript = Join-Path $PSScriptRoot "manage-servers.ps1"
-$pythonExe = Join-Path $backendDir ".venv\Scripts\python.exe"
 $logPath = Join-Path $tempDir "smoke-test.log"
-
-if (!(Test-Path $pythonExe)) {
-  $pythonExe = Join-Path $backendDir ".venv313\Scripts\python.exe"
-}
 
 New-Item -ItemType Directory -Force $tempDir | Out-Null
 Set-Content -Path $logPath -Value "smoke_start=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -Encoding UTF8
 
 function Write-SmokeLog($Message) {
   Add-Content -Path $logPath -Value ("$(Get-Date -Format 'HH:mm:ss') " + $Message) -Encoding UTF8
+}
+
+function Get-Python313Executable {
+  $candidates = New-Object System.Collections.Generic.List[string]
+
+  try {
+    $resolved = & py -3.13 -c "import sys; print(sys.executable)" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $resolved) {
+      $candidates.Add(($resolved | Select-Object -First 1).Trim())
+    }
+  } catch {}
+
+  $candidates.Add("C:\Python313\python.exe")
+
+  foreach ($candidate in $candidates) {
+    if ($candidate -and (Test-Path $candidate)) {
+      return (Resolve-Path $candidate).Path
+    }
+  }
+
+  throw "Python 3.13 runtime was not found. Install Python 3.13.13 and make sure 'py -3.13' works."
 }
 
 function Test-HttpOk($Url) {
@@ -69,9 +85,8 @@ try {
   Write-SmokeLog "stopping_existing_servers"
   Stop-SmokeServers
 
-  if (!(Test-Path $pythonExe)) {
-    throw "Backend Python executable was not found. Expected .venv or .venv313 under backend."
-  }
+  $pythonExe = Get-Python313Executable
+  Write-SmokeLog "python_313=$pythonExe"
 
   $runId = Get-Date -Format "yyyyMMddHHmmss"
   $backendOutLog = Join-Path $tempDir "smoke-backend.$runId.out.log"
@@ -79,8 +94,8 @@ try {
   $frontendOutLog = Join-Path $tempDir "smoke-frontend.$runId.out.log"
   $frontendErrLog = Join-Path $tempDir "smoke-frontend.$runId.err.log"
 
-  $backendCmd = 'set APP_PORT=' + $backendPort + '&& cd /d "' + $backendDir + '" && "' + $pythonExe + '" -m app.main'
-  $frontendCmd = 'set VITE_API_BASE_URL=' + $backendBase + '&& cd /d "' + $frontendDir + '" && npm run dev -- --host 127.0.0.1 --port ' + $frontendPort
+  $backendCmd = 'set "APP_PORT=' + $backendPort + '" && set "PYTHONUTF8=1" && cd /d "' + $backendDir + '" && "' + $pythonExe + '" -m app.main'
+  $frontendCmd = 'set "VITE_API_BASE_URL=' + $backendBase + '" && cd /d "' + $frontendDir + '" && npm run dev -- --host 127.0.0.1 --port ' + $frontendPort
 
   Write-SmokeLog "starting_backend"
   $backendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $backendCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput $backendOutLog -RedirectStandardError $backendErrLog

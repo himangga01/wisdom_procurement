@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { api } from "../app/api";
-import type { AnalysisRecord } from "../app/types";
+import {
+  defaultSelection,
+  loadStoredSelection,
+  optionsFromSettings,
+  keyToSelection,
+  saveStoredSelection,
+  selectionToKey,
+} from "../app/aiModel";
+import type { AiModelSelection, AiModelSettings, AnalysisRecord } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 type ParsedAnalysis = {
   document_summary?: string;
@@ -32,7 +41,10 @@ function parseUsage(raw: string) {
 
 export function AnalysisPage() {
   const { documentId } = useParams();
+  const { runWithOverlay } = useWorkOverlay();
   const [analysis, setAnalysis] = useState<AnalysisRecord | null>(null);
+  const [aiSettings, setAiSettings] = useState<AiModelSettings | null>(null);
+  const [aiSelection, setAiSelection] = useState<AiModelSelection>(defaultSelection());
   const [error, setError] = useState("");
   const [reloading, setReloading] = useState(false);
 
@@ -52,13 +64,43 @@ export function AnalysisPage() {
     loadAnalysis();
   }, [documentId]);
 
+  useEffect(() => {
+    api
+      .getAiModelSettings()
+      .then((settings) => {
+        setAiSettings(settings);
+        setAiSelection(loadStoredSelection(settings));
+      })
+      .catch(() => {
+        setAiSelection(loadStoredSelection(null));
+      });
+  }, []);
+
+  const onAiModelChange = (value: string) => {
+    const next = keyToSelection(value);
+    setAiSelection(next);
+    saveStoredSelection(next);
+  };
+
   const onReanalyze = async () => {
     if (!documentId) return;
     setReloading(true);
     try {
-      await api.reanalyzeDocument(Number(documentId));
-      await loadAnalysis();
-      setError("");
+      await runWithOverlay(
+        {
+          title: "문서 재분석 중",
+          description: "선택한 AI 모델로 요약 결과를 다시 생성합니다.",
+          steps: ["재분석 요청", "AI 요약 생성", "분석 캐시 갱신", "결과 다시 불러오기"],
+          successMessage: "문서 재분석이 완료되었습니다.",
+          failureMessage: "문서 재분석을 완료하지 못했습니다.",
+          minVisibleMs: 650,
+        },
+        async () => {
+          await api.reanalyzeDocument(Number(documentId), aiSelection);
+          await loadAnalysis();
+          setError("");
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "재분석에 실패했습니다.");
     } finally {
@@ -68,6 +110,7 @@ export function AnalysisPage() {
 
   const parsed = analysis ? parseJsonSafely(analysis.output_json) : {};
   const usage = analysis ? parseUsage(analysis.token_usage_json) : {};
+  const aiOptions = optionsFromSettings(aiSettings);
 
   return (
     <section className="content-stack">
@@ -80,6 +123,20 @@ export function AnalysisPage() {
           </p>
         </div>
         <div className="toolbar">
+          <select
+            className="ai-model-select"
+            value={selectionToKey(aiSelection)}
+            onChange={(e) => onAiModelChange(e.target.value)}
+            title="재분석에 사용할 AI 모델"
+          >
+            {aiOptions.map((option) => (
+              <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`}>
+                {option.label}
+                {option.recommended ? " 추천" : ""}
+                {option.configured ? "" : " · 키 미설정"}
+              </option>
+            ))}
+          </select>
           <span className="status-badge status-badge--active">{analysis?.status ?? "not-ready"}</span>
           <button type="button" onClick={onReanalyze} disabled={reloading || !documentId}>
             {reloading ? "재분석 중..." : "재분석"}

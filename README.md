@@ -6,6 +6,7 @@
 이 프로젝트는 단계적으로 확장됩니다.
 - Phase 1: 업로드, 관리, 요약 MVP
 - Phase 1.5: 나라장터 게시판, 공고 API 조회, 첨부 다운로드, 공고 자동 분석
+- Phase 1.6: 법인 증빙자료 자동 추출과 법인 프로필 보강
 - Phase 2: 기준 PDF 관리와 로컬 RAG 준비
 - Phase 3: 판단 엔진과 조달 공고 자동 수집
 
@@ -38,6 +39,21 @@
 - 기존 문서 파싱/요약 파이프라인 재사용
 - 저장된 공고 분석 결과 조회
 - 설정 > API 연동에서 나라장터 API 키 설정/연결 상태 확인
+
+### Phase 1.6
+- 법인 등록 첫 화면을 증빙서류 업로드 중심으로 변경
+- 사업자등록증명/사업자등록증 업로드 후 법인 기본정보 자동 추출
+- 법인 증빙자료 업로드/목록/상세/삭제
+- PDF/DOCX/JPG/JPEG/PNG 증빙자료 텍스트 추출과 OCR
+- 증빙서류 유형 자동 분류
+- 알 수 없는 증빙서류 LLM 기반 분류
+- 추출 결과 확인/수정 후 법인 프로필 업데이트
+- 증빙자료 기반 법인정보 충돌/만료/확인 필요 상태 표시
+
+Phase 1.6은 한 번에 모든 증빙자료를 완전 자동화하지 않고, `1.6A -> 1.6B -> 1.6C`로 나누어 진행합니다.
+- 1.6A: 사업자등록증명/사업자등록증 기반 법인 등록 MVP
+- 1.6B: 주요 조달 증빙자료 확장
+- 1.6C: 알 수 없는 증빙자료 LLM 분류와 운영 안정화
 
 ### Phase 2
 - 기준 PDF 별도 메뉴
@@ -107,11 +123,11 @@ wisdom_procurement/
 ```
 
 ## 기술 스택
-- Frontend: React + TypeScript + Vite + React Router + TanStack Query
-- Backend: Python 3.12 + FastAPI + SQLAlchemy + Pydantic
+- Frontend: React + TypeScript + Vite + React Router
+- Backend: Python 3.13.13 + Flask
 - DB: SQLite
 - File Storage: Local filesystem
-- OCR: Local OCR pipeline
+- OCR: PaddleOCR PP-OCRv5 primary, Tesseract fallback candidate
 - Parsing: PDF, DOCX only
   - PDF 기본 추출 엔진은 `PyMuPDF`
   - DOCX는 `python-docx` 유지
@@ -120,11 +136,14 @@ wisdom_procurement/
 - Future Vector Store: Qdrant 우선, Chroma 대안
 
 ## 추천 AI/API 전략
-- 주 모델: `OpenAI GPT-5.1`
-- 저비용 보조 모델: `GPT-5 mini`
+- 기본 Provider/모델: Google Gemini `gemini-2.5-flash`
+- 보조 Provider/모델: OpenAI `gpt-5.4-mini`, `gpt-5.4`
+- 포탈에서 분석 실행 시 사용할 Provider/모델을 선택할 수 있습니다.
+- 실제 API 키는 `backend/.env`에 직접 입력하며, 화면에는 설정 여부와 마스킹 값만 표시합니다.
 - PDF는 `PyMuPDF`로 텍스트/블록/페이지 구조를 먼저 추출
 - OCR은 텍스트 레이어가 부족한 PDF에만 fallback으로 적용
-- OCR fallback은 `PaddleOCR` 우선 검토, 경량 대안으로 `Tesseract(kor+eng)` 유지
+- OCR 주 엔진은 `PaddleOCR PP-OCRv5`, 경량 대안은 `Tesseract(kor+eng)`로 둔다.
+- PaddleOCR은 Windows 기준 Python 3.13.13 런타임(`py -3.13`)에서 우선 검증한다.
 - 정규화된 추출 텍스트를 모델에 전달
 - 요약은 JSON 구조화 출력 + 사용자용 마크다운 병행 저장
 - 재분석은 프롬프트 버전/입력 해시 기반으로 캐시 제어
@@ -132,7 +151,7 @@ wisdom_procurement/
 ## 로컬 개발 가이드
 
 ### 사전 요구사항
-- Python 3.12+
+- Python 3.13.13
 - Node.js 20+
 - npm 또는 pnpm
 
@@ -144,10 +163,18 @@ APP_HOST=127.0.0.1
 APP_PORT=8000
 SQLITE_PATH=./app.db
 STORAGE_ROOT=./storage
+AI_PROVIDER_DEFAULT=gemini
+AI_MODEL_DEFAULT=gemini-2.5-flash
 OPENAI_API_KEY=your_key_here
-OPENAI_MODEL_PRIMARY=gpt-5.1
-OPENAI_MODEL_SECONDARY=gpt-5-mini
-OCR_LANGUAGES=kor+eng
+OPENAI_MODEL_PRIMARY=gpt-5.4-mini
+OPENAI_MODEL_SECONDARY=gpt-5.4
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL_PRIMARY=gemini-2.5-flash
+OCR_ENGINE=paddle
+OCR_LANG=kor+eng
+OCR_DEVICE=cpu
+OCR_MIN_TEXT_LENGTH=80
+OCR_RENDER_DPI=220
 NARA_API_SERVICE_KEY=your_nara_api_key_here
 NARA_BID_PUBLIC_API_BASE_URL=https://apis.data.go.kr/1230000/ad/BidPublicInfoService
 NARA_PUBDATA_API_BASE_URL=https://apis.data.go.kr/1230000/ao/PubDataOpnStdService
@@ -163,10 +190,10 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 백엔드
 ```bash
 cd backend
-python -m venv .venv
-.venv/Scripts/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+py -3.13 -m pip install -r requirements.txt
+py -3.13 -m pip install -r requirements-ocr.txt
+$env:APP_PORT="8000"
+py -3.13 -m app.main
 ```
 
 프론트엔드
@@ -186,14 +213,14 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
 ```bash
 cd D:\project\wisdom_procurement
 $env:NARA_API_SERVICE_KEY="your_key_here"
-backend\.venv\Scripts\python.exe scripts\test-nara-api.py --date 20260505 --num-of-rows 10
+py -3.13 scripts\test-nara-api.py --date 20260505 --num-of-rows 10
 ```
 실제 인증키는 Git에 커밋하지 말고 환경변수 또는 `backend/.env`로만 관리합니다.
 
 ### 백엔드 단위 테스트 실행
 ```bash
 cd backend
-.venv/Scripts/python -m unittest discover -s tests -v
+py -3.13 -m unittest discover -s tests -v
 ```
 현재 단위 테스트는 `PyMuPDF` 기반 PDF 추출, OCR 후보 판정, DOCX 추출 경로를 검증합니다.
 
@@ -210,7 +237,10 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - [기술 설계서](/D:/project/wisdom_procurement/docs/technical-design.md)
 - [UX 설계서](/D:/project/wisdom_procurement/docs/ux-design.md)
 - [AI API 세팅 가이드](/D:/project/wisdom_procurement/docs/ai-api-setup.md)
+- [OCR 엔진 구현계획](/D:/project/wisdom_procurement/docs/ocr-engine-implementation-plan.md)
 - [핵심 기술 요소 및 활용 기술 정리](/D:/project/wisdom_procurement/docs/technology-summary.md)
+- [법인 증빙자료 자동 추출 설계](/D:/project/wisdom_procurement/docs/corporation-evidence-auto-extraction-plan.md)
+- [지원 가능성 판단 및 로컬 RAG 상세 구현계획](/D:/project/wisdom_procurement/docs/eligibility-rag-implementation-plan.md)
 - [나라장터 API 분석](/D:/project/wisdom_procurement/docs/narajangteo-api-analysis.md)
 - [나라장터 API 테스트 결과](/D:/project/wisdom_procurement/docs/narajangteo-api-test-result-20260505.md)
 - [나라장터 게시판 설계](/D:/project/wisdom_procurement/docs/narajangteo-board-design.md)
@@ -235,8 +265,10 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 2. 저장소 스캐폴딩 생성
 3. Phase 1 MVP 구현
 4. Phase 1.5 나라장터 게시판과 공고 자동 분석 추가
-5. 기준문서 파이프라인 추가
-6. 판단 엔진 및 크롤러 확장
+5. Phase 1.6 법인 증빙자료 자동 추출과 법인 프로필 보강
+6. 기준문서 파이프라인과 로컬 RAG 추가
+7. 부족 조건/준비 가이드 중심 판단 엔진 확장
+8. 조달 공고 자동 수집 확장
 
 ---
 
@@ -248,19 +280,26 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 ## Phase Plan
 - Phase 1: upload/manage/summarize MVP
 - Phase 1.5: Nara Marketplace board, API notice search, attachment download, notice analysis
+- Phase 1.6: corporation evidence auto-extraction and profile enrichment
 - Phase 2: basis PDF management and local RAG preparation
 - Phase 3: judgment engine and procurement notice auto-collection
 
 ## Stack
-- Frontend: React, TypeScript, Vite, TanStack Query
-- Backend: FastAPI, SQLAlchemy, Pydantic
+- Frontend: React, TypeScript, Vite, React Router
+- Backend: Python 3.13.13; current implementation uses Flask; FastAPI remains an optional future refactor target
 - DB: SQLite
 - Storage: local filesystem
 - PDF extraction: PyMuPDF as the default PDF reader/extractor
 - DOCX extraction: python-docx
-- OCR: PaddleOCR preferred fallback, Tesseract as a lighter fallback option
-- LLM: GPT-5.1 primary, GPT-5 mini secondary
+- OCR: PaddleOCR PP-OCRv5 primary, Tesseract as a lighter fallback candidate
+- Runtime command: use Windows `py -3.13` or `C:\Python313\python.exe`; do not run backend/OCR with any other Python runtime
+- LLM: Gemini `gemini-2.5-flash` as the default model; OpenAI `gpt-5.4-mini` / `gpt-5.4` as selectable alternatives
 - Future vector DB: Qdrant preferred, Chroma optional
+
+Phase 1.6 should be delivered incrementally:
+- 1.6A: business registration evidence-based corporation registration MVP
+- 1.6B: core procurement evidence expansion
+- 1.6C: unknown evidence LLM classification and operational hardening
 
 ## Assumptions
 - single admin only in phase 1
@@ -276,6 +315,11 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - who owns basis taxonomy
 
 ## References
+- OCR Engine Implementation Plan: [docs/ocr-engine-implementation-plan.md](docs/ocr-engine-implementation-plan.md)
+- Corporation Evidence Auto-Extraction Plan: [docs/corporation-evidence-auto-extraction-plan.md](docs/corporation-evidence-auto-extraction-plan.md)
+- Eligibility / RAG Plan: [docs/eligibility-rag-implementation-plan.md](docs/eligibility-rag-implementation-plan.md)
+- Gemini API Docs: [https://ai.google.dev/gemini-api/docs](https://ai.google.dev/gemini-api/docs)
+- Gemini Structured Outputs: [https://ai.google.dev/gemini-api/docs/structured-output](https://ai.google.dev/gemini-api/docs/structured-output)
 - OpenAI Models: [https://platform.openai.com/docs/models](https://platform.openai.com/docs/models)
 - GPT-5 Guide: [https://platform.openai.com/docs/guides/gpt-5](https://platform.openai.com/docs/guides/gpt-5)
 - PDF Files Guide: [https://platform.openai.com/docs/guides/pdf-files](https://platform.openai.com/docs/guides/pdf-files)

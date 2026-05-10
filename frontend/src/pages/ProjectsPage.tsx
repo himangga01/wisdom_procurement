@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 
 import { api } from "../app/api";
 import type { Corporation, Project } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 export function ProjectsPage() {
+  const { runWithOverlay } = useWorkOverlay();
   const [projects, setProjects] = useState<Project[]>([]);
   const [corporations, setCorporations] = useState<Corporation[]>([]);
   const [name, setName] = useState("");
@@ -47,11 +49,21 @@ export function ProjectsPage() {
     e.preventDefault();
     if (!corporationId) return;
     try {
-      await api.createProject({ name, corporation_id: corporationId, notes, status: "active" });
-      setName("");
-      setNotes("");
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "프로젝트 생성 중",
+          steps: ["입력값 확인", "프로젝트 저장", "프로젝트 목록 갱신"],
+          successMessage: "프로젝트를 생성했습니다.",
+          failureMessage: "프로젝트 생성을 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.createProject({ name, corporation_id: corporationId, notes, status: "active" });
+          setName("");
+          setNotes("");
+          setError("");
+          refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "프로젝트 생성에 실패했습니다.");
     }
@@ -60,8 +72,18 @@ export function ProjectsPage() {
   const onDelete = async (item: Project) => {
     if (!window.confirm(`${item.name} 프로젝트를 삭제할까요? 연결 문서와 분석 결과도 함께 삭제됩니다.`)) return;
     try {
-      await api.deleteProject(item.id);
-      refresh();
+      await runWithOverlay(
+        {
+          title: "프로젝트 삭제 중",
+          steps: ["삭제 요청 전송", "연결 이력 정리", "프로젝트 목록 갱신"],
+          successMessage: "프로젝트를 삭제했습니다.",
+          failureMessage: "프로젝트 삭제를 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.deleteProject(item.id);
+          refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "프로젝트 삭제에 실패했습니다.");
     }
@@ -82,10 +104,20 @@ export function ProjectsPage() {
     if (!editingId) return;
 
     try {
-      await api.updateProject(editingId, editForm);
-      setEditingId(null);
-      setError("");
-      refresh();
+      await runWithOverlay(
+        {
+          title: "프로젝트 수정 중",
+          steps: ["수정 내용 확인", "프로젝트 저장", "프로젝트 목록 갱신"],
+          successMessage: "프로젝트 정보를 저장했습니다.",
+          failureMessage: "프로젝트 수정을 완료하지 못했습니다.",
+        },
+        async () => {
+          await api.updateProject(editingId, editForm);
+          setEditingId(null);
+          setError("");
+          refresh();
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "프로젝트 수정에 실패했습니다.");
     }

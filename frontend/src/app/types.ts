@@ -4,15 +4,142 @@ export type DashboardSummary = {
   document_count: number;
 };
 
+export type AiModelSelection = {
+  model_provider: string;
+  model_name: string;
+};
+
+export type AiModelOption = {
+  provider: string;
+  model: string;
+  label: string;
+  description: string;
+  configured: boolean;
+  recommended: boolean;
+};
+
+export type AiModelSettings = {
+  default_provider: string;
+  default_model: string;
+  providers: Record<
+    string,
+    {
+      configured: boolean;
+      masked_key: string;
+      default_model: string;
+      secondary_model?: string;
+    }
+  >;
+  options: AiModelOption[];
+};
+
 export type Corporation = {
   id: number;
   name: string;
+  management_group_name: string;
   business_category: string;
   region: string;
   certifications_json: string;
   company_size_classification: string;
   internal_notes: string;
+  business_registration_number: string;
+  representative_name: string;
+  corporate_registration_number: string;
+  business_address: string;
+  headquarters_address: string;
+  opening_date: string;
+  business_type: string;
+  business_item: string;
+  preference_tags_json: string;
+  direct_production_items_json: string;
+  license_summary: string;
+  procurement_registration_status: string;
+  evidence_expiry_summary: string;
+  evidence_verification_status: string;
   created_at: string;
+  updated_at: string;
+  warnings?: string[];
+  duplicate_corporations?: CorporationDuplicateSummary[];
+};
+
+export type CorporationDuplicateSummary = {
+  id: number;
+  name: string;
+  management_group_name: string;
+  business_registration_number: string;
+};
+
+export type CorporationProfileUpdateCandidate = {
+  id: number;
+  evidence_document_id: number;
+  corporation_id: number | null;
+  field_key: string;
+  field_label: string;
+  extracted_value: string;
+  confidence: number;
+  source_text: string;
+  status: string;
+  applied_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CorporationEvidenceDocument = {
+  id: number;
+  corporation_id: number | null;
+  corporation_name?: string;
+  management_group_name: string;
+  document_type: string;
+  classification_status: string;
+  classification_confidence: number;
+  original_file_name: string;
+  stored_file_path: string;
+  mime_type: string;
+  file_size: number;
+  memo: string;
+  extraction_status: string;
+  ocr_status: string;
+  review_status: string;
+  extracted_text: string;
+  extracted_text_preview: string;
+  extraction_json: string;
+  error_message: string;
+  created_at: string;
+  updated_at: string;
+  candidate_count?: number;
+  pending_candidate_count?: number;
+  approved_candidate_count?: number;
+  candidates: CorporationProfileUpdateCandidate[];
+};
+
+export type CorporationEvidenceApplyResult = {
+  status: string;
+  corporation: Corporation;
+  evidence: CorporationEvidenceDocument;
+  applied_fields: string[];
+  warnings?: string[];
+};
+
+export type CorporationReadinessCheck = {
+  key: string;
+  label: string;
+  ready: boolean;
+};
+
+export type CorporationReadiness = {
+  corporation_id: number;
+  corporation_name: string;
+  management_group_name: string;
+  score: number;
+  status: string;
+  status_label: string;
+  ready_count: number;
+  total_count: number;
+  missing_items: string[];
+  checks: CorporationReadinessCheck[];
+  evidence_count: number;
+  approved_evidence_count: number;
+  approved_candidate_count: number;
   updated_at: string;
 };
 

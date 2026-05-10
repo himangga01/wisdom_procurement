@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../app/api";
-import type { DashboardSummary, DocumentRecord, NaraIntegrationStatus, SavedNaraNotice } from "../app/types";
+import type {
+  CorporationEvidenceDocument,
+  CorporationReadiness,
+  DashboardSummary,
+  DocumentRecord,
+  NaraIntegrationStatus,
+  SavedNaraNotice,
+} from "../app/types";
 
 function getNextAction(summary: DashboardSummary, documents: DocumentRecord[], savedNotices: SavedNaraNotice[]) {
   if (summary.corporation_count === 0) {
@@ -66,6 +73,16 @@ function recentDate(value: string) {
   });
 }
 
+function hasExtractedNoticeRequirements(notice: SavedNaraNotice) {
+  if (!notice.analysis_summary_json) return false;
+  try {
+    const parsed = JSON.parse(notice.analysis_summary_json) as { notice_requirements?: unknown };
+    return Array.isArray(parsed.notice_requirements) && parsed.notice_requirements.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary>({
     corporation_count: 0,
@@ -74,17 +91,28 @@ export function DashboardPage() {
   });
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [savedNotices, setSavedNotices] = useState<SavedNaraNotice[]>([]);
+  const [evidenceDocuments, setEvidenceDocuments] = useState<CorporationEvidenceDocument[]>([]);
+  const [readinessList, setReadinessList] = useState<CorporationReadiness[]>([]);
   const [naraStatus, setNaraStatus] = useState<NaraIntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([api.getDashboard(), api.listDocuments(), api.listSavedNaraNotices(), api.getNaraIntegrationStatus()])
-      .then(([dashboard, documentList, noticeList, integration]) => {
+    Promise.all([
+      api.getDashboard(),
+      api.listDocuments(),
+      api.listSavedNaraNotices(),
+      api.getNaraIntegrationStatus(),
+      api.listAllCorporationEvidenceDocuments(),
+      api.listCorporationReadiness(),
+    ])
+      .then(([dashboard, documentList, noticeList, integration, evidenceList, readiness]) => {
         setSummary(dashboard);
         setDocuments(documentList);
         setSavedNotices(noticeList);
         setNaraStatus(integration);
+        setEvidenceDocuments(evidenceList);
+        setReadinessList(readiness);
         setError("");
       })
       .catch((err) => setError(err instanceof Error ? err.message : "대시보드를 불러오지 못했습니다."))
@@ -96,6 +124,16 @@ export function DashboardPage() {
   const failedDocuments = documents.filter((item) => ["failed", "partial_failed"].includes(item.analysis_status)).length;
   const pendingNotices = savedNotices.filter((item) => ["pending", "saving"].includes(item.analysis_status)).length;
   const failedNotices = savedNotices.filter((item) => ["failed", "partial_failed"].includes(item.analysis_status)).length;
+  const pendingEvidenceReviews = evidenceDocuments.filter((item) => (item.pending_candidate_count ?? 0) > 0).length;
+  const evidenceNeedsCorrection = evidenceDocuments.filter(
+    (item) =>
+      item.extraction_status === "failed" ||
+      item.ocr_status === "failed" ||
+      item.ocr_status === "needs_ocr_setup" ||
+      item.ocr_status === "unavailable",
+  ).length;
+  const lowReadinessCorporations = readinessList.filter((item) => item.score < 50).length;
+  const requirementReadyNotices = savedNotices.filter(hasExtractedNoticeRequirements).length;
   const recentDocuments = documents.slice(0, 5);
   const recentNotices = savedNotices.slice(0, 5);
 
@@ -150,6 +188,40 @@ export function DashboardPage() {
           <p className="metric-copy">API 키 전체값은 포탈에 표시하지 않습니다.</p>
         </article>
       </div>
+
+      <section className="surface-card today-queue-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Today Queue</p>
+            <h3>오늘 처리할 큐</h3>
+            <p className="section-copy">
+              Phase 1.6 이후 운영 흐름에 맞춰 증빙 검토, 보정 필요 건, 낮은 준비도, 요구조건 추출 완료 공고를 먼저 보여줍니다.
+            </p>
+          </div>
+        </div>
+        <div className="queue-grid">
+          <Link to="/corporations" className="queue-card queue-card--primary">
+            <span>증빙 추출값 검토</span>
+            <strong>{loading ? "-" : pendingEvidenceReviews}</strong>
+            <small>승인 대기 후보가 있는 증빙자료</small>
+          </Link>
+          <Link to="/corporations" className="queue-card">
+            <span>OCR/추출 보정 필요</span>
+            <strong>{loading ? "-" : evidenceNeedsCorrection}</strong>
+            <small>재처리 또는 텍스트 보정이 필요한 증빙</small>
+          </Link>
+          <Link to="/corporations" className="queue-card">
+            <span>준비도 낮은 법인</span>
+            <strong>{loading ? "-" : lowReadinessCorporations}</strong>
+            <small>필수 프로필 정보가 부족한 법인</small>
+          </Link>
+          <Link to="/nara-saved-notices" className="queue-card">
+            <span>요구조건 추출 완료 공고</span>
+            <strong>{loading ? "-" : requirementReadyNotices}</strong>
+            <small>향후 법인 비교에 사용할 조건 후보</small>
+          </Link>
+        </div>
+      </section>
 
       <div className="stats-grid stats-grid--compact">
         <article className="metric-card">

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 
 import { api } from "../app/api";
-import type { NaraIntegrationStatus, NaraIntegrationTestResult } from "../app/types";
+import type { AiModelSettings, NaraIntegrationStatus, NaraIntegrationTestResult } from "../app/types";
+import { useWorkOverlay } from "../app/workOverlay";
 
 export function SettingsPage() {
+  const { runWithOverlay } = useWorkOverlay();
   const [status, setStatus] = useState<NaraIntegrationStatus | null>(null);
+  const [aiSettings, setAiSettings] = useState<AiModelSettings | null>(null);
   const [testResult, setTestResult] = useState<NaraIntegrationTestResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
@@ -13,8 +16,9 @@ export function SettingsPage() {
   const loadStatus = async () => {
     setLoading(true);
     try {
-      const data = await api.getNaraIntegrationStatus();
-      setStatus(data);
+      const [naraStatus, aiStatus] = await Promise.all([api.getNaraIntegrationStatus(), api.getAiModelSettings()]);
+      setStatus(naraStatus);
+      setAiSettings(aiStatus);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "설정 상태를 불러오지 못했습니다.");
@@ -27,13 +31,38 @@ export function SettingsPage() {
     loadStatus();
   }, []);
 
+  const onReloadStatus = async () => {
+    await runWithOverlay(
+      {
+        title: "설정 상태 다시 불러오는 중",
+        steps: ["나라장터 설정 확인", "AI 모델 설정 확인", "화면 상태 갱신"],
+        successMessage: "설정 상태를 다시 불러왔습니다.",
+        failureMessage: "설정 상태를 다시 불러오지 못했습니다.",
+      },
+      async () => {
+        await loadStatus();
+      },
+    );
+  };
+
   const onTest = async () => {
     setTesting(true);
     try {
-      const data = await api.testNaraIntegration();
-      setTestResult(data);
-      await loadStatus();
-      setError("");
+      await runWithOverlay(
+        {
+          title: "나라장터 API 연결 테스트 중",
+          description: "환경변수 키로 실제 API 응답을 확인하고 최근 테스트 결과를 저장합니다.",
+          steps: ["API 키 설정 확인", "나라장터 API 호출", "응답 코드 저장", "설정 상태 갱신"],
+          successMessage: "나라장터 API 연결 테스트가 완료되었습니다.",
+          failureMessage: "나라장터 API 연결 테스트를 완료하지 못했습니다.",
+        },
+        async () => {
+          const data = await api.testNaraIntegration();
+          setTestResult(data);
+          await loadStatus();
+          setError("");
+        },
+      );
     } catch (err) {
       setTestResult(null);
       setError(err instanceof Error ? err.message : "나라장터 연결 테스트에 실패했습니다.");
@@ -53,7 +82,7 @@ export function SettingsPage() {
           </p>
         </div>
         <div className="toolbar">
-          <button type="button" onClick={loadStatus} disabled={loading}>
+          <button type="button" onClick={onReloadStatus} disabled={loading}>
             설정 다시 불러오기
           </button>
           <button type="button" onClick={onTest} disabled={testing || !status?.configured}>
@@ -94,6 +123,44 @@ export function SettingsPage() {
           </p>
         </article>
       </div>
+
+      <article className="surface-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">AI Models</p>
+            <h3>AI 요약 모델 설정</h3>
+            <p className="section-copy">
+              실제 API 키는 `backend/.env`에 직접 입력하고, 포탈에서는 설정 여부와 선택 가능한 모델만 확인합니다.
+            </p>
+          </div>
+        </div>
+        <dl className="detail-list">
+          <div>
+            <dt>기본 모델</dt>
+            <dd>
+              {aiSettings
+                ? `${aiSettings.default_provider} / ${aiSettings.default_model}`
+                : "확인 중"}
+            </dd>
+          </div>
+          <div>
+            <dt>Gemini 키</dt>
+            <dd>
+              {aiSettings?.providers.gemini?.configured
+                ? `설정됨 (${aiSettings.providers.gemini.masked_key})`
+                : "backend/.env에 GEMINI_API_KEY를 설정하세요."}
+            </dd>
+          </div>
+          <div>
+            <dt>OpenAI 키</dt>
+            <dd>
+              {aiSettings?.providers.openai?.configured
+                ? `설정됨 (${aiSettings.providers.openai.masked_key})`
+                : "backend/.env에 OPENAI_API_KEY를 설정하세요."}
+            </dd>
+          </div>
+        </dl>
+      </article>
 
       <article className="surface-card">
         <div className="section-heading">

@@ -23,6 +23,7 @@ frontend/.env
 # Storage artifacts
 backend/storage/uploads/
 backend/storage/cache/
+backend/storage/ocr-samples/
 temp/
 
 # OS

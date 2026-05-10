@@ -16,6 +16,13 @@
 - Phase 2 기준문서 자동 청킹과 로컬 인덱싱 준비
 - Phase 3 판단 엔진과 공고 수집 확장 가능 구조 확보
 
+## 지원 가능성 판단 제품 원칙
+- 향후 판단 엔진의 핵심은 낙관적인 `지원 가능` 출력이 아니라 `현재 왜 지원이 어려운지`와 `지원하려면 무엇을 준비해야 하는지`를 설명하는 것이다.
+- 대부분의 사업자는 특정 공고에 즉시 지원 가능한 상태가 아니라고 가정하고, 기본 결과는 `검토 필요` 또는 `지원 곤란` 중심으로 설계한다.
+- `지원 가능`은 공고 요구조건, 법인 입력 정보, 법인 증빙자료, 기준문서 근거가 모두 충분할 때만 출력한다.
+- 부족 항목은 면허/인증, 기업유형, 지역, 실적, 재무, 필수 제출서류, 결격/제재 여부로 분리해 보여준다.
+- 상세 구현 계획은 `docs/eligibility-rag-implementation-plan.md`를 기준 문서로 둔다.
+
 ## 단계별 범위
 
 ### Phase 1 범위
@@ -60,6 +67,41 @@
 - HWP/HWPX 파싱
 - 나라장터 HTML 크롤링
 
+### Phase 1.6 범위: 법인 증빙자료 자동 추출
+- Phase 2 기준문서/RAG 개발 전에 우선 구현한다.
+- 법인 등록 첫 화면을 사업자등록증명/사업자등록증 업로드 중심으로 변경
+- 법인 증빙자료 업로드, 목록, 상세, 삭제
+- PDF/DOCX/JPG/JPEG/PNG 증빙자료 텍스트 추출과 OCR
+- 증빙서류 유형 자동 분류
+- 사업자등록증명/사업자등록증 기본 필드 자동 추출
+- 주요 증빙서류별 구조화 필드 추출
+- 규칙 기반 분류 실패 시 LLM 기반 문서 분류 fallback
+- 추출 결과 확인/수정 UX
+- 사용자 승인 필드만 법인 프로필에 반영
+- 증빙자료 충돌, 만료, 확인 필요 상태 표시
+
+재검토 결론:
+- 개발 방향은 적절하지만 한 번에 모든 증빙자료를 완전 자동화하면 범위가 과도하다.
+- Phase 1.6A는 사업자등록증명/사업자등록증 기반 법인 등록 MVP로 제한한다.
+- Phase 1.6B에서 중소기업확인서, 여성기업확인서, 장애인기업확인서, 직접생산확인증명서, 나라장터 등록 관련 서류, 주요 면허/인증으로 확장한다.
+- Phase 1.6C에서 알 수 없는 증빙자료 LLM 분류, 수동 유형 지정, 충돌 처리, 개인정보 로그 마스킹, 샘플 기반 회귀 테스트를 강화한다.
+- 현재 실제 백엔드는 Flask 기반이므로 Phase 1.6 개발은 FastAPI 마이그레이션 없이 기존 Flask 구조 위에서 진행한다.
+- OCR은 특정 엔진에 직접 결합하지 않고 `OcrService` 어댑터로 추상화한다.
+- LLM 분류는 API 키가 설정된 경우에만 실행하고, 결과는 자동 확정하지 않는다.
+
+현재 구현 상태:
+- Step 1: 신용평가, 납세, 지방세, 4대보험, 실적, 재무/매출 증빙까지 규칙 기반 분류/추출 범위를 확장했다.
+- Step 2: 증빙자료 목록, 상세 검토, 메타데이터 수정, 삭제, 재처리 API/UX를 제공한다.
+- Step 3: OCR/파싱 텍스트를 사용자가 보정한 뒤 해당 텍스트 기준으로 다시 분석할 수 있다.
+- Step 4: 법인별 `프로필 준비도` API와 화면을 제공하며, 이는 최종 지원 가능성 판단이 아니라 누락 정보 안내용이다.
+- Step 5: 나라장터 저장 공고의 요구조건 후보를 `notice_requirements` 구조로 저장하고 상세 화면에 표시한다.
+
+### Phase 1.6 비범위
+- 최종 지원 가능성 판단
+- 기준문서 RAG
+- HWP/HWPX 직접 파싱
+- 외부 기관 진위확인 API 연동
+
 ### Phase 2 범위
 - 기준 PDF 관리 메뉴
 - 기준문서 CRUD
@@ -97,10 +139,11 @@
 - 일반 업로드는 PDF/DOCX만 지원
 - 기준문서는 PDF만 지원
 - 프로젝트는 우선 1개 법인만 연결
+- 법인은 `관리 법인그룹` 안에서 관리한다.
+- 같은 사업자등록번호라도 관리 법인그룹이 다르면 중복 등록을 허용한다.
+- 같은 사업자등록번호와 같은 관리 법인그룹 조합은 중복 등록으로 보고 차단한다.
 
 ## Questions for Product Owner
-- 법인 MVP 필드에 사업자등록번호가 포함되어야 하는가
-- OCR 보정 UI가 필요한가
 - 프로젝트 상태 관리가 필요한가
 - 분석 결과 내보내기 기능이 필요한가
 - 기준문서 분류 체계를 누가 정의하는가
@@ -133,13 +176,60 @@
 ### 법인 관리
 MVP 필드 제안
 - corporation_name
+- management_group_name
+- business_registration_number
+- corporate_registration_number
+- representative_name
 - business_type_or_category
-- region
+- headquarters_region
+- branch_locations_json
 - certifications_or_licenses
 - company_size_classification
+- procurement_registration_status
+- sanctions_or_restrictions
+- performance_records_json
+- staff_and_equipment_json
+- financial_profile_json
 - internal_notes
 - created_at
 - updated_at
+
+향후 지원 가능성 판단을 위해 법인 프로필은 단순 소개 정보가 아니라 `판단 입력 데이터`로 확장되어야 한다.
+
+권장 확장 도메인:
+- 법인 기본정보
+- 소재지/지역
+- 업종/면허/인증
+- 기업유형/우대조건
+- 실적/인력/장비
+- 재무/신용 정보
+- 법인 증빙자료
+
+법인 증빙자료는 별도 테이블로 분리하고, 각 면허/인증/실적 필드와 연결할 수 있어야 한다.
+
+법인 등록은 `수동 입력 우선`이 아니라 `증빙자료 우선`으로 설계한다.
+
+기본 흐름:
+1. 사업자등록증 업로드 요청
+2. PDF/DOCX/JPG/JPEG/PNG 텍스트 추출 또는 OCR
+3. 사업자등록증 문서 유형 분류
+4. 법인명, 사업자등록번호, 대표자명, 주소, 업태, 종목 자동 추출
+5. 사용자 확인/수정
+6. 관리 법인그룹 선택 또는 기본 관리그룹 적용
+7. 사업자등록번호 + 관리 법인그룹 중복 정책 확인
+8. 법인 프로필 생성
+
+관리 법인그룹 중복 정책:
+- 기본 관리그룹 이름은 `기본 관리그룹`이다.
+- 사업자등록번호가 없으면 중복 검증을 수행하지 않는다.
+- 사업자등록번호가 같고 관리 법인그룹도 같으면 신규 등록 또는 증빙 승인 기반 신규 생성을 차단한다.
+- 사업자등록번호가 같지만 관리 법인그룹이 다르면 등록을 허용하되, 동일 사업자가 다른 그룹에 존재한다는 안내를 표시한다.
+- 이 정책은 수동 법인 등록, 법인 수정, 증빙자료 승인으로 신규 법인을 생성하는 흐름에 모두 동일하게 적용한다.
+
+예외 흐름:
+- 사용자가 `사업자등록증 없음`을 선택하면 최소 직접 입력 폼을 표시한다.
+- 수동 입력으로 생성된 법인은 `기본정보 미검증` 또는 `증빙자료 없음` 상태를 가진다.
+- 이후 사업자등록증을 업로드하면 자동 추출 결과로 법인 정보를 보강할 수 있어야 한다.
 
 ### 프로젝트 관리
 - 프로젝트 생성 필수
@@ -228,7 +318,7 @@ MVP 필드 제안
 ## 전체 아키텍처
 ```text
 React Admin Portal
-  -> FastAPI API
+  -> Flask API
     -> SQLite
     -> Local File Storage
     -> Parsing Pipeline
@@ -242,8 +332,8 @@ React Admin Portal
 ## 프론트엔드 아키텍처
 - React + TypeScript + Vite
 - React Router
-- TanStack Query
-- React Hook Form 권장
+- 현재 구현은 경량 API 클라이언트와 React state를 사용한다.
+- TanStack Query, React Hook Form은 데이터 캐싱/복잡한 폼이 늘어날 때 검토할 후보로 둔다.
 - 페이지
   - Dashboard
   - Corporations
@@ -253,9 +343,10 @@ React Admin Portal
   - Basis Documents
 
 ## 백엔드 아키텍처
-- FastAPI
-- SQLAlchemy
-- Pydantic
+- 현재 구현: Flask
+- 향후 선택 가능한 리팩터링 후보: FastAPI
+- 현재 DB 접근: Python `sqlite3`
+- 향후 리팩터링 후보: SQLAlchemy, Pydantic
 - 서비스 계층 분리
 - 파이프라인 계층 분리
   - parser_service
@@ -263,11 +354,13 @@ React Admin Portal
   - summarizer_service
   - basis_chunking_service
   - indexing_service
-- 초기 비동기: FastAPI background tasks
+- 초기 비동기: Flask 요청 내 동기 처리 또는 백그라운드 작업 헬퍼
 - 확장 비동기: worker queue 가능
 
 ## 추천 기술 스택과 근거
-- FastAPI: Python OCR/문서 처리/AI SDK 연계에 적합
+- Flask: 현재 구현되어 있는 백엔드이므로 Phase 1.6에서는 마이그레이션 비용 없이 기능 안정화에 집중한다.
+- FastAPI: 향후 API 스키마/비동기 작업/타입 안정성이 더 필요할 때 검토할 수 있는 리팩터링 후보
+- Python `sqlite3`: 현재 파일 기반 SQLite 운영에 충분하며 단일 PC MVP에 단순하다.
 - SQLite: 단일 PC MVP에 적합
 - Local filesystem: 원본 파일 관리가 단순
 - React + Vite: 빠른 어드민 UI 구축에 적합
@@ -278,8 +371,10 @@ React Admin Portal
 ### corporations
 - id
 - name
+- management_group_name
 - business_category
 - region
+- business_registration_number
 - certifications_json
 - company_size_classification
 - internal_notes
@@ -406,10 +501,23 @@ React Admin Portal
 - id
 - title
 - category
+- subcategory
+- issuing_organization
+- jurisdiction
 - version_label
+- effective_date
+- expiry_date
+- source_url
+- legal_status
+- priority
+- tags_json
 - original_file_name
 - stored_file_path
+- file_hash
 - processing_status
+- chunk_count
+- rule_count
+- active_version
 - memo
 - created_at
 - updated_at
@@ -424,11 +532,62 @@ React Admin Portal
 - page_end
 - section_title
 - section_path
+- clause_number
+- rule_type
+- topic_tags_json
+- applies_to_json
 - chunk_hash
+- token_count
 - metadata_json
 - embedding_model
+- vector_id
 - vector_status
 - created_at
+
+### basis_rules
+- id
+- basis_document_id
+- chunk_id
+- rule_type
+- requirement_name
+- requirement_description
+- condition_json
+- required_evidence_json
+- applies_to_json
+- exception_json
+- severity
+- confidence
+- citation_text
+- page_start
+- page_end
+- created_at
+- updated_at
+
+### corporation_evidence_documents
+- id
+- corporation_id
+- evidence_type
+- title
+- original_file_name
+- stored_file_path
+- mime_type
+- file_extension
+- file_size
+- file_hash
+- issue_date
+- expiry_date
+- issuer
+- verification_status
+- extraction_status
+- document_type_confidence
+- extracted_text_path
+- parsed_metadata_json
+- extracted_fields_json
+- review_status
+- linked_profile_field
+- memo
+- created_at
+- updated_at
 
 ### audit_logs
 - id
@@ -470,6 +629,58 @@ React Admin Portal
 - GET `/api/corporations/{id}`
 - PATCH `/api/corporations/{id}`
 - DELETE `/api/corporations/{id}`
+- POST `/api/corporations/onboarding/evidence`
+- POST `/api/corporations/onboarding/manual`
+- POST `/api/corporations/onboarding/confirm-extraction`
+- GET `/api/corporations/{id}/evidence-documents`
+- POST `/api/corporations/{id}/evidence-documents`
+- POST `/api/corporation-evidence-documents/{id}/extract`
+
+### 법인 증빙자료 자동 추출 파이프라인
+1. 증빙자료 업로드
+2. 파일 형식 감지
+3. PDF/DOCX는 텍스트 추출
+4. JPG/JPEG/PNG는 OCR 실행
+5. 문서 유형 분류
+   - 사업자등록증
+   - 면허/등록증
+   - 중소기업확인서
+   - 실적증명서
+   - 신용평가서
+   - 기타/확인 필요
+6. 문서 유형별 구조화 필드 추출
+7. 정규화
+   - 사업자등록번호 포맷
+   - 관리 법인그룹 기본값
+   - 주소 행정구역
+   - 날짜
+   - 금액
+8. 추출 신뢰도 계산
+9. 사용자 검토 후보 반환
+10. 사용자가 확인하면 사업자등록번호 + 관리 법인그룹 중복 정책을 확인
+11. 중복 정책을 통과하면 법인 프로필 또는 해당 증빙자료 메타데이터에 반영
+
+주요 증빙서류 taxonomy는 `docs/corporation-evidence-auto-extraction-plan.md`를 기준으로 관리한다.
+
+자동 추출 우선순위:
+1. 사업자등록증명/사업자등록증
+2. 법인등기사항증명서
+3. 중소기업/여성기업/장애인기업 확인서
+4. 직접생산확인증명서
+5. 면허/등록/허가증
+6. 공장/생산/시설 관련 증빙
+7. 신용/재무/납세/보험 증빙
+8. 실적/인력/기술자 증빙
+9. 기타 알 수 없는 증빙서류
+
+알 수 없는 증빙서류 처리:
+- 규칙 기반 분류가 실패하면 LLM에 파일명, 추출 텍스트, OCR 텍스트 일부, 표/키-값 후보를 전달한다.
+- LLM은 문서 유형, 신뢰도, 법인 프로필 업데이트 후보, 제출서류 체크리스트 후보를 구조화 JSON으로 반환한다.
+- LLM 결과는 자동 반영하지 않고 사용자 확인 후 적용한다.
+- 낮은 신뢰도는 `확인 필요 서류`로 보관한다.
+- 추출 텍스트가 비어 있거나 OCR/파싱이 실패한 경우에는 수동 문서 유형이 지정되어도 인증/우대 후보를 생성하지 않는다.
+- 현재 구현은 규칙 분류 실패 + 텍스트 추출 성공 + API 키 설정 조건에서 Gemini/OpenAI Provider abstraction을 통해 LLM 분류를 실행한다.
+- LLM 분류 결과는 `ai_suggested` 상태로 저장되며, 생성된 후보는 필드별 검토/승인을 거쳐야만 법인 프로필에 반영된다.
 
 ### Projects
 - GET `/api/projects`
@@ -610,20 +821,31 @@ React Admin Portal
   - 페이지별 텍스트 병합
   - 품질 기준 미달 시 경고 상태 기록
 - 권장
-  - Phase 1 기본 fallback 후보: PaddleOCR
+  - 주 엔진: PaddleOCR PP-OCRv5
   - 경량 대안: Tesseract `kor+eng`
   - Stirling PDF: 메인 추출 엔진이 아니라 향후 PDF 전처리/OCR 보조 서버로 선택 연동 가능
+
+### OCR 엔진 구현 결정
+- 실제 OCR 구현은 `docs/ocr-engine-implementation-plan.md`를 기준으로 진행한다.
+- PaddleOCR PP-OCRv5를 주 엔진으로 사용한다.
+- Tesseract OCR은 설치 실패/경량 테스트용 fallback 후보로 둔다.
+- 백엔드와 OCR의 표준 런타임은 Python 3.13.13이며, Windows에서는 `py -3.13` 또는 `C:\Python313\python.exe`로 실행한다.
+- OCR은 `OcrService/OcrEngine` 어댑터 구조로 구현해 엔진 교체가 가능해야 한다.
+- OCR 엔진이 설치되지 않은 경우 서버가 실패하지 않고 `needs_ocr_setup` 또는 `unavailable` 상태를 반환해야 한다.
 
 ## AI / API 요구사항 설계
 
 ### 추천 제공자 및 모델
-- Primary: OpenAI `GPT-5.1`
-- Secondary cheaper model: `GPT-5 mini`
+- 기본 Provider/모델: Google Gemini `gemini-2.5-flash`
+- 보조 Provider/모델: OpenAI `gpt-5.4-mini`, `gpt-5.4`
+- 포탈에서 분석 실행 시 Provider/모델을 선택할 수 있으며, 선택값은 분석 API 요청 본문으로 전달한다.
+- API 키는 `.env`에 직접 입력하며 포탈에는 설정 여부와 마스킹 값만 노출한다.
 
 ### 한국어 조달 문서에 적합한 이유
 - 긴 문서 요약과 구조화 출력이 강함
 - 한국어 장문 컨텍스트 처리에 적합
-- 후속 판단 프롬프트로 같은 제공자 내 확장 가능
+- Gemini/OpenAI를 동시에 유지해 비용, 속도, 품질을 상황별로 선택 가능
+- 후속 판단 프롬프트도 동일한 provider abstraction을 통해 확장 가능
 
 ### PDF/DOCX 입력 처리
 - MVP는 파일 원본 자체보다 파싱/정규화된 텍스트를 주 입력으로 사용
@@ -748,6 +970,7 @@ React Admin Portal
 ## 미래 판단 엔진 설계
 - 입력
   - corporation profile
+  - corporation evidence documents
   - notice analysis
   - retrieved basis chunks
 - 출력
@@ -757,7 +980,16 @@ React Admin Portal
 - 부가 출력
   - evidence clauses
   - missing requirements
+  - required certifications/licenses/documents
+  - preparation checklist
   - uncertainty notes
+
+판단 엔진은 다음 순서로 동작해야 한다.
+1. 공고문에서 참가자격, 면허, 지역, 기업유형, 실적, 재무, 제출서류 조건을 구조화한다.
+2. 각 조건과 관련된 기준문서 청크/규칙을 로컬 RAG로 검색한다.
+3. 법인 프로필과 법인 증빙자료를 비교해 `충족`, `부족`, `만료`, `증빙 없음`, `정보 없음`으로 분류한다.
+4. 부족 조건별로 필요한 인증/면허/서류와 준비 가이드를 생성한다.
+5. 근거 citation이 없는 조건은 확정 판단에 사용하지 않고 `검토 필요`로 남긴다.
 
 ## 미래 조달 크롤러 설계
 - 별도 수집 모듈
@@ -774,7 +1006,7 @@ React Admin Portal
 - 외부 API 전송 텍스트 최소화
 
 ## 로컬 단일 PC 배포 전략
-- React dev/prod build + FastAPI를 동일 PC에서 실행
+- React dev/prod build + Flask API를 동일 PC에서 실행
 - SQLite와 storage 디렉터리를 로컬 디스크에 저장
 - 향후 Windows 서비스 또는 데스크탑 패키징 가능
 
@@ -842,18 +1074,29 @@ Local-first admin portal for one administrator to manage corporations, projects,
 - PDF/DOCX only for target uploads
 - PDF only for basis documents
 - project maps to one corporation in MVP
+- corporation onboarding should be evidence-first, starting with business registration certificate upload
+- corporation evidence uploads should support PDF, DOCX, JPG/JPEG, and PNG first
+- corporation evidence auto-extraction is Phase 1.6 and must be implemented before Phase 2
+- corporations are managed inside a `management_group_name`
+- the same business registration number is allowed across different management groups
+- the same business registration number inside the same management group is blocked as a duplicate
+- Phase 1.6 is split into 1.6A, 1.6B, and 1.6C to avoid an over-broad first implementation.
+- Phase 1.6A should be implemented on the current Flask backend without a FastAPI migration.
+- OCR should be exposed through an adapter and degrade gracefully when the local OCR engine is unavailable.
+- LLM classification requires a configured API key and can only produce review candidates.
 
 ## Architecture
-- Frontend: React, TypeScript, Vite, TanStack Query
-- Backend: FastAPI, SQLAlchemy, Pydantic
+- Frontend: React, TypeScript, Vite, React Router
+- Backend: Flask in the current implementation; FastAPI may be evaluated later
 - DB: SQLite
 - Storage: local filesystem
-- OCR: local OCR
-- LLM: GPT-5.1 primary, GPT-5 mini secondary
+- OCR: PaddleOCR PP-OCRv5 primary, Tesseract fallback candidate
+- LLM: Gemini `gemini-2.5-flash` default; OpenAI `gpt-5.4-mini` / `gpt-5.4` selectable alternatives
 - Future vector store: Qdrant preferred
 
 ## Key Entities
 - Corporation
+- CorporationEvidenceDocument
 - Project
 - ProjectDocument
 - Analysis
@@ -867,13 +1110,17 @@ Local-first admin portal for one administrator to manage corporations, projects,
 
 ## Key Pipelines
 - target document pipeline: upload -> parse -> OCR if needed -> summarize -> cache -> persist
-- Nara notice pipeline: API search -> select notice -> detail/enrichment lookup -> upsert notice -> download PDF/DOCX attachments -> parse -> summarize -> persist
+- corporation onboarding pipeline: upload business registration certificate -> extract/OCR -> classify document -> extract fields -> user review -> create/update corporation
+- corporation duplicate policy: normalize business registration number -> compare within management group -> block same-group duplicates -> warn for other-group duplicates
+- corporation evidence pipeline: upload evidence -> extract/OCR -> classify evidence type -> extract structured fields -> user review -> link to profile fields
+- unknown evidence pipeline: upload -> extract/OCR -> rule classification fails -> LLM classification -> user review -> save taxonomy candidate
+- evidence correction pipeline: open evidence detail -> edit extracted/OCR text -> re-run classification/extraction -> replace pending candidates
+- corporation readiness pipeline: aggregate profile fields + approved evidence candidates -> produce readiness score and missing-field checklist, not eligibility verdict
+- Nara notice pipeline: API search -> select notice -> detail/enrichment lookup -> upsert notice -> download PDF/DOCX attachments -> parse -> summarize -> extract requirement candidates -> persist
 - settings pipeline: read local env/config -> return masked integration status -> run Nara connection tests on demand
 - basis pipeline: upload -> parse -> OCR -> normalize -> chunk -> embed -> index
 
 ## Open Questions
-- required corporation fields for MVP
-- OCR correction UI necessity
 - project status taxonomy
 - export requirements
 - basis taxonomy ownership
@@ -882,6 +1129,8 @@ Local-first admin portal for one administrator to manage corporations, projects,
 - whether the Nara API key should be editable in the UI or status-check only
 
 ## References
+- OCR Engine Implementation Plan: [docs/ocr-engine-implementation-plan.md](docs/ocr-engine-implementation-plan.md)
+- Corporation Evidence Auto-Extraction Plan: [docs/corporation-evidence-auto-extraction-plan.md](docs/corporation-evidence-auto-extraction-plan.md)
 - OpenAI Models: [https://platform.openai.com/docs/models](https://platform.openai.com/docs/models)
 - GPT-5 Guide: [https://platform.openai.com/docs/guides/gpt-5](https://platform.openai.com/docs/guides/gpt-5)
 - PDF Files Guide: [https://platform.openai.com/docs/guides/pdf-files](https://platform.openai.com/docs/guides/pdf-files)

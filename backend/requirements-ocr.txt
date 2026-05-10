@@ -1,0 +1,11 @@
+# Optional OCR dependencies.
+# Runtime standard: Python 3.13.13 on Windows (`py -3.13`).
+paddlepaddle==3.2.2
+paddleocr>=3.3,<3.4
+opencv-python>=4.10
+pillow>=10
+numpy>=1.26
+python-bidi==0.4.2
+
+# Optional lightweight fallback. Requires the Tesseract executable and kor/eng traineddata.
+pytesseract>=0.3.13

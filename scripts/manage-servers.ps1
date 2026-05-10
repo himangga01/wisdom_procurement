@@ -14,6 +14,7 @@ $TempDir = Join-Path $Root "temp"
 $StatusPath = Join-Path $TempDir "servers.status.json"
 $BackendUrl = "http://127.0.0.1:$BackendPort"
 $FrontendUrl = "http://127.0.0.1:$FrontendPort"
+$Python313Exe = $null
 
 function Ensure-Directories {
   New-Item -ItemType Directory -Force $TempDir | Out-Null
@@ -50,6 +51,7 @@ function Write-StatusFile($BackendPid, $FrontendPid, $BackendReady, $FrontendRea
     frontend_pid = $FrontendPid
     backend_ready = $BackendReady
     frontend_ready = $FrontendReady
+    backend_python = $script:Python313Exe
     backend_url = $BackendUrl
     frontend_url = $FrontendUrl
     backend_port = $BackendPort
@@ -99,6 +101,27 @@ function Wait-UntilReady {
   return $false
 }
 
+function Get-Python313Executable {
+  $candidates = New-Object System.Collections.Generic.List[string]
+
+  try {
+    $resolved = & py -3.13 -c "import sys; print(sys.executable)" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $resolved) {
+      $candidates.Add(($resolved | Select-Object -First 1).Trim())
+    }
+  } catch {}
+
+  $candidates.Add("C:\Python313\python.exe")
+
+  foreach ($candidate in $candidates) {
+    if ($candidate -and (Test-Path $candidate)) {
+      return (Resolve-Path $candidate).Path
+    }
+  }
+
+  throw "Python 3.13 runtime was not found. Install Python 3.13.13 and make sure 'py -3.13' works."
+}
+
 function Get-ProjectProcessCandidates {
   $status = Read-StatusFile
   $pids = New-Object System.Collections.Generic.List[int]
@@ -120,7 +143,7 @@ function Get-ProjectProcessCandidates {
   try {
     $projectProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
       Where-Object {
-        $_.Name -in @("cmd.exe", "node.exe", "python.exe") -and
+        $_.Name -in @("cmd.exe", "node.exe", "python.exe", "py.exe") -and
         $_.CommandLine -like "*D:\project\wisdom_procurement*"
       } |
       Select-Object -ExpandProperty ProcessId -Unique
@@ -146,6 +169,7 @@ function Start-ManagedServers {
   Ensure-EnvFiles
 
   Stop-ManagedServers
+  $script:Python313Exe = Get-Python313Executable
 
   $runId = Get-Date -Format "yyyyMMddHHmmss"
   $backendOutLog = Join-Path $TempDir "backend.$runId.out.log"
@@ -153,8 +177,8 @@ function Start-ManagedServers {
   $frontendOutLog = Join-Path $TempDir "frontend.$runId.out.log"
   $frontendErrLog = Join-Path $TempDir "frontend.$runId.err.log"
 
-  $backendCmd = 'set APP_PORT=' + $BackendPort + '&& cd /d "' + $BackendDir + '" && .\.venv\Scripts\python -m app.main'
-  $frontendCmd = 'set VITE_API_BASE_URL=' + $BackendUrl + '&& cd /d "' + $FrontendDir + '" && npm run dev -- --host 127.0.0.1 --port ' + $FrontendPort
+  $backendCmd = 'set "APP_PORT=' + $BackendPort + '" && set "PYTHONUTF8=1" && cd /d "' + $BackendDir + '" && "' + $script:Python313Exe + '" -m app.main'
+  $frontendCmd = 'set "VITE_API_BASE_URL=' + $BackendUrl + '" && cd /d "' + $FrontendDir + '" && npm run dev -- --host 127.0.0.1 --port ' + $FrontendPort
 
   $backendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $backendCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput $backendOutLog -RedirectStandardError $backendErrLog
   $frontendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $frontendCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput $frontendOutLog -RedirectStandardError $frontendErrLog
@@ -197,6 +221,7 @@ function Get-ManagedStatus {
     frontend_url = $status.frontend_url
     backend_port = $status.backend_port
     frontend_port = $status.frontend_port
+    backend_python = $status.backend_python
     updated_at = $status.updated_at
   }
 }

@@ -1,6 +1,11 @@
 import type {
+  AiModelSelection,
+  AiModelSettings,
   AnalysisRecord,
   Corporation,
+  CorporationEvidenceApplyResult,
+  CorporationEvidenceDocument,
+  CorporationReadiness,
   DashboardSummary,
   DocumentRecord,
   NaraNoticeSearchItem,
@@ -31,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getDashboard: () => request<DashboardSummary>("/api/dashboard/summary"),
+  getAiModelSettings: () => request<AiModelSettings>("/api/settings/ai-models"),
   listCorporations: () => request<Corporation[]>("/api/corporations"),
   createCorporation: (body: Record<string, unknown>) =>
     request<Corporation>("/api/corporations", {
@@ -46,6 +52,46 @@ export const api = {
     }),
   deleteCorporation: (id: number) =>
     request<{ status: string }>(`/api/corporations/${id}`, {
+      method: "DELETE",
+    }),
+  listCorporationReadiness: () => request<CorporationReadiness[]>("/api/corporations/readiness"),
+  listCorporationEvidenceDocuments: (corporationId: number) =>
+    request<CorporationEvidenceDocument[]>(`/api/corporations/${corporationId}/evidence-documents`),
+  listAllCorporationEvidenceDocuments: () =>
+    request<CorporationEvidenceDocument[]>("/api/corporation-evidence-documents"),
+  getCorporationEvidenceDocument: (id: number) =>
+    request<CorporationEvidenceDocument>(`/api/corporation-evidence-documents/${id}`),
+  uploadCorporationEvidenceDocument: (formData: FormData) =>
+    request<CorporationEvidenceDocument>("/api/corporation-evidence-documents", {
+      method: "POST",
+      body: formData,
+    }),
+  updateCorporationEvidenceDocument: (id: number, body: Record<string, unknown>) =>
+    request<CorporationEvidenceDocument>(`/api/corporation-evidence-documents/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  reprocessCorporationEvidenceDocument: (id: number, body: Record<string, unknown> = {}) =>
+    request<CorporationEvidenceDocument>(`/api/corporation-evidence-documents/${id}/reprocess`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  reanalyzeCorporationEvidenceText: (id: number, body: Record<string, unknown>) =>
+    request<CorporationEvidenceDocument>(`/api/corporation-evidence-documents/${id}/reanalyze-text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  approveCorporationEvidenceDocument: (id: number, body: Record<string, unknown> = {}) =>
+    request<CorporationEvidenceApplyResult>(`/api/corporation-evidence-documents/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteCorporationEvidenceDocument: (id: number) =>
+    request<{ status: string }>(`/api/corporation-evidence-documents/${id}`, {
       method: "DELETE",
     }),
   listProjects: () => request<Project[]>("/api/projects"),
@@ -81,13 +127,17 @@ export const api = {
     request<{ status: string }>(`/api/documents/${id}`, {
       method: "DELETE",
     }),
-  analyzeDocument: (documentId: number) =>
+  analyzeDocument: (documentId: number, selection?: AiModelSelection) =>
     request<{ analysis_id: number; status: string; message: string }>(`/api/documents/${documentId}/analyze`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(selection ?? {}),
     }),
-  reanalyzeDocument: (documentId: number) =>
+  reanalyzeDocument: (documentId: number, selection?: AiModelSelection) =>
     request<{ analysis_id: number; status: string; message: string }>(`/api/documents/${documentId}/reanalyze`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(selection ?? {}),
     }),
   getLatestAnalysisByDocument: (documentId: number) =>
     request<AnalysisRecord>(`/api/analyses/latest/by-document/${documentId}`),
@@ -106,11 +156,11 @@ export const api = {
     });
     return request<NaraNoticeSearchResponse>(`/api/nara/notices/search?${query.toString()}`);
   },
-  saveAndAnalyzeNaraNotice: (notice: NaraNoticeSearchItem) =>
+  saveAndAnalyzeNaraNotice: (notice: NaraNoticeSearchItem, selection?: AiModelSelection) =>
     request<{ status: string; notice: SavedNaraNotice }>("/api/nara/notices/save-and-analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notice: notice.raw }),
+      body: JSON.stringify({ notice: notice.raw, ...(selection ?? {}) }),
     }),
   listSavedNaraNotices: (keyword = "") => {
     const query = new URLSearchParams();
@@ -118,9 +168,11 @@ export const api = {
     return request<SavedNaraNotice[]>(`/api/nara/saved-notices?${query.toString()}`);
   },
   getSavedNaraNotice: (id: number) => request<SavedNaraNotice>(`/api/nara/saved-notices/${id}`),
-  reanalyzeSavedNaraNotice: (id: number) =>
+  reanalyzeSavedNaraNotice: (id: number, selection?: AiModelSelection) =>
     request<{ status: string; notice: SavedNaraNotice }>(`/api/nara/saved-notices/${id}/reanalyze`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(selection ?? {}),
     }),
   deleteSavedNaraNotice: (id: number) =>
     request<{ status: string }>(`/api/nara/saved-notices/${id}`, {

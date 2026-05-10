@@ -6,13 +6,18 @@ from sqlalchemy.orm import Session
 from app.models.analysis import Analysis
 from app.models.document import ProjectDocument
 from app.pipelines.ocr import maybe_run_ocr
-from app.pipelines.parser import extract_text_from_file
+from app.pipelines.parser import extract_document
 from app.pipelines.summarizer import summarize_document
 
 
 def run_document_analysis(db: Session, document: ProjectDocument, force: bool = False) -> Analysis:
-    extracted_text, _kind = extract_text_from_file(document.stored_file_path)
-    text_for_summary, ocr_status = maybe_run_ocr(extracted_text)
+    parsed = extract_document(document.stored_file_path)
+    text_for_summary, ocr_status = maybe_run_ocr(
+        parsed.text,
+        document.stored_file_path,
+        parsed.kind,
+        parsed.metadata,
+    )
 
     input_hash = hashlib.sha256(text_for_summary.encode("utf-8")).hexdigest()
 

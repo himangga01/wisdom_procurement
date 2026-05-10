@@ -74,7 +74,7 @@
     - document_id=1
     - analysis_id=1
 - 자동 수정 내역
-  - Python 3.14 환경의 패키지 호환 이슈로 백엔드 런타임 의존성 조정
+  - 비표준 Python 런타임의 패키지 호환 이슈로 백엔드 런타임 의존성 조정
   - 로컬 파일 기반 SQLite I/O 실패로 인해 테스트 런타임을 공유 메모리 SQLite 방식으로 보정
   - 포트 충돌(8000) 회피를 위해 백엔드 실행 포트 18000 적용
 - FE 상태
@@ -144,7 +144,7 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Added smoke script: `scripts/smoke-test.ps1`
 - Backend smoke flow succeeded end-to-end (create corp -> create project -> upload -> analyze -> fetch latest analysis)
 - Applied auto-fixes for environment constraints:
-  - dependency compatibility adjustments for Python 3.14 runtime
+  - dependency compatibility adjustments for a non-standard Python runtime
   - switched runtime DB in smoke path to shared in-memory SQLite due file-based SQLite disk I/O errors
   - moved backend runtime port to `18000` to avoid local port conflict
 - Frontend dev server remains unstable in this environment due `spawn EPERM`; script now warns and proceeds with backend smoke verification.
@@ -274,7 +274,7 @@ Per user request, it must be updated whenever new work is performed in this thre
 - 사용자 질문 기준으로 현재 구현의 "내부 fallback 요약" 동작 방식 점검
 - 확인 결과
   - PDF/DOCX 텍스트 추출은 로컬 처리이며 API 키가 필요하지 않음
-  - `OPENAI_API_KEY`가 있으면 `gpt-5.1`로 요약 호출
+  - 당시 `OPENAI_API_KEY`가 있으면 이전 기본 모델로 요약 호출하도록 기록했으나, 이후 기본 모델은 `gpt-5.4-mini`로 변경됨
   - API 키가 없거나 API 호출 실패 시 규칙 기반 fallback 요약 사용
   - fallback 요약은 AI 모델이 아니라 텍스트 앞부분/일부 줄을 재구성하는 임시 로직
 - 참고 파일
@@ -285,7 +285,7 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Reviewed the current "internal fallback summary" behavior in response to a product question.
 - Confirmed:
   - PDF/DOCX text extraction is local and does not require an API key.
-  - If `OPENAI_API_KEY` exists, the app calls `gpt-5.1` for summary generation.
+  - At that time, `OPENAI_API_KEY` triggered the previous default model for summary generation; the current default model was later changed to `gpt-5.4-mini`.
   - If the key is missing or the API call fails, the app uses a deterministic fallback summary.
   - The fallback is not an AI model; it is a temporary rule-based summarization path built from extracted text lines.
 - Reference files:
@@ -463,7 +463,7 @@ Per user request, it must be updated whenever new work is performed in this thre
   - `README.md`
     - 백엔드 단위 테스트 실행 명령 추가
 - 검증 결과
-  - `backend/.venv/Scripts/python -m unittest discover -s tests -v` 성공
+- `py -3.13 -m unittest discover -s tests -v` 성공
   - 사용자 제공 조달 PDF 샘플에서 `PyMuPDF`로 4페이지, 5,440자 추출 확인
   - 샘플 앞부분이 공고 제목부터 시작하도록 읽기 순서 개선 확인
   - `scripts/smoke-test.ps1` 성공
@@ -494,7 +494,7 @@ Per user request, it must be updated whenever new work is performed in this thre
   - `README.md`
     - Added backend unit test command.
 - Verification:
-  - `backend/.venv/Scripts/python -m unittest discover -s tests -v` passed.
+- `py -3.13 -m unittest discover -s tests -v` passed.
   - User-provided procurement PDF sample extracted with `PyMuPDF`: 4 pages, 5,440 characters.
   - Reading order now starts from the notice title in the sample.
   - `scripts/smoke-test.ps1` passed.
@@ -1940,3 +1940,1262 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Verification:
   - confirmed via `manage-servers.ps1 status`
   - confirmed listening ports `18111` and `5199`
+
+## 추가 업데이트 (2026-05-10)
+- 사용자 요청에 따라 향후 핵심 기능인 `법인 사업자 대 공고문 지원 가능성 판단`을 위한 상세 구현계획 수립
+- 제품 방향 재정의
+  - 단순 `지원 가능/불가능`보다 `현재 무엇이 부족한지`, `지원하려면 어떤 인증/면허/서류를 준비해야 하는지`를 핵심 가치로 정의
+  - 대부분의 사업자는 즉시 지원 가능 상태가 아니므로 기본 설계는 부족 조건 분석과 준비 가이드 중심으로 정리
+- 신규 문서
+  - `docs/eligibility-rag-implementation-plan.md`
+- 신규 문서 주요 내용
+  - 법인 사업자 입력 필드 확장 검토
+  - 법인 증빙자료 도메인 추가 권장
+  - 기준문서 관리 기능 재검토
+  - 기준문서 메타데이터/청크/판단 규칙 스키마 제안
+  - Qdrant local 중심 로컬 RAG 구현계획
+  - 공고 요구조건 추출, 법인 조건 매칭, 부족 항목/준비 가이드 출력 흐름
+  - API 초안, UI 초안, 테스트 계획, 가정, 미해결 질문 정리
+- 기존 문서 업데이트
+  - `docs/technical-design.md`: 판단 제품 원칙, 법인 확장 필드, 기준문서/규칙/증빙자료 스키마, 판단 엔진 흐름 보강
+  - `docs/ux-design.md`: 법인 준비 상태 프로필, 기준문서 관리 콘솔, 부족 조건 중심 판단 결과 UX 보강
+  - `README.md`: 신규 문서 링크와 로드맵 보강
+  - `AGENTS.md`: 미래 판단 엔진 가드레일 추가
+- 검증 결과
+  - 문서 생성/수정 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Created a detailed implementation plan for the future corporation-vs-notice eligibility/readiness feature.
+- Product direction:
+  - the core value is not a simple eligible/not-eligible verdict, but explaining missing requirements and required certifications/licenses/documents
+  - since most corporations are not immediately ready, the design centers on gap analysis and preparation guidance
+- New document:
+  - `docs/eligibility-rag-implementation-plan.md`
+- New document covers:
+  - expanded corporation input fields
+  - recommended corporation evidence document domain
+  - basis document management recheck
+  - basis metadata/chunk/rule schemas
+  - local RAG implementation plan centered on Qdrant local
+  - notice requirement extraction, corporation matching, missing requirement output, and preparation guide flow
+  - API draft, UI draft, test plan, assumptions, and open questions
+- Updated existing documents:
+  - `docs/technical-design.md`: product judgment principles, expanded corporation fields, basis/rule/evidence schemas, judgment flow
+  - `docs/ux-design.md`: corporation readiness profile, basis evidence console, gap-first judgment result UX
+  - `README.md`: new document link and roadmap update
+  - `AGENTS.md`: future judgment guardrails
+- Verification:
+  - confirmed document creation/updates
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6 개발계획을 실제 구현 착수 관점에서 재검토했다.
+- 결론:
+  - 방향 자체는 문제 없음
+  - 다만 모든 증빙자료를 한 번에 고정확도로 자동화하려는 범위는 과도함
+  - Phase 1.6을 `1.6A`, `1.6B`, `1.6C`로 나누는 방식이 현실적임
+- 확정한 분리:
+  - Phase 1.6A: 사업자등록증명/사업자등록증 기반 법인 등록 MVP
+  - Phase 1.6B: 중소기업확인서, 여성기업확인서, 장애인기업확인서, 직접생산확인증명서, 나라장터 등록 관련 서류, 주요 면허/인증 등 확장
+  - Phase 1.6C: 알 수 없는 증빙자료 LLM 분류, 수동 유형 지정, 충돌 처리, 개인정보 로그 마스킹, 샘플 기반 테스트 강화
+- 추가 가드레일:
+  - 현재 백엔드는 Flask이므로 Phase 1.6에서 FastAPI 마이그레이션을 섞지 않음
+  - OCR은 엔진 직접 결합이 아니라 `OcrService` 어댑터로 추상화
+  - LLM 분류는 API 키가 있을 때만 실행하고 사용자 검토 후보로만 저장
+  - 사업자등록번호, 대표자명, 주소 등 민감 정보는 로그 원문 노출 금지
+- 업데이트한 문서:
+  - `docs/corporation-evidence-auto-extraction-plan.md`
+  - `docs/technical-design.md`
+  - `docs/ux-design.md`
+  - `docs/eligibility-rag-implementation-plan.md`
+  - `README.md`
+  - `AGENTS.md`
+- 검증 결과:
+  - 문서 간 Phase 1.6A/1.6B/1.6C 기준 정합성 확인
+  - 현재 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Re-reviewed the Phase 1.6 implementation plan from a delivery-readiness perspective.
+- Conclusion:
+  - the direction is valid
+  - the original all-at-once evidence automation scope is too broad
+  - Phase 1.6 should be split into 1.6A, 1.6B, and 1.6C
+- Confirmed split:
+  - Phase 1.6A: business registration evidence-based corporation registration MVP
+  - Phase 1.6B: SME, women-owned, disabled-owned, direct production, Nara registration, and major license/certification evidence expansion
+  - Phase 1.6C: unknown evidence LLM classification, manual type assignment, conflict handling, sensitive-log redaction, and fixture-based test hardening
+- Added guardrails:
+  - implement Phase 1.6 on the current Flask backend without mixing in a FastAPI migration
+  - keep OCR behind an `OcrService` adapter
+  - run LLM classification only when an API key is configured and save output as review candidates only
+  - do not log sensitive corporation or personal identifiers in raw form
+- Updated documents:
+  - `docs/corporation-evidence-auto-extraction-plan.md`
+  - `docs/technical-design.md`
+  - `docs/ux-design.md`
+  - `docs/eligibility-rag-implementation-plan.md`
+  - `README.md`
+  - `AGENTS.md`
+- Verification:
+  - confirmed cross-document alignment for Phase 1.6A/1.6B/1.6C
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- OCR 엔진 구현계획을 작성했다.
+- 공식 자료 기준으로 오픈소스 OCR 후보를 재검토했다.
+- 결정:
+  - 주 OCR 엔진은 `PaddleOCR PP-OCRv5`
+  - 경량 fallback 후보는 `Tesseract OCR`
+  - PDF 페이지 렌더링은 기존 `PyMuPDF`를 사용
+  - 이미지 전처리는 `OpenCV`와 `Pillow`를 사용
+  - OCR 엔진은 `OcrService/OcrEngine` 어댑터 구조로 구현
+- 로컬 환경 확인:
+  - 서비스 표준 Python은 `3.13.13`
+  - Windows 실행 명령은 `py -3.13`
+  - 실제 실행 파일은 `C:\Python313\python.exe`
+- 리스크:
+  - PaddleOCR/PaddlePaddle은 Python 3.13.13 기준으로 설치/검증해야 한다.
+- 신규 문서:
+  - `docs/ocr-engine-implementation-plan.md`
+- 업데이트한 문서:
+  - `README.md`
+  - `docs/technical-design.md`
+  - `AGENTS.md`
+- 검증 결과:
+  - OCR 구현계획 문서 생성 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Added an OCR engine implementation plan.
+- Reviewed open-source OCR candidates from official sources.
+- Decisions:
+  - primary OCR engine: `PaddleOCR PP-OCRv5`
+  - lightweight fallback candidate: `Tesseract OCR`
+  - PDF page rendering: existing `PyMuPDF`
+  - image preprocessing: `OpenCV` and `Pillow`
+  - OCR architecture: `OcrService/OcrEngine` adapter
+- Local environment check:
+  - service standard Python: `3.13.13`
+  - Windows command: `py -3.13`
+  - executable: `C:\Python313\python.exe`
+- Risk:
+  - PaddleOCR/PaddlePaddle must be installed and validated against Python 3.13.13.
+- New document:
+  - `docs/ocr-engine-implementation-plan.md`
+- Updated documents:
+  - `README.md`
+  - `docs/technical-design.md`
+  - `AGENTS.md`
+- Verification:
+  - confirmed OCR plan document creation
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- OCR 엔진 구현을 시작했다.
+- 구현 내용:
+  - `backend/app/pipelines/ocr.py`를 실제 OCR 어댑터 구조로 교체
+  - `OcrResult`, `OcrPageResult`, `OcrEngine` 구조 추가
+  - `PaddleOcrEngine` 추가
+  - `TesseractOcrEngine` fallback 후보 추가
+  - `NoopOcrEngine` 추가
+  - OCR 상태값 `skipped`, `completed`, `needs_ocr`, `needs_ocr_setup`, `unavailable`, `failed` 정리
+  - PDF OCR 시 `PyMuPDF`로 페이지 이미지를 렌더링한 뒤 OCR 엔진에 전달
+  - 이미지 파일 `.jpg`, `.jpeg`, `.png` OCR 실행 함수 추가
+  - OCR 엔진 미설치 시 서버가 실패하지 않고 `needs_ocr_setup`으로 degrade
+- 기존 파이프라인 연결:
+  - 일반 문서 분석에서 `extract_document()` 이후 OCR 필요 시 `run_ocr_if_needed()` 호출
+  - 나라장터 첨부파일 파싱에서도 동일 OCR 경로를 사용하도록 연결
+  - legacy analysis service도 새 OCR 함수 시그니처에 맞춰 조정
+- 의존성:
+  - `backend/requirements-ocr.txt` 추가
+  - PaddleOCR/PaddlePaddle은 Python 3.13.13 런타임에 설치하는 것을 권장
+- 테스트:
+  - `backend/tests/test_ocr.py` 추가
+  - OCR skip 테스트
+  - OCR 엔진 미설치 fallback 테스트
+  - fake OCR 엔진 기반 이미지 OCR 테스트
+  - fake OCR 엔진 기반 PDF 페이지 렌더링 테스트
+  - 실제 사업자등록증 이미지 OCR 선택 테스트 추가
+- 사용자 제공 샘플 이미지 테스트:
+  - `OCR_SAMPLE_IMAGE_PATH`로 이미지 경로를 받아 실행
+  - `RUN_REAL_OCR_TESTS=1`일 때만 실제 OCR 테스트 실행
+  - 현재 Python 3.13.13 런타임에 OCR 의존성이 없으면 실제 OCR 테스트는 정상 skip 처리됨
+- 검증 결과:
+  - `py -3.13 -m unittest tests.test_ocr -v`
+  - 결과: 5개 테스트 중 4개 통과, 1개 실제 OCR 선택 테스트 skip
+  - `py -3.13 -m unittest discover -s tests -v`
+  - 결과: 16개 테스트 중 15개 통과, 1개 실제 OCR 선택 테스트 skip
+
+## Additional Update (2026-05-10)
+- Started OCR engine implementation.
+- Implemented:
+  - replaced `backend/app/pipelines/ocr.py` with a real adapter-based OCR module
+  - added `OcrResult`, `OcrPageResult`, and `OcrEngine`
+  - added `PaddleOcrEngine`
+  - added `TesseractOcrEngine` fallback candidate
+  - added `NoopOcrEngine`
+  - standardized OCR statuses: `skipped`, `completed`, `needs_ocr`, `needs_ocr_setup`, `unavailable`, `failed`
+  - PDF OCR renders pages with `PyMuPDF` before passing images to the OCR engine
+  - image OCR supports `.jpg`, `.jpeg`, and `.png`
+  - missing OCR dependencies degrade to `needs_ocr_setup` instead of crashing the server
+- Pipeline wiring:
+  - document analysis calls `run_ocr_if_needed()` after `extract_document()`
+  - Nara attachment parsing uses the same OCR path
+  - legacy analysis service was adjusted to the new OCR function signature
+- Dependencies:
+  - added `backend/requirements-ocr.txt`
+  - PaddleOCR/PaddlePaddle should be installed into the Python 3.13.13 runtime first
+- Tests:
+  - added `backend/tests/test_ocr.py`
+  - OCR skip test
+  - missing engine fallback test
+  - fake-engine image OCR test
+  - fake-engine PDF page rendering test
+  - optional real business-registration image OCR test
+- User-provided sample image test:
+  - reads image path from `OCR_SAMPLE_IMAGE_PATH`
+  - runs only when `RUN_REAL_OCR_TESTS=1`
+  - the real OCR test is skipped safely when OCR dependencies are not installed in Python 3.13.13
+- Verification:
+  - `py -3.13 -m unittest tests.test_ocr -v`
+  - result: 4 passed, 1 optional real OCR test skipped
+  - `py -3.13 -m unittest discover -s tests -v`
+  - result: 15 passed, 1 optional real OCR test skipped
+
+## 추가 업데이트 (2026-05-10)
+- PaddleOCR 실제 설치와 사업자등록증 이미지 OCR 검증을 진행했다.
+- 설치 과정:
+  - 초기 임시 Python 3.13 환경에는 `pip`가 없어 `ensurepip --upgrade`로 pip를 설치했다.
+  - `paddleocr`, `paddlepaddle`, `opencv-python`, `pillow`, `numpy`, `pytesseract` 설치를 진행했다.
+  - `python-bidi==0.6.9`가 Rust 빌드 중 `python313.lib`를 찾지 못해 실패했다.
+  - `python-bidi==0.4.2`를 먼저 설치한 뒤 OCR 의존성 설치가 성공했다.
+- PaddlePaddle 버전 검증:
+  - `paddlepaddle==3.3.1`은 PP-OCRv5 실행 중 oneDNN/PIR 런타임 오류가 발생했다.
+  - `paddlepaddle==3.2.2`로 낮춘 뒤 실제 OCR이 성공했다.
+  - `backend/requirements-ocr.txt`를 `paddlepaddle==3.2.2`, `python-bidi==0.4.2` 기준으로 고정했다.
+- 사용자 제공 이미지 검증:
+  - 원본 경로: `C:\Users\HOONJAE\Desktop\지혜행정사사무소\SH평가\10.SH평가_온세이엔씨_3등급\사업자등록증.png`
+  - PowerShell/Python 경로 전달 중 한글 경로가 깨져 PaddleOCR가 파일을 열지 못하는 문제가 있었다.
+  - 테스트 전용으로 `backend/storage/ocr-samples/business_registration.png`에 복사했다.
+  - 민감한 샘플 이미지가 Git에 들어가지 않도록 `.gitignore`에 `backend/storage/ocr-samples/`를 추가했다.
+- 실제 OCR 결과:
+  - 상태: `completed`
+  - 평균 신뢰도: 약 `0.9336`
+  - 주요 인식 내용:
+    - `등록번호:142-81-28387`
+    - `주식회사 온세이엔씨`
+    - `안영식`
+    - `경기도 성남시 수정구 청계산로 686, 8층 820호`
+    - `2022년 03월 30일`
+- 테스트:
+  - `py -3.13 -m unittest tests.test_ocr.OcrPipelineTests.test_business_registration_sample_image_with_real_engine_when_enabled -v`
+  - 결과: 실제 사업자등록증 이미지 OCR 테스트 통과
+  - `py -3.13 -m unittest discover -s tests -v`
+  - 결과: 16개 테스트 통과, 1개 선택 테스트 skip
+  - `py -3.13 -m unittest discover -s tests -v`
+  - 결과: 16개 테스트 통과, 1개 선택 테스트 skip
+- 추가 수정:
+  - 일반 API 테스트에서 실제 PaddleOCR가 실행되지 않도록 `OCR_ENGINE=noop`을 설정했다.
+  - OCR 모듈은 한글 경로 파일을 엔진에 넘길 때 ASCII 임시 경로로 복사하는 방어 로직을 추가했다.
+
+## Additional Update (2026-05-10)
+- Installed PaddleOCR dependencies and verified real OCR using the provided business registration image.
+- Installation:
+  - the initial temporary Python 3.13 environment had no `pip`, so `ensurepip --upgrade` was used.
+  - installed `paddleocr`, `paddlepaddle`, `opencv-python`, `pillow`, `numpy`, and `pytesseract`.
+  - `python-bidi==0.6.9` failed while building because `python313.lib` was unavailable.
+  - installing `python-bidi==0.4.2` first allowed the OCR dependency installation to complete.
+- PaddlePaddle version validation:
+  - `paddlepaddle==3.3.1` failed during PP-OCRv5 inference with a oneDNN/PIR runtime error.
+  - downgrading to `paddlepaddle==3.2.2` made real OCR succeed.
+  - `backend/requirements-ocr.txt` now pins `paddlepaddle==3.2.2` and `python-bidi==0.4.2`.
+- User-provided sample image:
+  - original path: `C:\Users\HOONJAE\Desktop\지혜행정사사무소\SH평가\10.SH평가_온세이엔씨_3등급\사업자등록증.png`
+  - Korean path text was corrupted when passed through PowerShell/Python, so PaddleOCR could not open the original path directly.
+  - copied the image to `backend/storage/ocr-samples/business_registration.png` for local testing.
+  - added `backend/storage/ocr-samples/` to `.gitignore` so the sensitive image is not committed.
+- Real OCR result:
+  - status: `completed`
+  - average confidence: about `0.9336`
+  - key recognized values:
+    - `등록번호:142-81-28387`
+    - `주식회사 온세이엔씨`
+    - `안영식`
+    - `경기도 성남시 수정구 청계산로 686, 8층 820호`
+    - `2022년 03월 30일`
+- Tests:
+  - `py -3.13 -m unittest tests.test_ocr.OcrPipelineTests.test_business_registration_sample_image_with_real_engine_when_enabled -v`
+  - result: real business registration image OCR test passed
+  - `py -3.13 -m unittest discover -s tests -v`
+  - result: 16 tests passed, 1 optional test skipped
+  - `py -3.13 -m unittest discover -s tests -v`
+  - result: 16 tests passed, 1 optional test skipped
+- Additional fixes:
+  - set `OCR_ENGINE=noop` in general API flow tests so they do not invoke real PaddleOCR.
+  - added defensive logic that copies non-ASCII image paths to temporary ASCII paths before OCR engine calls.
+
+## 추가 업데이트 (2026-05-10)
+- 사용자의 요청에 따라 전역 로컬 Python 3.13 설치/복구 후 PaddlePaddle OCR을 다시 검증했다.
+- 확인 결과:
+  - 기존 `C:\Python313\python.exe`는 존재했지만 `pip`가 없고 `sys.prefix`가 작업 폴더로 잡히는 비정상 상태였다.
+  - Winget 기준 `Python.Python.3.13`은 `3.13.7` 설치 상태였고 `3.13.13` 업그레이드가 가능했다.
+  - `winget upgrade --id Python.Python.3.13 --scope user --silent`로 Python 3.13.13 복구/업그레이드를 완료했다.
+- 복구 후 정상 상태:
+  - `py -3.13` 실행 파일: `C:\Python313\python.exe`
+  - `sys.prefix`: `C:\Python313`
+  - Python 버전: `3.13.13`
+  - pip 버전: `26.0.1`
+- 전역 Python 3.13에 설치한 의존성:
+  - `requirements.txt`
+  - `requirements-ocr.txt`
+- 전역 Python 3.13 검증:
+  - `paddle==3.2.2`
+  - `paddleocr==3.3.3`
+  - 실제 사업자등록증 이미지 OCR 테스트 통과
+  - 전체 백엔드 테스트 통과
+- 실행한 검증:
+  - `py -3.13 -m unittest tests.test_ocr.OcrPipelineTests.test_business_registration_sample_image_with_real_engine_when_enabled -v`
+  - 결과: 통과
+  - `py -3.13 -m unittest discover -s tests -v`
+  - 결과: 16개 테스트 통과, 1개 선택 테스트 skip
+- 문서 업데이트:
+  - `docs/ocr-engine-implementation-plan.md`
+  - `docs/work-log.md`
+
+## Additional Update (2026-05-10)
+- Per user request, repaired/upgraded global local Python 3.13 and re-tested PaddlePaddle OCR.
+- Findings:
+  - existing `C:\Python313\python.exe` existed, but had no `pip` and its `sys.prefix` incorrectly pointed to the working directory.
+  - Winget showed `Python.Python.3.13` installed at `3.13.7` with `3.13.13` available.
+  - upgraded/repaired Python 3.13.13 with `winget upgrade --id Python.Python.3.13 --scope user --silent`.
+- Healthy state after repair:
+  - `py -3.13` executable: `C:\Python313\python.exe`
+  - `sys.prefix`: `C:\Python313`
+  - Python version: `3.13.13`
+  - pip version: `26.0.1`
+- Installed dependencies into global Python 3.13:
+  - `requirements.txt`
+  - `requirements-ocr.txt`
+- Global Python 3.13 verification:
+  - `paddle==3.2.2`
+  - `paddleocr==3.3.3`
+  - real business registration image OCR test passed
+  - full backend test suite passed
+- Verification commands:
+  - `py -3.13 -m unittest tests.test_ocr.OcrPipelineTests.test_business_registration_sample_image_with_real_engine_when_enabled -v`
+  - result: passed
+  - `py -3.13 -m unittest discover -s tests -v`
+  - result: 16 tests passed, 1 optional test skipped
+- Updated documents:
+  - `docs/ocr-engine-implementation-plan.md`
+  - `docs/work-log.md`
+
+## 추가 업데이트 (2026-05-10)
+- 사용자 피드백 반영: 법인 등록 UX를 `직접 입력 최소화` 방식으로 재구성
+- 설계 결정
+  - 기업유형/우대조건은 직접 텍스트 입력이 아니라 체크박스 카드 또는 토글 카드로 입력
+  - 중소기업확인서, 여성기업, 장애인기업, 사회적기업, 협동조합, 벤처기업, 창업기업, 직접생산확인증명서를 빠른 선택 항목으로 제공
+  - 선택한 항목만 세부유형, 만료일, 증빙자료 연결 필드를 펼침
+  - 면허/인증은 검색형 드롭다운과 자주 쓰는 면허 빠른 선택 칩으로 입력
+  - 실적/인력/장비는 `없음`, `있음`, `확인 필요` 중 먼저 선택하고, `있음`일 때만 상세 입력
+  - 증빙자료 업로드 후 자동 추출 결과를 확인/수정하는 흐름을 우선
+  - 법인 상세에는 단순 입력 완료율이 아니라 `공고 판단 준비도`를 표시
+- 수정 문서
+  - `docs/eligibility-rag-implementation-plan.md`
+  - `docs/ux-design.md`
+  - `docs/work-log.md`
+- 검증 결과
+  - 문서 반영 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Updated corporation registration UX to minimize manual text entry.
+- Design decisions:
+  - company type and preferential conditions use checkbox/toggle cards instead of free text
+  - quick-select items include SME, women-owned, disabled-owned, social enterprise, cooperative, venture, startup, and direct production certificate
+  - selected cards reveal only subtype, expiry date, and linked evidence fields
+  - licenses/certifications use searchable dropdowns and quick-select chips
+  - track record/staff/equipment starts with `none`, `exists`, or `unknown`; details open only when `exists` is selected
+  - evidence upload with automatic extraction is preferred over manual entry
+  - corporation detail shows notice evaluation readiness instead of simple form completion
+- Updated documents:
+  - `docs/eligibility-rag-implementation-plan.md`
+  - `docs/ux-design.md`
+  - `docs/work-log.md`
+- Verification:
+  - confirmed document updates
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- 사용자 피드백 반영: 법인 등록 UX를 `사업자등록증 선업로드 + 자동추출 우선` 구조로 변경
+- 설계 결정
+  - 법인 등록 첫 화면은 일반 입력 폼이 아니라 `사업자등록증 업로드` 화면으로 시작
+  - 사용자가 사업자등록증을 업로드하면 이미지/PDF/Word 파일에서 법인명, 사업자등록번호, 대표자명, 사업장 주소, 업태/종목을 자동 추출
+  - 사용자는 자동 추출 결과를 확인하고 틀린 값만 수정
+  - `사업자등록증 없음` 또는 `나중에 입력`을 선택한 경우에만 직접 입력 폼 표시
+  - 수동 입력으로 생성된 법인은 `기본정보 미검증` 또는 `증빙자료 없음` 상태로 표시
+  - 법인 증빙자료 파일 형식은 PDF, DOCX, JPG/JPEG, PNG 우선 지원
+  - 구형 DOC 파일은 추후 변환 경로가 준비될 때 지원 검토
+- 문서 보강
+  - `docs/eligibility-rag-implementation-plan.md`: 증빙자료 우선 온보딩 UX, 자동 추출 후보 필드, 추출 파이프라인, 상태값 추가
+  - `docs/ux-design.md`: 법인 등록 첫 화면과 자동 추출 결과 확인 화면 구성 추가
+  - `docs/technical-design.md`: 법인 증빙자료 자동 추출 파이프라인, API 초안, 증빙자료 메타데이터 확장
+  - `AGENTS.md`: 법인 등록은 사업자등록증 자동 추출을 우선한다는 미래 확장 가드레일 추가
+- 검증 결과
+  - 문서 반영 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Changed corporation registration UX to evidence-first onboarding with business registration certificate upload and automatic extraction.
+- Design decisions:
+  - first corporation registration screen starts with certificate upload, not a general manual form
+  - image/PDF/Word files are read to extract corporation name, business registration number, representative name, business address, business type, and business items
+  - user reviews extracted values and corrects only inaccurate fields
+  - manual form is shown only when the user selects `no certificate` or `enter later`
+  - manually created corporations show `basic information unverified` or `no evidence`
+  - corporation evidence uploads should support PDF, DOCX, JPG/JPEG, and PNG first
+  - legacy DOC support is deferred until a conversion path is available
+- Updated documents:
+  - `docs/eligibility-rag-implementation-plan.md`: evidence-first onboarding UX, extraction candidate fields, extraction pipeline, and states
+  - `docs/ux-design.md`: first registration screen and extraction review screen
+  - `docs/technical-design.md`: corporation evidence extraction pipeline, API draft, evidence metadata expansion
+  - `AGENTS.md`: future extensibility guardrail for certificate-first onboarding
+- Verification:
+  - confirmed document updates
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- 사용자 요청에 따라 사업자등록증 외 법인 증빙서류 업로드/자동추출 기능을 Phase 2 이전 선행 개발 범위로 재정의
+- 웹 조사 기반으로 조달/공공구매에서 자주 등장하는 증빙서류 유형을 상세 분류
+- 참고한 주요 자료
+  - SMPP 기업정보 등록/변경 안내
+  - SMPP 중소·여성·장애인기업 확인서 신청/발급 안내
+  - SMPP 직접생산확인 안내
+  - 정부24 사업자등록증명 발급
+  - 정부24 나라장터 경쟁입찰 참가자격 등록
+  - 벤처기업확인제도 안내
+  - 한국SW산업협회 SW사업자 실적관리 안내
+  - 사회적기업 포털
+- 신규 문서
+  - `docs/corporation-evidence-auto-extraction-plan.md`
+- 신규 문서 주요 내용
+  - Phase 1.6 `법인 증빙자료 자동 추출 기반` 신설
+  - 사업자등록증명/사업자등록증 외 증빙서류 taxonomy 정의
+  - 법인 기본 식별, 조달 등록, 기업유형/우대, 면허/허가, 생산/시설, 재무/세금/보험, 실적/인력/기술자, 입찰 제출서류로 분류
+  - PDF/DOCX/JPG/JPEG/PNG 우선 지원
+  - HWP/HWPX는 직접 파싱 제외 및 PDF 변환 안내
+  - 규칙 기반 분류 실패 시 LLM 기반 알 수 없는 증빙서류 분류 fallback 설계
+  - 사용자 확인 후 승인된 필드만 법인 프로필 업데이트
+  - 증빙자료 추출 결과 확인 UX, 충돌 처리, 만료 처리, 수동 유형 지정 UX 설계
+- 기존 문서 업데이트
+  - `README.md`: Phase 1.6 추가, 신규 문서 링크, 로드맵 수정
+  - `docs/technical-design.md`: Phase 1.6 범위/비범위, 증빙자료 taxonomy 우선순위, LLM fallback 처리 추가
+  - `docs/ux-design.md`: 법인 상세 증빙자료 탭, 다중 업로드, AI 분류, 추출 결과 확인 UX 추가
+  - `docs/eligibility-rag-implementation-plan.md`: 법인 증빙자료 개발을 Phase 1.6으로 이동하고 Phase 2 이전 선행 단계로 정리
+  - `AGENTS.md`: Phase 1.6 가드레일과 알 수 없는 증빙자료 LLM 분류 규칙 추가
+- 검증 결과
+  - 문서 생성/수정 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-10)
+- Reframed corporation evidence upload/auto-extraction as a pre-Phase-2 implementation target.
+- Researched common procurement/public-purchase evidence document categories from web sources.
+- Key references:
+  - SMPP corporation info registration/change
+  - SMPP SME/women-owned/disabled-owned confirmation application and issuance
+  - SMPP direct production confirmation
+  - Gov24 business registration proof
+  - Gov24 Nara competitive bidding participant registration
+  - venture business confirmation system
+  - KOSA SW business performance management
+  - Social Enterprise Portal
+- New document:
+  - `docs/corporation-evidence-auto-extraction-plan.md`
+- New document covers:
+  - new Phase 1.6 `corporation evidence auto-extraction foundation`
+  - evidence taxonomy beyond business registration evidence
+  - identity, procurement registration, company type/preference, license/permit, production/facility, finance/tax/insurance, track record/staff/technical, and bid-submission document categories
+  - PDF/DOCX/JPG/JPEG/PNG first support
+  - HWP/HWPX direct parsing excluded with PDF conversion guidance
+  - LLM fallback classification for unknown evidence documents
+  - reviewed-only corporation profile updates
+  - extraction review UX, conflict handling, expiration handling, and manual type assignment
+- Updated existing documents:
+  - `README.md`: added Phase 1.6, new document link, roadmap changes
+  - `docs/technical-design.md`: Phase 1.6 scope/non-scope, evidence taxonomy priority, LLM fallback handling
+  - `docs/ux-design.md`: evidence tab, multi-file upload, AI classification, extraction review UX
+  - `docs/eligibility-rag-implementation-plan.md`: moved corporation evidence work into Phase 1.6 before Phase 2
+  - `AGENTS.md`: Phase 1.6 guardrails and unknown evidence LLM classification rules
+- Verification:
+  - confirmed document creation/updates
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-10)
+- 사용자 요청에 따라 프로젝트 문서와 실행 스크립트의 Python 기준을 `Python 3.13.13`으로 통일했다.
+- 신규 런타임 기준
+  - Windows 실행 명령: `py -3.13`
+  - 실제 실행 파일: `C:\Python313\python.exe`
+  - 저장소 기준 파일: `.python-version`
+- 수정한 문서
+  - `README.md`: 백엔드 스택, 설치/실행/테스트 명령, OCR 런타임 안내를 Python 3.13.13 기준으로 변경
+  - `AGENTS.md`: AI 작업 가드레일에 Python 3.13.13 표준 런타임 규칙 추가
+  - `docs/technical-design.md`: OCR/백엔드 런타임 기준 업데이트
+  - `docs/technology-summary.md`: 백엔드 활용 기술을 Python 3.13.13로 변경
+  - `docs/ai-api-setup.md`: 의존성 설치 명령을 `py -3.13` 기준으로 변경
+  - `docs/ocr-engine-implementation-plan.md`: 과거 venv 중심 설명을 Python 3.13.13 표준 런타임 설명으로 교체
+  - `docs/work-log.md`: 이번 실제 작업 내역 추가 및 과거 실행 명령을 현재 표준 명령 기준으로 정리
+- 수정한 코드/스크립트
+  - `.python-version` 추가
+  - `scripts/manage-servers.ps1`: 백엔드 실행 시 `py -3.13` 또는 `C:\Python313\python.exe`를 찾아 사용하도록 변경
+  - `scripts/smoke-test.ps1`: 스모크 테스트 백엔드 실행과 샘플 PDF 생성에 Python 3.13.13 사용
+  - `scripts/manage-servers.ps1`, `scripts/smoke-test.ps1`: Windows `cmd.exe` 환경변수 설정을 `set "KEY=value"` 방식으로 수정해 `PYTHONUTF8` 공백 오류 해결
+  - `backend/app/pipelines/ocr.py`: OCR 의존성 누락 메시지를 Python 3.13 런타임 기준으로 수정
+  - `backend/requirements-ocr.txt`: OCR 의존성 설치 기준을 Python 3.13.13으로 명시
+- 검증 결과
+  - `py -3.13 -c "import sys; print(sys.version); print(sys.executable)"`: `3.13.13`, `C:\Python313\python.exe` 확인
+  - 오래된 Python 버전/venv 기준 문구 검색 결과: 없음
+  - 실제 사업자등록증 OCR 테스트: 통과
+  - 전체 백엔드 단위 테스트: 16개 통과, 1개 선택 OCR 테스트 skip
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 확인
+
+## Additional Update (2026-05-10)
+- Standardized project documentation and execution scripts on `Python 3.13.13`.
+- Runtime standard:
+  - Windows command: `py -3.13`
+  - executable: `C:\Python313\python.exe`
+  - repository marker: `.python-version`
+- Updated documents:
+  - `README.md`: backend stack, install/run/test commands, and OCR runtime notes now use Python 3.13.13
+  - `AGENTS.md`: added Python 3.13.13 runtime guardrails for future agents
+  - `docs/technical-design.md`: updated backend/OCR runtime standard
+  - `docs/technology-summary.md`: changed backend stack to Python 3.13.13
+  - `docs/ai-api-setup.md`: changed dependency install commands to `py -3.13`
+  - `docs/ocr-engine-implementation-plan.md`: replaced old venv-oriented guidance with the Python 3.13.13 runtime standard
+  - `docs/work-log.md`: added this work entry and normalized historical execution commands to the current standard where appropriate
+- Updated code/scripts:
+  - added `.python-version`
+  - `scripts/manage-servers.ps1`: backend startup now resolves `py -3.13` or `C:\Python313\python.exe`
+  - `scripts/smoke-test.ps1`: backend startup and sample PDF generation now use Python 3.13.13
+  - `scripts/manage-servers.ps1` and `scripts/smoke-test.ps1`: fixed Windows `cmd.exe` env var assignment with `set "KEY=value"` to avoid invalid `PYTHONUTF8` values
+  - `backend/app/pipelines/ocr.py`: updated missing OCR dependency message to reference the Python 3.13 runtime
+  - `backend/requirements-ocr.txt`: documented Python 3.13.13 as the OCR dependency runtime
+- Verification:
+  - `py -3.13 -c "import sys; print(sys.version); print(sys.executable)"`: confirmed `3.13.13` and `C:\Python313\python.exe`
+  - stale Python/venv wording search: no matches
+  - real business-registration OCR test: passed
+  - full backend unit test suite: 16 passed, 1 optional OCR test skipped
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6A 개발을 시작했고, `증빙자료 기반 법인 등록 MVP`의 1차 구현을 완료했다.
+- 백엔드 구현
+  - `corporation_evidence_documents` 테이블 추가
+  - `corporation_profile_update_candidates` 테이블 추가
+  - 기존 `corporations` 테이블에 사업자등록번호, 대표자, 법인등록번호, 사업장 주소, 본점 주소, 개업일, 업태, 종목, 증빙 검증 상태 컬럼 추가
+  - `backend/app/pipelines/corporation_evidence.py` 신규 추가
+  - 사업자등록증명/사업자등록증 규칙 기반 분류 구현
+  - 법인명, 사업자등록번호, 대표자, 법인등록번호, 개업연월일, 사업장 주소, 지역, 업태/종목 후보 추출 구현
+  - PDF/DOCX는 기존 파서 재사용, 이미지 파일은 OCR 파이프라인 사용
+  - 증빙자료 업로드 API 추가
+  - 증빙자료 상세/목록/삭제 API 추가
+  - 추출 후보 승인 시 기존 법인 업데이트 또는 새 법인 생성 API 추가
+- 프론트엔드 구현
+  - 법인 관리 화면 상단을 `증빙자료 먼저 업로드` UX로 변경
+  - 기존 법인 연결 또는 새 법인 생성 예정 선택 지원
+  - 증빙서류 유형 자동 분류/수동 지정 선택 지원
+  - 추출 후보 카드 UI 추가
+  - `추출값 승인 및 반영` 액션 추가
+  - 법인 목록에 사업자등록번호, 대표자, 증빙 확인 상태 표시 추가
+  - 법인 편집 폼에 사업자등록번호, 대표자, 사업장 주소 필드 추가
+- 테스트 추가/수정
+  - `backend/tests/test_corporation_evidence.py` 신규 추가
+  - 사업자등록증 규칙 기반 핵심 필드 추출 테스트 추가
+  - 알 수 없는 증빙자료는 확인 필요 상태로 남기는 테스트 추가
+  - `backend/tests/test_api_flows.py`에 증빙자료 업로드 후 후보 추출/승인/새 법인 생성 테스트 추가
+  - 기존 법인에 증빙자료 승인값을 반영하는 API 테스트 추가
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 20개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 확인
+- 다음 단계
+  - Phase 1.6A-2: 이미지 사업자등록증 업로드 UX 실사용 검증과 OCR 결과 보정 UX 추가
+  - Phase 1.6A-3: 후보값 개별 승인/거절, 수동 수정 후 승인 기능 고도화
+  - Phase 1.6B: 중소기업확인서, 여성기업확인서, 장애인기업확인서, 직접생산확인증명서 등 주요 증빙자료 확장
+
+## Additional Update (2026-05-10)
+- Started Phase 1.6A implementation and completed the first MVP slice for evidence-based corporation onboarding.
+- Backend:
+  - added `corporation_evidence_documents`
+  - added `corporation_profile_update_candidates`
+  - extended `corporations` with business registration number, representative name, corporate registration number, business/headquarters address, opening date, business type/item, and evidence verification status
+  - added `backend/app/pipelines/corporation_evidence.py`
+  - implemented rule-based business registration proof/certificate classification
+  - implemented extraction candidates for corporation name, business registration number, representative, corporate registration number, opening date, address, region, business type, and business item
+  - reused existing PDF/DOCX parsing and image OCR pipelines
+  - added evidence upload, list/detail/delete APIs
+  - added approval API that updates an existing corporation or creates a new corporation from approved candidates
+- Frontend:
+  - changed the corporation page to evidence-first onboarding
+  - supports linking evidence to an existing corporation or preparing a new corporation
+  - supports auto/manual evidence type selection
+  - added extraction candidate cards
+  - added approve-and-apply action
+  - added business registration number, representative, and evidence verification status to the corporation list
+  - added business registration number, representative, and business address to the edit form
+- Tests:
+  - added `backend/tests/test_corporation_evidence.py`
+  - added business registration extraction tests
+  - added unknown evidence review-state test
+  - extended API flow tests for evidence upload, candidate extraction, approval, new corporation creation, and existing corporation update
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 20 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+- Next:
+  - Phase 1.6A-2: validate real image business-registration uploads and add OCR correction UX
+  - Phase 1.6A-3: improve per-candidate approve/reject and manual correction before approval
+  - Phase 1.6B: expand rules for SME, women-owned, disabled-owned, direct production, and other core procurement evidence
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6A 코드 리뷰를 다시 진행하고, 발견된 결함을 먼저 수정했다.
+- 리뷰 후 수정한 내용
+  - 사용자가 증빙서류 유형을 수동으로 `사업자등록증/사업자등록증명`으로 지정해도 자동 분류 결과가 `unknown`이면 추출 후보가 비어버릴 수 있는 문제를 수정했다.
+  - 수동 지정 유형이 자동 분류보다 우선 적용되도록 `requested_document_type` 흐름을 백엔드 파이프라인과 업로드 API에 반영했다.
+  - 중소기업확인서처럼 사업자등록번호/대표자 정보가 포함된 증빙서류가 넓은 사업자등록증 규칙에 먼저 걸려 오분류될 수 있는 문제를 수정했다.
+  - `certifications_json` 같은 목록형 법인 프로필 값이 증빙 승인 시 기존 값을 덮어쓰는 문제를 방지하기 위해 병합 로직을 추가했다.
+- Phase 1.6B 개발 내용
+  - 중소기업확인서, 여성기업확인서, 장애인기업확인서, 직접생산확인증명서, 나라장터 경쟁입찰참가자격 등록증, 주요 면허/등록증 분류 규칙을 추가했다.
+  - 주요 증빙서류에서 `certifications_json`, `company_size_classification`, `preference_tags_json`, `direct_production_items_json`, `license_summary`, `procurement_registration_status`, `evidence_expiry_summary` 후보값을 추출하도록 확장했다.
+  - 법인 DB 스키마에 우대/제한 태그, 직접생산 품목, 면허 요약, 조달 등록 상태, 증빙 만료 요약 컬럼을 추가했다.
+  - 증빙 승인 시 기존 법인 정보와 신규 추출값을 안전하게 병합하도록 백엔드 반영 로직을 보강했다.
+  - 법인 관리 포탈의 증빙 업로드 유형 선택지를 주요 조달 증빙서류까지 확장했다.
+  - 법인 목록과 편집 UX에서 우대/제한 태그, 직접생산 품목, 면허 요약을 확인/수정할 수 있도록 업데이트했다.
+- 테스트 추가/수정
+  - 수동 증빙 유형 지정 시에도 사업자등록증 후보가 추출되는 테스트를 추가했다.
+  - 중소기업확인서에서 기업규모/우대 태그/인증 후보가 추출되는 테스트를 추가했다.
+  - 여성기업확인서, 직접생산확인증명서, 경쟁입찰참가자격 등록증, 면허/등록증 추출 테스트를 추가했다.
+  - 증빙 승인 시 기존 인증 목록을 보존하면서 신규 인증/우대 태그를 병합하는 API 테스트를 추가했다.
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 25개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 상태 확인
+- 다음 단계
+  - Phase 1.6B-2: OCR 결과 보정 UX와 후보값 개별 승인/거절 기능 고도화
+  - Phase 1.6B-3: 실제 증빙서류 샘플을 추가해 추출 규칙 정밀도 보정
+  - Phase 1.7 후보: 공고 요구조건과 법인 프로필 필드 간 비교 준비 화면 설계
+
+## Additional Update (2026-05-10)
+- Re-reviewed Phase 1.6A code and fixed review findings before continuing Phase 1.6B.
+- Review fixes:
+  - fixed a manual evidence-type override bug where candidates could be empty when auto-classification returned `unknown`
+  - wired `requested_document_type` through the upload API and extraction pipeline
+  - fixed classifier precedence so SME-style documents are not incorrectly classified as business registration documents only because they contain business registration numbers and representatives
+  - added safe merge logic for list-style corporation profile fields such as `certifications_json`
+- Phase 1.6B implementation:
+  - added classification rules for SME confirmation, women-owned confirmation, disabled-owned confirmation, direct production confirmation, procurement registration certificates, and major license/registration certificates
+  - expanded extraction candidates for `certifications_json`, `company_size_classification`, `preference_tags_json`, `direct_production_items_json`, `license_summary`, `procurement_registration_status`, and `evidence_expiry_summary`
+  - extended the corporation schema with preference tags, direct production items, license summary, procurement registration status, and evidence expiry summary
+  - strengthened approval logic so extracted evidence updates merge safely into existing corporation profiles
+  - expanded the corporation portal evidence-type selector for core procurement evidence documents
+  - updated corporation list/edit UX for preference tags, direct production items, and license summary
+- Tests:
+  - added manual evidence-type extraction coverage
+  - added SME confirmation extraction coverage
+  - added women-owned, direct-production, procurement-registration, and license extraction coverage
+  - added API coverage for merging existing certifications with new evidence-derived certifications and preference tags
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 25 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+
+## 추가 업데이트 (2026-05-10 23:02:49 +09:00)
+- 요청 범위
+  - 나라장터 `공고 상세 저장`을 페이지 이동과 무관하게 계속 진행되는 백그라운드 작업 구조로 변경했다.
+- 수정 내용
+  - `/api/nara/notices/save-and-analyze` API가 오래 대기하지 않고 `202 queued`로 즉시 응답하도록 변경했다.
+  - 공고는 먼저 DB에 `save_status=saving`, `download_status=pending`, `analysis_status=pending` 상태로 저장된다.
+  - 서버 단일 백그라운드 워커가 공고 상세 조회, 첨부 다운로드, PDF/DOCX 파싱, OCR 필요 여부 판단, AI 요약, 요구조건 후보 추출을 이어서 처리한다.
+  - SQLite 연결을 요청/작업 단위 커넥션으로 바꿔 백그라운드 처리 중 상세 화면 조회가 가능하도록 했다.
+  - 저장 공고 상세 화면은 처리 중 상태에서 2초마다 자동 갱신한다.
+  - 나라장터 공고 목록 저장 버튼 문구를 `작업 등록 중...`으로 변경하고, 저장 직후 `처리 상태 보기` 링크를 제공한다.
+  - 공고 재분석도 동일하게 백그라운드 큐에 등록되도록 변경했다.
+- 테스트/검증
+  - 비동기 저장 API 테스트를 `202 queued -> 상세 polling -> completed/partial_failed` 흐름으로 수정했다.
+  - `py -3.13 -m unittest discover -s tests -v`: 42개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+
+## Additional Update (2026-05-10 23:02:49 +09:00)
+- Scope
+  - Converted Nara `save and analyze notice` into a background-processing flow that continues after page navigation.
+- Changes
+  - `/api/nara/notices/save-and-analyze` now returns immediately with `202 queued`.
+  - Notices are first persisted with `save_status=saving`, `download_status=pending`, and `analysis_status=pending`.
+  - A single backend worker continues detail fetch, attachment download, PDF/DOCX parsing, OCR handling, AI summary, and requirement candidate extraction.
+  - SQLite now uses per-operation connections so detail polling can continue while the worker processes the notice.
+  - Saved notice detail page polls every 2 seconds while the pipeline is running.
+  - Nara board copy now reflects background job registration and links to the processing status page.
+  - Saved notice reanalysis also uses the same background queue.
+- Verification
+  - Updated async API test to assert `202 queued`, then poll saved notice detail until final status.
+  - `py -3.13 -m unittest discover -s tests -v`: 42 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-10 23:15:05 +09:00)
+- 요청 범위
+  - 사업자등록증 이미지 OCR 결과에서 `사업의 종류 / 업태 / 종목` 표가 깨지는 문제를 개선했다.
+- 수정 내용
+  - 규칙 기반 후처리에 사업자등록증 `사업의 종류` 표 전용 정규화 로직을 추가했다.
+  - `전문기\n업` -> `전문기업`, `도매 및\n소매업` -> `도매 및 소매업`처럼 OCR 줄깨짐을 보정한다.
+  - `업태`는 `건설업`, `도소매`, `도매 및 소매업` 같은 큰 분류로 정리하고, `종목`은 세부 항목 목록으로 분리한다.
+  - AI API 키가 설정되어 있으면 사업자등록증 OCR 텍스트를 LLM으로 한 번 더 정리해 `business_type`, `business_item`, `business_category` 후보를 덮어쓴다.
+  - LLM은 없는 값을 만들지 않고, 사용자 검토용 후보로만 저장되며 `AI 업태/종목 정리` warning을 남긴다.
+- 테스트/검증
+  - 깨진 OCR 샘플 텍스트 기반 규칙 보정 테스트 추가
+  - LLM 정규화 hook 테스트 추가
+  - `py -3.13 -m unittest discover -s tests -v`: 44개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+
+## Additional Update (2026-05-10 23:15:05 +09:00)
+- Scope
+  - Improved business registration OCR handling for broken `business type / business item` tables.
+- Changes
+  - Added business-registration-specific rule cleanup for the `사업의 종류` table.
+  - Repairs OCR line breaks such as `전문기\n업` -> `전문기업` and `도매 및\n소매업` -> `도매 및 소매업`.
+  - Separates coarse business type values from detailed business item values.
+  - When an AI key is configured, the OCR text is sent through an LLM cleanup pass that replaces `business_type`, `business_item`, and `business_category` review candidates.
+  - LLM cleanup remains a review-candidate step and records an `AI business type/item cleanup` warning.
+- Verification
+  - Added rule-based broken OCR table test.
+  - Added LLM cleanup hook test.
+  - `py -3.13 -m unittest discover -s tests -v`: 44 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-10 22:49:01 +09:00)
+- 요청 범위
+  - UX/사용성 개선 포인트 1~5번을 모두 실제 코드에 반영했다.
+- 수정 내용
+  - 법인 관리 화면을 `증빙 업로드`, `추출값 검토`, `증빙자료 관리`, `법인 목록/준비도` 탭형 워크스페이스로 재구성했다.
+  - 증빙자료 상세 검토를 별도 탭으로 분리하고, 재처리/보정 텍스트 재분석/선택 반영의 차이를 설명하는 안내 카드를 추가했다.
+  - 추출 후보 카드에 `기존값`과 `추출값` 비교 영역을 추가해 승인 전 덮어쓰기 위험을 더 쉽게 확인하도록 했다.
+  - 대시보드에 `오늘 처리할 큐` 영역을 추가해 증빙 검토 대기, OCR/추출 보정 필요, 낮은 준비도 법인, 요구조건 추출 완료 공고를 바로 볼 수 있게 했다.
+  - 나라장터 공고 목록의 `공고 상세 저장` 버튼을 테이블 상단 sticky 액션바로 이동해, 선택한 공고와 저장 액션의 맥락을 분명히 했다.
+- 검증 결과
+  - `npm run build`: 성공
+  - `py -3.13 -m unittest discover -s tests -v`: 42개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-10 22:49:01 +09:00)
+- Scope
+  - Implemented all requested UX improvement items 1 through 5.
+- Changes
+  - Reworked the corporation page into a tabbed workspace: evidence upload, extraction review, evidence library, and corporation directory/readiness.
+  - Moved evidence review into a clearer dedicated flow and added help cards explaining reprocess, corrected-text reanalysis, and selected candidate application.
+  - Added current profile value vs extracted value comparison to each extraction candidate card.
+  - Added a dashboard `Today Queue` section for pending evidence review, OCR/extraction correction needs, low-readiness corporations, and notices with extracted requirement candidates.
+  - Moved the Nara board `Save notice detail` action into a sticky action bar above the result table.
+- Verification
+  - `npm run build`: passed
+  - `py -3.13 -m unittest discover -s tests -v`: 42 passed, 1 optional OCR test skipped
+  - `git diff --check`: no whitespace errors; only Windows CRLF warnings
+
+## 추가 업데이트 (2026-05-10 22:11:10 +09:00)
+- 사용자 요청에 따라 Step 1부터 Step 5까지 순차 개발을 진행했고, 각 step 종료 시 테스트와 코드리뷰 관점 검토를 수행했다.
+- Step 1: 증빙서류 추출 룰 튜닝
+  - 신용평가, 국세/지방세 납세, 4대보험 완납, 실적증명, 재무/매출 증빙 문서 유형을 규칙 기반 분류/추출 범위에 포함했다.
+  - 기존 AI fallback 테스트 샘플이 새 룰에 정상 분류되는 충돌을 발견하고, 진짜 미분류 문서 샘플로 테스트 의도를 보정했다.
+- Step 2: 증빙자료 관리 UX 확장
+  - 증빙자료 전체 목록 API를 후보 수, 승인 후보 수, 연결 법인명과 함께 내려주도록 확장했다.
+  - 증빙자료 메타데이터 수정 API와 재처리 API를 추가했다.
+  - 포탈 법인 관리 화면에 증빙자료 관리 테이블, 상세 검토, 메타데이터 저장, 재처리, 삭제 액션을 추가했다.
+- Step 3: OCR 보정 UX
+  - OCR/파싱 텍스트를 사용자가 직접 수정한 뒤 해당 텍스트 기준으로 다시 분류/추출하는 API를 추가했다.
+  - 상세 검토 화면에 `OCR/파싱 텍스트 보정` 영역과 재분석 버튼을 추가했다.
+- Step 4: 법인 프로필 준비도 화면
+  - 법인 정보와 승인된 증빙 후보를 기반으로 `프로필 준비도` 점수, 누락 항목, 증빙 수를 계산하는 API를 추가했다.
+  - 법인 관리 화면에 준비도 카드를 추가했다.
+  - 준비도는 최종 지원 가능/불가능 판정이 아니라 판단 준비 상태 안내로 제한했다.
+- Step 5: 공고 요구조건 추출 강화
+  - 나라장터 저장 공고 분석 결과에 `notice_requirements` 구조를 추가했다.
+  - 지역, 면허/업종, 기업유형, 제출/증빙서류, 금액, 주요 일정을 후보값으로 추출한다.
+  - 저장 공고 상세 화면에 `요구조건 구조화 후보` 카드를 추가했다.
+- 문서 업데이트
+  - `docs/technical-design.md`: Phase 1.6 현재 구현 상태와 파이프라인 설명 갱신
+  - `docs/ux-design.md`: 증빙자료 관리, OCR 보정, 준비도 카드, 공고 요구조건 후보 UX 반영
+  - `docs/work-log.md`: 현재 작업 내역 기록
+- 검증 결과
+  - `py -3.13 -m unittest discover -s backend\tests -v`: 39개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+
+## Additional Update (2026-05-10 22:11:10 +09:00)
+- Implemented user-requested Steps 1 through 5 sequentially, with tests and review after each step.
+- Step 1: expanded corporation evidence extraction rules for credit rating, tax/local tax, insurance payment, performance, and financial/revenue evidence.
+- Step 2: added evidence list enrichment, metadata update, reprocess API, and portal management UX.
+- Step 3: added corrected OCR/parser text reanalysis API and portal correction UX.
+- Step 4: added corporation readiness API and cards that show missing inputs only, not eligibility verdicts.
+- Step 5: added Nara notice requirement candidate extraction under `analysis_summary_json.notice_requirements` and rendered it on the saved notice detail page.
+- Documentation updated:
+  - `docs/technical-design.md`
+  - `docs/ux-design.md`
+  - `docs/work-log.md`
+- Verification:
+  - `py -3.13 -m unittest discover -s backend\tests -v`: 39 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-10 22:23:25 +09:00)
+- 사용자 요청에 따라 전체 코드리뷰를 진행했고, 직전 구현 범위인 증빙자료 관리, OCR 보정, 법인 준비도, 나라장터 요구조건 추출을 집중 검토했다.
+- 리뷰에서 수정한 사항
+  - Gemini 기본 모델은 `gemini-2.5-flash`인데 포탈 fallback 옵션과 백엔드 모델 옵션 라벨에 `Flash-Lite`가 남아 있던 표시 불일치를 수정했다.
+  - 증빙자료 재처리/보정 재분석 시 이미 승인된 동일 후보값이 다시 pending 후보로 중복 생성될 수 있는 흐름을 방지했다.
+- 새로 추가한 테스트
+  - AI 모델 설정 응답이 `gemini-2.5-flash`를 올바르게 표시하고 `Flash-Lite` 잔여 라벨을 노출하지 않는지 검증
+  - 증빙자료 재처리 시 승인된 후보는 보존하고 동일 pending 후보를 중복 생성하지 않는지 검증
+  - OCR/파싱 보정 텍스트가 비어 있으면 재분석을 거부하는지 검증
+  - 공고 요구조건 추출이 지역, 면허, 기업유형, 제출서류 후보를 추출하되 지원 가능 판정 문구를 만들지 않는지 검증
+- 검증 결과
+  - `py -3.13 -m unittest discover -s backend\tests -v`: 42개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-10 22:23:25 +09:00)
+- Performed a full code review focused on the latest evidence management, OCR correction, corporation readiness, and Nara requirement extraction work.
+- Fixes:
+  - corrected stale `Flash-Lite` labels for the current `gemini-2.5-flash` model
+  - prevented reprocess/corrected-text reanalysis from recreating identical pending candidates that were already approved
+- Added tests:
+  - AI model label/default regression
+  - evidence reprocess preserves approved candidates without duplicate pending values
+  - corrected OCR/parser text requires non-empty input
+  - Nara requirement extraction returns candidates without eligibility verdict wording
+- Verification:
+  - `py -3.13 -m unittest discover -s backend\tests -v`: 42 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `git diff --check`: no whitespace errors; Windows CRLF warnings only
+
+## 추가 업데이트 (2026-05-10)
+- OpenAI API 권장 모델 설정을 현재 무료 일일 사용량 정책에 맞춰 조정했다.
+- 변경 내용
+  - 기본 요약 모델을 `gpt-5.4-mini`로 변경
+  - 정밀 보조 모델 설정값을 `gpt-5.4`로 추가/정리
+  - `backend/.env.example`, `backend/app/main.py`, `README.md`, `docs/ai-api-setup.md`, `docs/technical-design.md`, `docs/technology-summary.md`, `docs/narajangteo-api-test-result-20260505.md`의 모델 표기를 정리
+  - `docs/ai-api-setup.md`에 API 키 입력 위치, 한 줄 입력 규칙, 서버 재시작 필요사항을 추가
+- 설정 확인
+  - `backend/.env`에 `OPENAI_API_KEY`가 설정되어 있는지 확인했다.
+  - 실제 키 값은 출력하지 않았고, 설정 여부와 길이만 확인했다.
+  - `OPENAI_MODEL_PRIMARY=gpt-5.4-mini`, `OPENAI_MODEL_SECONDARY=gpt-5.4` 설정을 확인했다.
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 30개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-10)
+- Updated the recommended OpenAI model configuration based on the current free daily shared-traffic allowance.
+- Changes:
+  - set the primary summarization model to `gpt-5.4-mini`
+  - added/normalized the precision secondary model setting as `gpt-5.4`
+  - updated model references in `backend/.env.example`, `backend/app/main.py`, `README.md`, `docs/ai-api-setup.md`, `docs/technical-design.md`, `docs/technology-summary.md`, and `docs/narajangteo-api-test-result-20260505.md`
+  - documented where to put the OpenAI API key, the single-line `.env` rule, and the need to restart the backend after changes
+- Configuration check:
+  - confirmed that `backend/.env` contains an `OPENAI_API_KEY` entry without exposing the actual secret
+  - confirmed `OPENAI_MODEL_PRIMARY=gpt-5.4-mini` and `OPENAI_MODEL_SECONDARY=gpt-5.4`
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 30 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `git diff --check`: no whitespace errors; only Windows CRLF warnings
+
+## 추가 업데이트 (2026-05-10)
+- 사용자가 입력한 OpenAI API 키 동작 여부를 재확인했다.
+- 백엔드 서버를 포트 `18111`에서 재실행했고 `/health` 응답이 `ok`인지 확인했다.
+- 키 값은 출력하지 않고 `backend/.env`의 설정 여부와 모델 설정만 확인했다.
+- OpenAI 최소 JSON 응답 테스트를 `gpt-5.4-mini`로 재시도했다.
+- 결과
+  - 백엔드 서버 상태: 정상
+  - API 키 로딩: 정상
+  - OpenAI 응답: `RateLimitError`, HTTP `429`, code `insufficient_quota`
+- 판단
+  - 현재 문제는 서버 재시작/환경변수 반영 문제가 아니라 OpenAI 프로젝트의 사용 가능 쿼터, 결제, 예산 한도 또는 프로젝트 사용 제한 문제로 보인다.
+
+## Additional Update (2026-05-10)
+- Retried the OpenAI API key connectivity check after restarting the backend server.
+- Restarted the backend on port `18111` and confirmed `/health` returns `ok`.
+- Did not print the secret key; only verified key presence and model configuration.
+- Retried a minimal JSON response request with `gpt-5.4-mini`.
+- Result:
+  - backend server: healthy
+  - API key loading: successful
+  - OpenAI response: `RateLimitError`, HTTP `429`, code `insufficient_quota`
+- Assessment:
+  - This is not a backend restart or environment loading issue. It appears to be an OpenAI project quota, billing, budget-limit, or usage-limit issue.
+
+## 추가 업데이트 (2026-05-10)
+- AI API 구조를 OpenAI 단일 호출에서 Gemini/OpenAI 동시 지원 구조로 변경했다.
+- 백엔드 변경
+  - 기본 Provider/모델을 `gemini` / `gemini-2.5-flash-lite`로 변경
+  - `google-genai==2.0.1` 의존성 추가
+  - `GEMINI_API_KEY`, `GEMINI_MODEL_PRIMARY`, `AI_PROVIDER_DEFAULT`, `AI_MODEL_DEFAULT` 환경변수 추가
+  - 기존 `OPENAI_API_KEY`, `OPENAI_MODEL_PRIMARY`, `OPENAI_MODEL_SECONDARY`는 보조 Provider로 유지
+  - `/api/settings/ai-models` API 추가: 키 설정 여부, 마스킹 키, 선택 가능한 모델 목록 제공
+  - 문서 분석/재분석 API와 나라장터 저장/재분석 API가 `model_provider`, `model_name` 선택값을 받도록 변경
+  - 캐시 조회 기준을 `input_hash + prompt_version + model_provider + model_name`으로 강화
+  - 선택 Provider 키가 없거나 호출 실패 시 기존 fallback 요약으로 안전하게 전환
+- 프론트엔드 변경
+  - 문서 이력 화면, 분석 결과 화면, 나라장터 공고 검색 저장 액션, 저장 공고 상세 재분석에 AI 모델 선택 UI 추가
+  - 선택값은 localStorage에 저장해 다음 분석에서도 유지
+  - 설정 화면에서 Gemini/OpenAI 키 설정 여부와 기본 모델을 확인할 수 있도록 추가
+- 문서 변경
+  - `README.md`, `docs/ai-api-setup.md`, `docs/technical-design.md`, `docs/technology-summary.md`, `docs/narajangteo-api-test-result-20260505.md` 업데이트
+- 검증 결과
+  - `py -3.13 -m pip install -r backend/requirements.txt`: 성공
+  - `py -3.13 -m unittest discover -s tests -v`: 32개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - Gemini SDK 더미 키 테스트: SDK 호출 파라미터는 정상이며, 예상대로 `API key not valid` 응답 확인
+
+## Additional Update (2026-05-10)
+- Changed the AI API architecture from OpenAI-only to dual Gemini/OpenAI support.
+- Backend changes:
+  - default provider/model is now `gemini` / `gemini-2.5-flash-lite`
+  - added `google-genai==2.0.1`
+  - added `GEMINI_API_KEY`, `GEMINI_MODEL_PRIMARY`, `AI_PROVIDER_DEFAULT`, and `AI_MODEL_DEFAULT`
+  - kept `OPENAI_API_KEY`, `OPENAI_MODEL_PRIMARY`, and `OPENAI_MODEL_SECONDARY` as secondary provider settings
+  - added `/api/settings/ai-models` for masked key status and selectable model options
+  - document analysis/re-analysis and Nara save/re-analysis APIs now accept `model_provider` and `model_name`
+  - cache lookup now includes `input_hash + prompt_version + model_provider + model_name`
+  - missing key or provider failure falls back to the deterministic local summary
+- Frontend changes:
+  - added AI model selectors to document history, analysis result, Nara notice save/analyze, and saved notice re-analysis flows
+  - persisted model selection in localStorage
+  - added Gemini/OpenAI configuration status to the settings page
+- Documentation:
+  - updated `README.md`, `docs/ai-api-setup.md`, `docs/technical-design.md`, `docs/technology-summary.md`, and `docs/narajangteo-api-test-result-20260505.md`
+- Verification:
+  - `py -3.13 -m pip install -r backend/requirements.txt`: passed
+  - `py -3.13 -m unittest discover -s tests -v`: 32 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - Gemini SDK dummy-key call reached the API and returned the expected invalid-key response, confirming the SDK call shape is valid
+
+## 추가 업데이트 (2026-05-10)
+- 사용자가 입력한 Gemini API 키 동작 여부를 확인했다.
+- 키 값은 출력하지 않고 `GEMINI_API_KEY` 설정 여부와 길이만 확인했다.
+- 백엔드의 실제 `summarize_with_ai` 경로로 `gemini-2.5-flash-lite` 최소 조달문서 요약 호출을 실행했다.
+- 결과
+  - `GEMINI_API_KEY`: 설정됨
+  - Provider: `gemini`
+  - Model: `gemini-2.5-flash-lite`
+  - 호출 결과: 성공
+  - 요약 JSON과 Markdown 출력 생성 확인
+- 참고
+  - 이미 실행 중인 백엔드 서버가 있다면 `.env` 변경 반영을 위해 서버 재시작이 필요하다.
+
+## Additional Update (2026-05-10)
+- Verified the Gemini API key entered by the user.
+- Did not print the secret value; only checked key presence and length.
+- Ran a minimal Korean procurement summary request through the backend `summarize_with_ai` path using `gemini-2.5-flash-lite`.
+- Result:
+  - `GEMINI_API_KEY`: configured
+  - provider: `gemini`
+  - model: `gemini-2.5-flash-lite`
+  - API call: successful
+  - structured JSON and Markdown summary were generated
+- Note:
+  - If a backend server is already running, restart it so the new `.env` value is loaded.
+
+## 추가 업데이트 (2026-05-10)
+- 사용 요청에 따라 Gemini 기본 모델 후보를 `gemini-2.5-flash`로 먼저 실제 호출 테스트했다.
+- 테스트 결과
+  - `gemini-2.5-flash`: 호출 성공
+  - JSON 응답 생성 성공
+- 호출 성공에 따라 기본 Gemini 모델을 `gemini-2.5-flash-lite`에서 `gemini-2.5-flash`로 변경했다.
+- 변경 범위
+  - `backend/.env`
+  - `backend/.env.example`
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/aiModel.ts`
+  - `README.md`
+  - `docs/ai-api-setup.md`
+  - `docs/technical-design.md`
+  - `docs/technology-summary.md`
+  - `docs/narajangteo-api-test-result-20260505.md`
+- 참고
+  - 이미 실행 중인 백엔드 서버가 있으면 기본 모델 변경 반영을 위해 재시작이 필요하다.
+
+## Additional Update (2026-05-10)
+- Tested `gemini-2.5-flash` as the requested Gemini default model candidate before changing configuration.
+- Test result:
+  - `gemini-2.5-flash`: call succeeded
+  - JSON response generation succeeded
+- Because the call succeeded, changed the default Gemini model from `gemini-2.5-flash-lite` to `gemini-2.5-flash`.
+- Updated:
+  - `backend/.env`
+  - `backend/.env.example`
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/aiModel.ts`
+  - `README.md`
+  - `docs/ai-api-setup.md`
+  - `docs/technical-design.md`
+  - `docs/technology-summary.md`
+  - `docs/narajangteo-api-test-result-20260505.md`
+- Note:
+  - Restart any running backend server so the changed default model is loaded.
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6B의 추출 후보 검토 UX를 개선했다.
+- 변경 내용
+  - 법인 증빙자료 업로드 후 자동 추출 후보를 체크박스 기반으로 선택할 수 있게 변경
+  - 후보값을 법인 프로필에 반영하기 전에 사용자가 직접 수정할 수 있는 입력 필드 추가
+  - `전체 선택`, `선택 해제`, `N개 선택 반영` 액션 추가
+  - 선택하지 않은 후보는 보류 상태로 남기고 법인 프로필에 반영하지 않도록 UX를 변경
+  - 모바일 화면에서 후보 검토 카드가 1열로 접히도록 반응형 스타일 추가
+- 테스트 보강
+  - 선택한 후보만 반영되고 수정 입력값이 우선 적용되는 백엔드 회귀 테스트 추가
+- 문서 업데이트
+  - `docs/ux-design.md`: 현재 구현된 필드별 선택/수정 후보 검토 UX 반영
+  - `docs/corporation-evidence-auto-extraction-plan.md`: 선택 후보만 반영하는 가드레일과 테스트 항목 추가
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 33개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+
+## Additional Update (2026-05-10)
+- Improved the Phase 1.6B extraction candidate review UX.
+- Changes:
+  - extracted evidence candidates can now be selected with checkboxes
+  - candidate values can be corrected before applying them to the corporation profile
+  - added select-all, clear-selection, and selected-count apply actions
+  - unselected candidates remain pending and are not applied to the corporation profile
+  - added responsive single-column candidate cards for smaller screens
+- Test coverage:
+  - added a backend regression test proving only selected candidates are applied and edited values take precedence
+- Documentation:
+  - updated `docs/ux-design.md` with the implemented per-field candidate review UX
+  - updated `docs/corporation-evidence-auto-extraction-plan.md` with the selected-candidates-only guardrail and test item
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 33 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6C의 알 수 없는 증빙서류 AI 분류 fallback을 백엔드에 추가했다.
+- 변경 내용
+  - 규칙 기반 증빙서류 분류가 실패하고 추출 텍스트가 존재할 때만 LLM 분류를 시도
+  - Gemini/OpenAI 공통 Provider abstraction을 사용하며 현재 기본 모델은 `gemini-2.5-flash`
+  - LLM 응답은 문서 유형, 분류 신뢰도, 법인 프로필 후보 필드, 경고 목록 JSON으로 파싱
+  - 지원하지 않는 문서 유형/필드 키는 저장하지 않도록 검증
+  - LLM 결과는 `ai_suggested` 상태로 저장하고 자동 확정하지 않음
+  - LLM 후보도 필드별 체크/수정/선택 반영 UX를 거쳐야 법인 프로필에 반영
+  - API 키가 없거나 LLM 호출이 실패하면 기존 `needs_review` 수동 검토 흐름 유지
+- 테스트 보강
+  - 알 수 없는 증빙서류가 AI 분류 fallback을 통해 `ai_suggested` 후보로 저장되고, 후보 상태가 `pending`으로 유지되는 테스트 추가
+- 문서 업데이트
+  - `docs/technical-design.md`: 현재 LLM fallback 구현 상태 반영
+  - `docs/corporation-evidence-auto-extraction-plan.md`: 구현 조건, 기본 모델, 안전 가드레일, 테스트 항목 반영
+  - `docs/ux-design.md`: AI 제안 후보도 동일 검토 UX를 사용한다고 명시
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 34개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+
+## Additional Update (2026-05-10)
+- Added the Phase 1.6C unknown-evidence AI classification fallback to the backend.
+- Changes:
+  - attempts LLM classification only when rule-based evidence classification fails and extracted text exists
+  - uses the shared Gemini/OpenAI provider abstraction; current default model is `gemini-2.5-flash`
+  - parses LLM output into document type, confidence, corporation profile candidates, and warnings
+  - rejects unsupported document types or unsupported profile field keys
+  - stores LLM results as `ai_suggested`, never as confirmed profile data
+  - AI-created candidates must go through the same checkbox/edit/apply review UX before profile updates
+  - missing API key or provider failure keeps the evidence in the existing `needs_review` manual flow
+- Test coverage:
+  - added a backend regression test proving unknown evidence can become `ai_suggested` with pending review candidates
+- Documentation:
+  - updated `docs/technical-design.md` with the current LLM fallback implementation
+  - updated `docs/corporation-evidence-auto-extraction-plan.md` with run conditions, default model, guardrails, and test item
+  - updated `docs/ux-design.md` to state that AI-suggested candidates use the same review UX
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 34 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-10)
+- 사용자가 확정한 `사업자등록번호 + 관리 법인그룹` 중복 정책을 설계문서, UX문서, 구현에 반영했다.
+- 정책 정리
+  - 같은 사업자등록번호라도 관리 법인그룹이 다르면 중복 등록을 허용한다.
+  - 같은 사업자등록번호와 같은 관리 법인그룹 조합은 중복 법인으로 보고 등록을 차단한다.
+  - 다른 관리 법인그룹에 동일 사업자등록번호가 있으면 등록은 허용하되 안내 메시지를 표시한다.
+  - 기본 관리 법인그룹 이름은 `기본 관리그룹`으로 둔다.
+- 문서 업데이트
+  - `docs/technical-design.md`: 법인 관리 필드, 중복 정책, 증빙 승인 파이프라인, AI/Engineering 가정 업데이트
+  - `docs/ux-design.md`: 법인 관리 화면, 증빙자료 등록 UX, 법인 선택 UX, 중복 안내 UX 업데이트
+  - `docs/corporation-evidence-auto-extraction-plan.md`: Phase 1.6A 범위, 구현 순서, 완료 기준, 테스트 계획 업데이트
+- 백엔드 구현
+  - `corporations.management_group_name` 컬럼 추가
+  - `corporation_evidence_documents.management_group_name` 컬럼 추가
+  - 수동 법인 등록 시 동일 사업자등록번호 + 동일 관리그룹 중복 차단
+  - 동일 사업자등록번호 + 다른 관리그룹은 허용하고 warning 반환
+  - 법인 수정 시에도 같은 중복 정책 적용
+  - 증빙자료 승인으로 신규 법인을 생성할 때도 같은 중복 정책 적용
+  - 사업자등록번호 포맷 정규화 추가
+  - `candidate_ids: []`가 전체 후보 승인으로 처리되지 않도록 보호 로직 추가
+- 프론트엔드 구현
+  - 법인 직접 등록 폼에 관리 법인그룹 입력 추가
+  - 증빙자료 업로드 폼에 관리 법인그룹 입력/자동완성 추가
+  - 기존 법인에 증빙자료를 연결하면 해당 법인의 관리그룹을 사용하도록 처리
+  - 법인 목록 테이블에 관리그룹 컬럼 추가
+  - 중복 사업자등록번호가 다른 그룹에 있을 때 안내 배너 표시
+- 테스트 추가
+  - 같은 사업자등록번호 + 같은 관리그룹 등록 차단 테스트
+  - 같은 사업자등록번호 + 다른 관리그룹 등록 허용 및 warning 테스트
+  - 증빙 승인 기반 신규 법인 생성 시 관리그룹 중복 정책 테스트
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 28개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 상태 확인
+
+## Additional Update (2026-05-10)
+- Applied the product-approved duplicate policy based on `business_registration_number + management_group_name`.
+- Policy:
+  - the same business registration number is allowed across different management groups
+  - the same business registration number inside the same management group is blocked
+  - duplicates in other groups return warnings but do not block creation
+  - default management group name is `기본 관리그룹`
+- Documentation:
+  - updated `docs/technical-design.md`
+  - updated `docs/ux-design.md`
+  - updated `docs/corporation-evidence-auto-extraction-plan.md`
+- Backend:
+  - added `management_group_name` to corporations
+  - added `management_group_name` to corporation evidence documents
+  - implemented duplicate checks for manual create, update, and evidence-approval-created corporations
+  - normalized business registration numbers before storage/comparison
+  - protected `candidate_ids: []` from being treated as approve-all
+- Frontend:
+  - added management group input/autocomplete to manual corporation creation
+  - added management group input/autocomplete to evidence upload
+  - linked evidence uploads use the selected existing corporation's management group
+  - added management group column to the corporation table
+  - displayed warnings for same registration number in another group
+- Tests:
+  - same-group duplicate block
+  - other-group duplicate warning/allow
+  - evidence approval duplicate policy
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 28 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+
+## 추가 업데이트 (2026-05-10)
+- 현재까지 누적된 코드 수정 내용 전체 리뷰와 설계문서 재검토를 수행했다.
+- 코드 리뷰 후 수정
+  - 법인 관리 수동 등록 폼 안에 편집용 `관리 법인그룹` 입력이 잘못 들어간 UX 버그를 수정했다.
+  - 편집 폼에는 올바른 위치에 `관리 법인그룹` 입력을 배치했다.
+  - 증빙 승인 API에서 `candidate_ids: []`가 전달될 때 전체 후보가 승인될 수 있는 방어 취약점을 수정했다.
+  - 추출 텍스트가 비어 있거나 OCR/파싱이 실패한 경우, 수동 문서 유형 지정만으로 중소기업/여성기업 등 정적 인증 후보가 생성되지 않도록 수정했다.
+- 테스트 보강
+  - `candidate_ids: []` + 수동 필드값 승인 시 후보 전체가 승인되지 않는 테스트 추가
+  - 빈 텍스트 + 수동 핵심 증빙 유형 지정 시 정적 후보가 생성되지 않는 테스트 추가
+- 문서 재검토 및 수정
+  - `README.md`: 현재 프론트 실제 의존성에 맞춰 TanStack Query를 활성 기술 스택에서 제거
+  - `docs/technical-design.md`: 현재 React state/API 클라이언트 구조와 향후 후보 기술을 구분
+  - `docs/technology-summary.md`: 현재 구현 기술과 향후 후보 기술을 구분
+  - `docs/technical-design.md`, `docs/corporation-evidence-auto-extraction-plan.md`: 빈 텍스트/파싱 실패 시 후보 생성 금지 정책 추가
+  - `docs/technical-design.md`: 이미 확정된 사업자등록번호 필드 질문 제거 및 남은 UX 질문으로 교체
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 30개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 상태 확인
+
+## Additional Update (2026-05-10)
+- Performed a full review of accumulated code changes and rechecked design documentation.
+- Code fixes:
+  - fixed a portal UX bug where the edit-only management group field was accidentally rendered inside the manual-create form
+  - placed management group editing in the correct edit form location
+  - fixed the approval API so `candidate_ids: []` cannot approve every pending candidate
+  - prevented static certification/preference candidates from being generated when extracted text is empty, even if a document type is manually selected
+- Tests:
+  - added coverage for `candidate_ids: []` with manual field values
+  - added coverage for empty-text manual core evidence classification
+- Documentation:
+  - updated `README.md` to remove TanStack Query from active frontend stack
+  - updated `docs/technical-design.md` to distinguish current React state/API-client implementation from future candidates
+  - updated `docs/technology-summary.md` to separate active stack from future refactor candidates
+  - updated `docs/technical-design.md` and `docs/corporation-evidence-auto-extraction-plan.md` with the empty-text candidate-generation guardrail
+  - removed a resolved product question about business registration number inclusion and replaced it with the remaining candidate-review UX question
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 30 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `git diff --check`: no whitespace errors; only Windows CRLF warnings
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+- Next:
+  - Phase 1.6B-2: improve OCR correction UX and per-candidate approve/reject workflow
+  - Phase 1.6B-3: tune extraction rules with additional real evidence samples
+  - Phase 1.7 candidate: design a preparation screen for comparing notice requirements with corporation profile fields
+
+## 추가 업데이트 (2026-05-10)
+- Phase 1.6A + Phase 1.6B 통합 코드 리뷰를 수행했다.
+- 검토 범위
+  - 증빙자료 업로드 API
+  - OCR/파싱 연동
+  - 증빙서류 자동 분류/후보 추출 파이프라인
+  - 추출 후보 승인 및 법인 프로필 반영 로직
+  - 법인 관리 포탈 UX
+  - 관련 백엔드 테스트와 프론트엔드 빌드
+- 리뷰에서 확인한 주요 개선 필요사항
+  - 추출 실패/빈 텍스트 상태에서 수동 문서 유형만으로 인증/우대 후보가 생성될 수 있다.
+  - 현재 승인 UX/API는 후보값을 개별 선택/수정하지 않고 전체 적용하므로 기존 법인명/사업자번호 같은 핵심 식별값이 보조 증빙 OCR 오류로 덮일 수 있다.
+  - API에서 `candidate_ids: []`가 전달되면 아무것도 승인하지 않는 대신 전체 후보가 승인될 수 있다.
+  - 사업자등록번호 기준 중복 법인 방지 로직이 아직 없다.
+- 검증 결과
+  - `py -3.13 -m unittest discover -s tests -v`: 25개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 성공
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - 스모크 테스트 후 FE/BE 서버 종료 상태 확인
+
+## Additional Update (2026-05-10)
+- Performed an integrated code review for Phase 1.6A + Phase 1.6B.
+- Review scope:
+  - evidence upload API
+  - OCR/parsing integration
+  - evidence classification and candidate extraction pipeline
+  - candidate approval and corporation profile update flow
+  - corporation portal UX
+  - related backend tests and frontend build
+- Key review findings:
+  - manual document type selection can create certification/preference candidates even when extraction failed or text is empty
+  - the current approval API/UX applies all candidates at once, so supplemental evidence OCR errors can overwrite core identity fields
+  - `candidate_ids: []` currently behaves like no filter and may approve all pending candidates
+  - duplicate corporation prevention by business registration number is not implemented yet
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 25 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+
+## 추가 업데이트 (2026-05-10) - 전역 처리중 UX 적용
+- 사용자 액션으로 서버 API 호출이나 긴 처리가 발생하는 지점을 점검했다.
+- 공통 UX 컴포넌트 `WorkOverlayProvider` / `useWorkOverlay`를 추가했다.
+- 처리 중에는 전체 화면 오버레이, 원형 로딩바, 흐림 배경, 클릭/이동 차단, 단계형 진행 문구를 보여주도록 했다.
+- 완료/실패 시 상단 토스트로 결과를 안내하도록 했다.
+- 적용한 주요 흐름:
+  - 법인/증빙자료: 증빙 업로드 OCR 분석, 추출값 반영, 상세 조회, 메타데이터 저장, 재처리, 보정 텍스트 재분석, 삭제, 법인 등록/수정/삭제, 증빙/준비도 새로고침
+  - 나라장터: 공고 검색, 페이지 이동 검색, 공고 상세 저장 작업 등록, 저장 공고 검색/삭제, 저장 공고 재분석
+  - 일반 문서: 문서 업로드, 분석, 삭제, 메타데이터 수정, 분석 결과 재분석
+  - 프로젝트/설정: 프로젝트 생성/수정/삭제, 설정 새로고침, 나라장터 API 연결 테스트
+- 검증 결과:
+  - `npm run build`: 통과
+
+## Additional Update (2026-05-10) - Global Processing UX
+- Reviewed user-triggered API and long-running processing flows across the portal.
+- Added shared `WorkOverlayProvider` / `useWorkOverlay`.
+- Processing tasks now show a blocking full-screen overlay with circular spinner, blurred background, staged progress copy, and navigation/click blocking.
+- Completion and failure feedback now appears through global toast notifications.
+- Applied to corporation evidence, Nara board, saved notices, document upload/analysis, projects, settings, and analysis rerun actions.
+- Verification:
+  - `npm run build`: passed

@@ -9,6 +9,7 @@ import { NaraSavedNoticeDetailPage } from "../pages/NaraSavedNoticeDetailPage";
 import { NaraSavedNoticesPage } from "../pages/NaraSavedNoticesPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { WorkOverlayProvider } from "./workOverlay";
 
 type NavItem = {
   to?: string;
@@ -117,6 +118,7 @@ export function App() {
   const currentPage = getPageMeta(location.pathname);
 
   return (
+    <WorkOverlayProvider>
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand-card">
@@ -199,5 +201,6 @@ export function App() {
         </section>
       </main>
     </div>
+    </WorkOverlayProvider>
   );
 }
