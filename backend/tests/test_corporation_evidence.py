@@ -1,7 +1,7 @@
-import unittest
 import json
+import unittest
 
-from app.pipelines.corporation_evidence import analyze_corporation_evidence
+from app.pipelines.corporation_evidence import analyze_corporation_evidence, normalize_business_kind_values
 
 
 BUSINESS_REGISTRATION_TEXT = """
@@ -46,6 +46,17 @@ BROKEN_BUSINESS_KIND_OCR_TEXT = """
 발급사유 : 정정
 """
 
+INLINE_LABEL_BUSINESS_KIND_OCR_TEXT = """
+사업자등록증
+등록번호 : 142-81-28387
+법인명(단체명) : 주식회사 온세이엔씨
+사업의 종류 : 업태 건설업 종목 전기공사, 신재생에너지 설비설치전문기
+업
+업태 도매 및
+소매업 종목 컴퓨터 관련 주변기기, 산업안전용품
+사업자 단위 과세 적용사업자 여부 : 여( ) 부(V)
+"""
+
 
 class CorporationEvidenceExtractionTests(unittest.TestCase):
     def test_business_registration_rules_extract_core_fields(self) -> None:
@@ -77,6 +88,37 @@ class CorporationEvidenceExtractionTests(unittest.TestCase):
         self.assertIn("컴퓨터 관련 주변기기", fields["business_item"])
         self.assertIn("업태:", fields["business_category"])
         self.assertIn("종목:", fields["business_category"])
+        for label in ["사업의", "종류", "업태", "종목"]:
+            self.assertNotIn(label, fields["business_type"])
+            self.assertNotIn(label, fields["business_item"])
+
+    def test_business_registration_rules_clean_inline_kind_labels(self) -> None:
+        result = analyze_corporation_evidence(INLINE_LABEL_BUSINESS_KIND_OCR_TEXT, "사업자등록증.png")
+        fields = {candidate.field_key: candidate.extracted_value for candidate in result.candidates}
+
+        self.assertIn("건설업", fields["business_type"])
+        self.assertIn("도매 및 소매업", fields["business_type"])
+        self.assertIn("전기공사", fields["business_item"])
+        self.assertIn("신재생에너지설비설치전문기업", fields["business_item"])
+        self.assertIn("컴퓨터 관련 주변기기", fields["business_item"])
+        self.assertIn("산업안전용품", fields["business_item"])
+        self.assertNotIn("사업자 단위 과세", fields["business_item"])
+
+    def test_llm_business_kind_values_are_sanitized_before_display(self) -> None:
+        business_types, business_items = normalize_business_kind_values(
+            ["사업의 종류", "업태 건설업", "도매 및\n소매업"],
+            [
+                "종목 전기공사,신재생에너지설비설치전문기\n업",
+                "건설업 정보통신공사업, 토목공사업",
+            ],
+        )
+
+        self.assertEqual(business_types, ["건설업", "도매 및 소매업"])
+        self.assertIn("전기공사", business_items)
+        self.assertIn("신재생에너지설비설치전문기업", business_items)
+        self.assertIn("정보통신공사업", business_items)
+        self.assertIn("토목공사업", business_items)
+        self.assertNotIn("종목", ", ".join(business_items))
 
     def test_unknown_evidence_requires_review(self) -> None:
         result = analyze_corporation_evidence("임의의 회사 소개서입니다.", "intro.pdf")

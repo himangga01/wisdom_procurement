@@ -10,10 +10,13 @@ import type {
   DocumentRecord,
   NaraNoticeSearchItem,
   NaraNoticeSearchResponse,
+  NoticeCorporationComparison,
+  NoticeRequirementPayload,
   NaraIntegrationStatus,
   NaraIntegrationTestResult,
   Project,
   SavedNaraNotice,
+  CorporationComparisonProfile,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:18000";
@@ -55,6 +58,8 @@ export const api = {
       method: "DELETE",
     }),
   listCorporationReadiness: () => request<CorporationReadiness[]>("/api/corporations/readiness"),
+  getCorporationComparisonProfile: (corporationId: number) =>
+    request<CorporationComparisonProfile>(`/api/corporations/${corporationId}/comparison-profile`),
   listCorporationEvidenceDocuments: (corporationId: number) =>
     request<CorporationEvidenceDocument[]>(`/api/corporations/${corporationId}/evidence-documents`),
   listAllCorporationEvidenceDocuments: () =>
@@ -168,6 +173,22 @@ export const api = {
     return request<SavedNaraNotice[]>(`/api/nara/saved-notices?${query.toString()}`);
   },
   getSavedNaraNotice: (id: number) => request<SavedNaraNotice>(`/api/nara/saved-notices/${id}`),
+  getSavedNaraNoticeRequirements: (id: number) =>
+    request<NoticeRequirementPayload>(`/api/nara/saved-notices/${id}/requirements`),
+  extractSavedNaraNoticeRequirements: (id: number) =>
+    request<NoticeRequirementPayload>(`/api/nara/saved-notices/${id}/requirements/extract`, {
+      method: "POST",
+    }),
+  listNoticeComparisons: () => request<NoticeCorporationComparison[]>("/api/notice-comparisons"),
+  listNoticeComparisonsByNotice: (noticeId: number) =>
+    request<NoticeCorporationComparison[]>(`/api/nara/saved-notices/${noticeId}/comparisons`),
+  createNoticeComparison: (noticeId: number, corporationId: number) =>
+    request<NoticeCorporationComparison>("/api/notice-comparisons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nara_notice_id: noticeId, corporation_id: corporationId }),
+    }),
+  getNoticeComparison: (id: number) => request<NoticeCorporationComparison>(`/api/notice-comparisons/${id}`),
   reanalyzeSavedNaraNotice: (id: number, selection?: AiModelSelection) =>
     request<{ status: string; notice: SavedNaraNotice }>(`/api/nara/saved-notices/${id}/reanalyze`, {
       method: "POST",

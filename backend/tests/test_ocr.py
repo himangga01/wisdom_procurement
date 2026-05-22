@@ -5,6 +5,7 @@ from pathlib import Path
 
 import fitz
 
+from app.pipelines.corporation_evidence import analyze_corporation_evidence
 from app.pipelines import ocr
 
 
@@ -125,6 +126,13 @@ class OcrPipelineTests(unittest.TestCase):
             any(token in normalized for token in ("사업자등록", "142-81-28387", "온세이엔씨")),
             result.text,
         )
+        analysis = analyze_corporation_evidence(result.text, path.name)
+        fields = {candidate.field_key: candidate.extracted_value for candidate in analysis.candidates}
+        self.assertEqual(analysis.document_type, "business_registration_certificate")
+        self.assertIn("건설업", fields["business_type"])
+        self.assertIn("도매 및 소매업", fields["business_type"])
+        self.assertIn("신재생에너지설비설치전문기업", fields["business_item"])
+        self.assertIn("컴퓨터 관련 주변기기", fields["business_item"])
 
 
 if __name__ == "__main__":

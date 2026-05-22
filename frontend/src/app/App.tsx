@@ -5,6 +5,7 @@ import { CorporationsPage } from "../pages/CorporationsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
 import { NaraBoardPage } from "../pages/NaraBoardPage";
+import { NoticeComparisonPage } from "../pages/NoticeComparisonPage";
 import { NaraSavedNoticeDetailPage } from "../pages/NaraSavedNoticeDetailPage";
 import { NaraSavedNoticesPage } from "../pages/NaraSavedNoticesPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
@@ -34,6 +35,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/nara-board", icon: "NB", label: "나라장터 공고 검색", note: "API 조회, 선택 저장, 자동 분석" },
       { to: "/nara-saved-notices", icon: "SN", label: "저장한 공고", note: "저장 공고와 첨부 처리 상태" },
+      { to: "/notice-comparison", icon: "PV", label: "부족조건 미리보기", note: "공고 요구조건과 법인 준비상태 비교" },
     ],
   },
   {
@@ -106,6 +108,12 @@ const pageMeta = [
     eyebrow: "Saved Notices",
     title: "저장한 공고 관리",
     description: "로컬 DB에 저장한 공고, 첨부 다운로드 상태, 분석 결과를 확인합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/notice-comparison"),
+    eyebrow: "Gap Preview",
+    title: "공고별 부족조건 미리보기",
+    description: "저장 공고의 요구조건 후보와 법인 준비상태를 비교해 부족 가능성이 있는 항목을 먼저 확인합니다.",
   },
 ];
 
@@ -196,6 +204,7 @@ export function App() {
             <Route path="/nara-board" element={<NaraBoardPage />} />
             <Route path="/nara-saved-notices" element={<NaraSavedNoticesPage />} />
             <Route path="/nara-saved-notices/:id" element={<NaraSavedNoticeDetailPage />} />
+            <Route path="/notice-comparison" element={<NoticeComparisonPage />} />
             <Route path="/settings/integrations/nara" element={<SettingsPage />} />
           </Routes>
         </section>

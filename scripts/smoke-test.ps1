@@ -1,5 +1,14 @@
 $ErrorActionPreference = "Stop"
 
+try {
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [Console]::InputEncoding = $utf8NoBom
+  [Console]::OutputEncoding = $utf8NoBom
+  $OutputEncoding = $utf8NoBom
+} catch {}
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+
 $root = Split-Path -Parent $PSScriptRoot
 $backendDir = Join-Path $root "backend"
 $frontendDir = Join-Path $root "frontend"
@@ -10,6 +19,7 @@ $frontendPort = 5199
 $backendBase = "http://127.0.0.1:$backendPort"
 $frontendBase = "http://127.0.0.1:$frontendPort"
 $manageScript = Join-Path $PSScriptRoot "manage-servers.ps1"
+$encodingCheckScript = Join-Path $PSScriptRoot "check-encoding.py"
 $logPath = Join-Path $tempDir "smoke-test.log"
 
 New-Item -ItemType Directory -Force $tempDir | Out-Null
@@ -87,6 +97,12 @@ try {
 
   $pythonExe = Get-Python313Executable
   Write-SmokeLog "python_313=$pythonExe"
+
+  Write-SmokeLog "checking_encoding"
+  & $pythonExe $encodingCheckScript
+  if ($LASTEXITCODE -ne 0) {
+    throw "Encoding check failed."
+  }
 
   $runId = Get-Date -Format "yyyyMMddHHmmss"
   $backendOutLog = Join-Path $tempDir "smoke-backend.$runId.out.log"

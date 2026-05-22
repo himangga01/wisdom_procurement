@@ -240,6 +240,8 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - [OCR 엔진 구현계획](/D:/project/wisdom_procurement/docs/ocr-engine-implementation-plan.md)
 - [핵심 기술 요소 및 활용 기술 정리](/D:/project/wisdom_procurement/docs/technology-summary.md)
 - [법인 증빙자료 자동 추출 설계](/D:/project/wisdom_procurement/docs/corporation-evidence-auto-extraction-plan.md)
+- [Phase 1.6 안정화 계획](/D:/project/wisdom_procurement/docs/phase-1.6-stabilization-plan.md)
+- [Phase 1.7 안정화 계획](/D:/project/wisdom_procurement/docs/phase-1.7-stabilization-plan.md)
 - [지원 가능성 판단 및 로컬 RAG 상세 구현계획](/D:/project/wisdom_procurement/docs/eligibility-rag-implementation-plan.md)
 - [나라장터 API 분석](/D:/project/wisdom_procurement/docs/narajangteo-api-analysis.md)
 - [나라장터 API 테스트 결과](/D:/project/wisdom_procurement/docs/narajangteo-api-test-result-20260505.md)
@@ -317,6 +319,7 @@ Phase 1.6 should be delivered incrementally:
 ## References
 - OCR Engine Implementation Plan: [docs/ocr-engine-implementation-plan.md](docs/ocr-engine-implementation-plan.md)
 - Corporation Evidence Auto-Extraction Plan: [docs/corporation-evidence-auto-extraction-plan.md](docs/corporation-evidence-auto-extraction-plan.md)
+- Phase 1.7 Stabilization Plan: [docs/phase-1.7-stabilization-plan.md](docs/phase-1.7-stabilization-plan.md)
 - Eligibility / RAG Plan: [docs/eligibility-rag-implementation-plan.md](docs/eligibility-rag-implementation-plan.md)
 - Gemini API Docs: [https://ai.google.dev/gemini-api/docs](https://ai.google.dev/gemini-api/docs)
 - Gemini Structured Outputs: [https://ai.google.dev/gemini-api/docs/structured-output](https://ai.google.dev/gemini-api/docs/structured-output)

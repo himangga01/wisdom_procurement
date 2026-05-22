@@ -25,6 +25,7 @@ from app.pipelines.corporation_evidence import (
     allowed_profile_update_fields,
     analyze_corporation_evidence,
     evidence_storage_subdir,
+    normalize_business_kind_values,
 )
 from app.pipelines.ocr import run_ocr, run_ocr_if_needed
 from app.pipelines.parser import extract_document
@@ -70,7 +71,43 @@ NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
 DEFAULT_MANAGEMENT_GROUP_NAME = "기본 관리그룹"
 KST = timezone(timedelta(hours=9))
 
+REQUIREMENT_TYPE_LABELS = {
+    "region": "지역 제한",
+    "license": "면허/업종",
+    "company_type": "기업유형",
+    "required_document": "제출/증빙서류",
+    "money": "금액 조건",
+    "date": "일정 조건",
+    "requirement_line": "원문 요구조건",
+}
+
+COMPARISON_STATUS_LABELS = {
+    "prepared": "준비된 항목",
+    "possibly_missing": "부족 가능성",
+    "needs_review": "확인 필요",
+    "not_found": "법인 정보 없음",
+}
+
+EVIDENCE_DOCUMENT_LABELS = {
+    "business_registration_certificate": "사업자등록증",
+    "business_registration_proof": "사업자등록증명",
+    "small_business_confirmation": "중소기업확인서",
+    "women_owned_business_confirmation": "여성기업확인서",
+    "disabled_owned_business_confirmation": "장애인기업확인서",
+    "direct_production_confirmation": "직접생산확인증명서",
+    "procurement_registration_certificate": "나라장터 경쟁입찰참가자격 등록증",
+    "license_registration_certificate": "면허/등록/허가증",
+    "tax_payment_certificate": "국세 납세증명서",
+    "local_tax_payment_certificate": "지방세 납세증명서",
+    "insurance_payment_certificate": "4대보험 완납증명서",
+    "credit_rating_certificate": "기업신용평가등급확인서",
+    "performance_certificate": "실적증명서",
+    "financial_statement_certificate": "재무/매출 증빙",
+}
+
 app = Flask(__name__)
+app.json.ensure_ascii = False
+app.config["JSON_AS_ASCII"] = False
 CORS(app)
 
 SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -312,6 +349,21 @@ def build_nara_url(base_url: str, operation: str, params: dict[str, str]) -> str
     return f"{base_url.rstrip('/')}/{operation}?{urllib.parse.urlencode(params, doseq=True, safe='%')}"
 
 
+def decode_http_body(body: bytes, charset: str | None = None) -> str:
+    candidates = [charset, "utf-8-sig", "utf-8", "cp949", "euc-kr"]
+    seen: set[str] = set()
+    for candidate in candidates:
+        encoding = (candidate or "").strip().lower()
+        if not encoding or encoding in seen:
+            continue
+        seen.add(encoding)
+        try:
+            return body.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return body.decode("utf-8", errors="replace")
+
+
 def request_text(url: str, timeout: int = 20) -> tuple[int, str]:
     req = urllib.request.Request(
         url,
@@ -322,10 +374,10 @@ def request_text(url: str, timeout: int = 20) -> tuple[int, str]:
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
-            body = response.read().decode(response.headers.get_content_charset() or "utf-8", errors="replace")
+            body = decode_http_body(response.read(), response.headers.get_content_charset())
             return response.status, body
     except urllib.error.HTTPError as exc:
-        return exc.code, exc.read().decode("utf-8", errors="replace")
+        return exc.code, decode_http_body(exc.read(), exc.headers.get_content_charset() if exc.headers else None)
 
 
 def request_nara_operation(operation: str, params: dict[str, str]) -> dict:
@@ -674,6 +726,473 @@ def render_notice_requirements_markdown(requirements: dict) -> str:
     )
 
 
+def compact_match_value(value) -> str:
+    return "".join(ch.lower() for ch in clean_text(value) if ch.isalnum())
+
+
+def parse_json_list_value(value) -> list[str]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, list):
+        return _dedupe_text_items([clean_text(item) for item in value])
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                return parse_json_list_value(parsed)
+        except json.JSONDecodeError:
+            pass
+        return _dedupe_text_items([item.strip() for item in stripped.split(",") if item.strip()])
+    return []
+
+
+def make_requirement_candidate(
+    requirement_type: str,
+    value: str,
+    source_text: str = "",
+    requirement_key: str = "",
+    confidence: float = 0.78,
+) -> dict:
+    cleaned = clean_text(value)
+    return {
+        "requirement_type": requirement_type,
+        "requirement_key": requirement_key or compact_match_value(cleaned),
+        "label": REQUIREMENT_TYPE_LABELS.get(requirement_type, requirement_type),
+        "required_value": cleaned,
+        "normalized_value": compact_match_value(cleaned),
+        "confidence": confidence,
+        "source_text": source_text or cleaned,
+        "status": "candidate",
+        "extraction_method": "rule_based_phase_1_7",
+    }
+
+
+def build_notice_requirement_candidates(requirements: dict) -> list[dict]:
+    candidates: list[dict] = []
+
+    for value in requirements.get("regions") or []:
+        candidates.append(make_requirement_candidate("region", value, "공고 지역 제한", confidence=0.84))
+    for value in requirements.get("licenses") or []:
+        candidates.append(make_requirement_candidate("license", value, "공고 면허/업종 제한", confidence=0.86))
+    for value in requirements.get("company_types") or []:
+        candidates.append(make_requirement_candidate("company_type", value, "공고 기업유형/우대조건", confidence=0.8))
+    for value in requirements.get("required_documents") or []:
+        candidates.append(make_requirement_candidate("required_document", value, "공고 제출/증빙서류", confidence=0.76))
+
+    money = requirements.get("money") if isinstance(requirements.get("money"), dict) else {}
+    for key, label in {"presmpt_prce": "추정가격", "bdgt_amt": "예산금액", "bssamt": "기초금액"}.items():
+        if clean_text(money.get(key)):
+            candidates.append(
+                make_requirement_candidate(
+                    "money",
+                    f"{label}: {money[key]}",
+                    "공고 금액 조건",
+                    requirement_key=key,
+                    confidence=0.72,
+                )
+            )
+
+    dates = requirements.get("dates") if isinstance(requirements.get("dates"), dict) else {}
+    for key, label in {"bid_ntce_dt": "공고일시", "bid_begin_dt": "입찰개시", "bid_clse_dt": "입찰마감", "openg_dt": "개찰일시"}.items():
+        if clean_text(dates.get(key)):
+            candidates.append(
+                make_requirement_candidate(
+                    "date",
+                    f"{label}: {dates[key]}",
+                    "공고 일정 조건",
+                    requirement_key=key,
+                    confidence=0.72,
+                )
+            )
+
+    for line in (requirements.get("requirement_lines") or [])[:12]:
+        candidates.append(make_requirement_candidate("requirement_line", line, line, confidence=0.64))
+
+    deduped: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for candidate in candidates:
+        key = (candidate["requirement_type"], candidate["normalized_value"] or candidate["required_value"])
+        if not candidate["required_value"] or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(candidate)
+    return deduped
+
+
+def summarize_requirement_candidates(candidates: list[dict]) -> dict:
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        requirement_type = candidate.get("requirement_type", "unknown")
+        counts[requirement_type] = counts.get(requirement_type, 0) + 1
+    return {
+        "total_count": len(candidates),
+        "type_counts": counts,
+        "status": "candidate_only",
+        "note": "Phase 1.7A/B 요구조건 후보입니다. 최종 지원 가능 여부 판정이 아닙니다.",
+    }
+
+
+def requirements_from_saved_notice(notice: dict) -> dict:
+    summary_payload: dict = {}
+    try:
+        parsed = json.loads(clean_text(notice.get("analysis_summary_json")) or "{}")
+        if isinstance(parsed, dict):
+            summary_payload = parsed
+    except json.JSONDecodeError:
+        summary_payload = {}
+
+    requirements = summary_payload.get("notice_requirements")
+    if isinstance(requirements, dict) and requirements:
+        return requirements
+
+    text = "\n".join(
+        [
+            build_nara_summary_text(notice, []),
+            clean_text(notice.get("analysis_summary_markdown")),
+        ]
+    )
+    return extract_notice_requirements(notice, text)
+
+
+def store_notice_requirement_candidates(conn: sqlite3.Connection, notice_id: int, requirements: dict) -> list[dict]:
+    candidates = build_notice_requirement_candidates(requirements)
+    now = now_iso()
+    conn.execute("DELETE FROM notice_requirement_candidates WHERE nara_notice_id=?", (notice_id,))
+    conn.execute("DELETE FROM notice_corporation_comparisons WHERE nara_notice_id=?", (notice_id,))
+    for candidate in candidates:
+        conn.execute(
+            """
+            INSERT INTO notice_requirement_candidates (
+              nara_notice_id, requirement_type, requirement_key, label,
+              required_value, normalized_value, confidence, source_text,
+              status, extraction_method, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                notice_id,
+                candidate["requirement_type"],
+                candidate["requirement_key"],
+                candidate["label"],
+                candidate["required_value"],
+                candidate["normalized_value"],
+                candidate["confidence"],
+                candidate["source_text"],
+                candidate["status"],
+                candidate["extraction_method"],
+                now,
+                now,
+            ),
+        )
+    return candidates
+
+
+def ensure_notice_requirement_candidates(conn: sqlite3.Connection, notice_id: int, force: bool = False) -> list[dict] | None:
+    notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
+    if not notice:
+        return None
+
+    if not force:
+        rows = conn.execute(
+            "SELECT * FROM notice_requirement_candidates WHERE nara_notice_id=? ORDER BY id",
+            (notice_id,),
+        ).fetchall()
+        if rows:
+            return rows_to_dict(rows)
+
+    requirements = requirements_from_saved_notice(dict(notice))
+    store_notice_requirement_candidates(conn, notice_id, requirements)
+    rows = conn.execute(
+        "SELECT * FROM notice_requirement_candidates WHERE nara_notice_id=? ORDER BY id",
+        (notice_id,),
+    ).fetchall()
+    return rows_to_dict(rows)
+
+
+def notice_requirement_payload(conn: sqlite3.Connection, notice_id: int, force: bool = False) -> dict | None:
+    candidates = ensure_notice_requirement_candidates(conn, notice_id, force=force)
+    if candidates is None:
+        return None
+    return {
+        "notice_id": notice_id,
+        "requirements": candidates,
+        "summary": summarize_requirement_candidates(candidates),
+    }
+
+
+def append_unique_text(target: list[str], values: list[Any]) -> None:
+    existing = {compact_match_value(item) for item in target}
+    for value in values:
+        cleaned = clean_text(value)
+        key = compact_match_value(cleaned)
+        if not cleaned or not key or key in existing:
+            continue
+        existing.add(key)
+        target.append(cleaned)
+
+
+def extract_region_terms(*values: Any) -> list[str]:
+    region_tokens = [
+        "서울",
+        "부산",
+        "대구",
+        "인천",
+        "광주",
+        "대전",
+        "울산",
+        "세종",
+        "경기도",
+        "강원",
+        "충북",
+        "충남",
+        "전북",
+        "전남",
+        "경북",
+        "경남",
+        "제주",
+        "성남",
+        "해남",
+    ]
+    text = " ".join(clean_text(value) for value in values if clean_text(value))
+    compact = text.replace(" ", "")
+    return _dedupe_text_items([token for token in region_tokens if token.replace(" ", "") in compact])
+
+
+def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: sqlite3.Row | dict) -> dict:
+    corp = dict(corporation)
+    evidence_rows = conn.execute(
+        """
+        SELECT document_type, review_status, original_file_name
+        FROM corporation_evidence_documents
+        WHERE corporation_id=?
+        ORDER BY id DESC
+        """,
+        (corp["id"],),
+    ).fetchall()
+    approved_evidence = [dict(row) for row in evidence_rows if row["review_status"] == "approved"]
+    approved_document_labels = _dedupe_text_items(
+        [
+            EVIDENCE_DOCUMENT_LABELS.get(row["document_type"], row["document_type"])
+            for row in approved_evidence
+            if clean_text(row["document_type"])
+        ]
+    )
+
+    certifications = parse_json_list_value(corp.get("certifications_json"))
+    preference_tags = parse_json_list_value(corp.get("preference_tags_json"))
+    direct_production_items = parse_json_list_value(corp.get("direct_production_items_json"))
+
+    regions: list[str] = []
+    append_unique_text(regions, [corp.get("region")])
+    append_unique_text(
+        regions,
+        extract_region_terms(corp.get("business_address"), corp.get("headquarters_address"), corp.get("region")),
+    )
+
+    business_types: list[str] = []
+    append_unique_text(
+        business_types,
+        [
+            corp.get("business_category"),
+            corp.get("business_type"),
+            corp.get("business_item"),
+            *direct_production_items,
+        ],
+    )
+
+    licenses: list[str] = []
+    append_unique_text(
+        licenses,
+        [
+            corp.get("license_summary"),
+            corp.get("procurement_registration_status"),
+            corp.get("business_type"),
+            corp.get("business_item"),
+            corp.get("business_category"),
+        ],
+    )
+
+    company_types: list[str] = []
+    append_unique_text(
+        company_types,
+        [
+            corp.get("company_size_classification"),
+            *certifications,
+            *preference_tags,
+        ],
+    )
+
+    required_documents: list[str] = []
+    append_unique_text(required_documents, approved_document_labels)
+    if clean_text(corp.get("business_registration_number")):
+        append_unique_text(required_documents, ["사업자등록증", "사업자등록증명"])
+    if clean_text(corp.get("company_size_classification")) or any("중소" in item or "소기업" in item for item in company_types):
+        append_unique_text(required_documents, ["중소기업확인서"])
+    if direct_production_items:
+        append_unique_text(required_documents, ["직접생산확인증명서"])
+    if clean_text(corp.get("procurement_registration_status")):
+        append_unique_text(required_documents, ["나라장터 경쟁입찰참가자격 등록증"])
+    if clean_text(corp.get("license_summary")):
+        append_unique_text(required_documents, ["면허/등록/허가증"])
+
+    return {
+        "corporation_id": corp["id"],
+        "corporation_name": corp["name"],
+        "management_group_name": corp.get("management_group_name", ""),
+        "regions": regions,
+        "business_types": business_types,
+        "licenses": licenses,
+        "company_types": company_types,
+        "certifications": certifications,
+        "preference_tags": preference_tags,
+        "direct_production_items": direct_production_items,
+        "required_documents": required_documents,
+        "approved_evidence_count": len(approved_evidence),
+        "approved_evidence_labels": approved_document_labels,
+        "profile_note": "Phase 1.7 비교용 정규화 프로필입니다. 사용자 검토 없이 최종 판정 근거로 사용하지 않습니다.",
+    }
+
+
+def match_profile_values(required_value: str, profile_values: list[str]) -> tuple[bool, str]:
+    required_key = compact_match_value(required_value)
+    if not required_key:
+        return False, ""
+    for value in profile_values:
+        value_key = compact_match_value(value)
+        if not value_key:
+            continue
+        if required_key in value_key or value_key in required_key:
+            return True, value
+    return False, ""
+
+
+def compare_requirement_candidate(candidate: dict, profile: dict) -> dict:
+    requirement_type = candidate.get("requirement_type", "")
+    required_value = clean_text(candidate.get("required_value"))
+    bucket_map = {
+        "region": profile.get("regions", []),
+        "license": [*profile.get("licenses", []), *profile.get("business_types", [])],
+        "company_type": [*profile.get("company_types", []), *profile.get("certifications", []), *profile.get("preference_tags", [])],
+        "required_document": [*profile.get("required_documents", []), *profile.get("approved_evidence_labels", [])],
+    }
+
+    if requirement_type in {"money", "date", "requirement_line"}:
+        status = "needs_review"
+        reason = "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        matched_value = ""
+    else:
+        profile_values = bucket_map.get(requirement_type, [])
+        if not profile_values:
+            status = "not_found"
+            reason = "비교할 법인 프로필 또는 승인 증빙 정보가 아직 충분하지 않습니다."
+            matched_value = ""
+        else:
+            matched, matched_value = match_profile_values(required_value, profile_values)
+            if matched:
+                status = "prepared"
+                reason = f"법인 프로필 또는 승인 증빙에서 '{matched_value}' 값을 찾았습니다."
+            else:
+                status = "possibly_missing"
+                reason = f"법인 정보에서 '{required_value}'와 직접 일치하는 준비 항목을 찾지 못했습니다."
+
+    return {
+        "requirement_candidate_id": candidate.get("id"),
+        "requirement_type": requirement_type,
+        "label": candidate.get("label") or REQUIREMENT_TYPE_LABELS.get(requirement_type, requirement_type),
+        "required_value": required_value,
+        "normalized_value": candidate.get("normalized_value", ""),
+        "source_text": candidate.get("source_text", ""),
+        "confidence": candidate.get("confidence", 0),
+        "status": status,
+        "status_label": COMPARISON_STATUS_LABELS.get(status, status),
+        "matched_value": matched_value,
+        "reason": reason,
+    }
+
+
+def summarize_comparison_items(items: list[dict]) -> dict:
+    counts = {status: 0 for status in COMPARISON_STATUS_LABELS}
+    for item in items:
+        status = item.get("status", "needs_review")
+        counts[status] = counts.get(status, 0) + 1
+    return {
+        "requirement_count": len(items),
+        "prepared_count": counts.get("prepared", 0),
+        "possibly_missing_count": counts.get("possibly_missing", 0),
+        "needs_review_count": counts.get("needs_review", 0),
+        "not_found_count": counts.get("not_found", 0),
+        "status": "preview_only",
+        "note": "부족조건 미리보기 결과입니다. 지원 가능/불가능 최종 판정이 아닙니다.",
+    }
+
+
+def comparison_row_payload(conn: sqlite3.Connection, row: sqlite3.Row | dict) -> dict:
+    payload = dict(row)
+    try:
+        payload["summary"] = json.loads(payload.get("summary_json") or "{}")
+    except json.JSONDecodeError:
+        payload["summary"] = {}
+    try:
+        result = json.loads(payload.get("result_json") or "{}")
+    except json.JSONDecodeError:
+        result = {}
+    payload["items"] = result.get("items", []) if isinstance(result, dict) else []
+    payload["profile"] = result.get("profile", {}) if isinstance(result, dict) else {}
+
+    notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (payload["nara_notice_id"],)).fetchone()
+    corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (payload["corporation_id"],)).fetchone()
+    payload["notice"] = row_to_dict(notice)
+    payload["corporation"] = row_to_dict(corporation)
+    return payload
+
+
+def build_notice_corporation_comparison(
+    conn: sqlite3.Connection,
+    notice_id: int,
+    corporation_id: int,
+) -> dict | None:
+    notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
+    corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
+    if not notice or not corporation:
+        return None
+
+    candidates = ensure_notice_requirement_candidates(conn, notice_id)
+    if candidates is None:
+        return None
+
+    profile = build_corporation_comparison_profile(conn, corporation)
+    items = [compare_requirement_candidate(candidate, profile) for candidate in candidates]
+    summary = summarize_comparison_items(items)
+    now = now_iso()
+
+    cur = conn.execute(
+        """
+        INSERT INTO notice_corporation_comparisons (
+          nara_notice_id, corporation_id, status, summary_json, result_json,
+          requirement_count, prepared_count, possibly_missing_count,
+          needs_review_count, not_found_count, prompt_version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            notice_id,
+            corporation_id,
+            "preview",
+            json.dumps(summary, ensure_ascii=False),
+            json.dumps({"items": items, "profile": profile}, ensure_ascii=False),
+            summary["requirement_count"],
+            summary["prepared_count"],
+            summary["possibly_missing_count"],
+            summary["needs_review_count"],
+            summary["not_found_count"],
+            "phase_1_7_rule_v1",
+            now,
+            now,
+        ),
+    )
+    row = conn.execute("SELECT * FROM notice_corporation_comparisons WHERE id=?", (cur.lastrowid,)).fetchone()
+    return comparison_row_payload(conn, row)
+
+
 def ensure_table_columns(conn: sqlite3.Connection, table_name: str, columns: dict[str, str]) -> None:
     existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()}
     for column_name, ddl in columns.items():
@@ -838,6 +1357,42 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(nara_notice_id) REFERENCES nara_notices(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS notice_requirement_candidates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nara_notice_id INTEGER NOT NULL,
+                requirement_type TEXT NOT NULL,
+                requirement_key TEXT DEFAULT '',
+                label TEXT DEFAULT '',
+                required_value TEXT DEFAULT '',
+                normalized_value TEXT DEFAULT '',
+                confidence REAL DEFAULT 0,
+                source_text TEXT DEFAULT '',
+                status TEXT DEFAULT 'candidate',
+                extraction_method TEXT DEFAULT 'rule_based_phase_1_7',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(nara_notice_id) REFERENCES nara_notices(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS notice_corporation_comparisons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nara_notice_id INTEGER NOT NULL,
+                corporation_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'preview',
+                summary_json TEXT DEFAULT '{}',
+                result_json TEXT DEFAULT '{}',
+                requirement_count INTEGER DEFAULT 0,
+                prepared_count INTEGER DEFAULT 0,
+                possibly_missing_count INTEGER DEFAULT 0,
+                needs_review_count INTEGER DEFAULT 0,
+                not_found_count INTEGER DEFAULT 0,
+                prompt_version TEXT DEFAULT 'phase_1_7_rule_v1',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(nara_notice_id) REFERENCES nara_notices(id),
+                FOREIGN KEY(corporation_id) REFERENCES corporations(id)
             );
 
             CREATE TABLE IF NOT EXISTS integration_test_results (
@@ -1090,6 +1645,9 @@ def refine_business_registration_kind_with_ai(
             "줄바꿈으로 끊어진 단어는 자연스럽게 붙이세요. 예: '전문기\\n업' -> '전문기업'.",
             "업태는 큰 분류입니다. 예: 건설업, 도소매, 도매 및 소매업.",
             "종목은 세부 영업 내용입니다. 예: 전기공사, 정보통신공사업, 컴퓨터 관련 주변기기.",
+            "business_type에는 '사업의 종류', '업태', '종목' 같은 표 라벨을 절대 넣지 마세요.",
+            "business_item에는 표 라벨이나 업태값만 단독으로 넣지 말고 세부 종목만 배열로 넣으세요.",
+            "예: OCR이 '업태\\n건설업\\n종목\\n전기공사,신재생에너지설비설치전문기\\n업'이면 business_type=[\"건설업\"], business_item=[\"전기공사\",\"신재생에너지설비설치전문기업\"] 입니다.",
             "결과는 반드시 JSON 객체만 반환하세요.",
             "JSON schema: {\"business_type\":[\"...\"],\"business_item\":[\"...\"],\"business_category\":\"업태: ... / 종목: ...\",\"warnings\":[\"...\"]}",
             "",
@@ -1101,28 +1659,20 @@ def refine_business_registration_kind_with_ai(
     )
     payload, usage = generate_json_with_ai(prompt, selection)
 
-    business_type = normalize_json_list(payload.get("business_type"))
-    business_item = normalize_json_list(payload.get("business_item"))
-
-    def json_list_to_text(value: str) -> str:
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return clean_text(value)
-        return ", ".join(clean_text(item) for item in parsed if clean_text(item)) if isinstance(parsed, list) else ""
-
-    business_type_text = json_list_to_text(business_type)
-    business_item_text = json_list_to_text(business_item)
-    business_category = clean_text(payload.get("business_category"))
-    if not business_category:
-        business_category = " / ".join(
-            item
-            for item in [
-                f"업태: {business_type_text}" if business_type_text else "",
-                f"종목: {business_item_text}" if business_item_text else "",
-            ]
-            if item
-        )
+    business_type_values, business_item_values = normalize_business_kind_values(
+        payload.get("business_type"),
+        payload.get("business_item"),
+    )
+    business_type_text = ", ".join(business_type_values)
+    business_item_text = ", ".join(business_item_values)
+    business_category = " / ".join(
+        item
+        for item in [
+            f"업태: {business_type_text}" if business_type_text else "",
+            f"종목: {business_item_text}" if business_item_text else "",
+        ]
+        if item
+    )
 
     refined_candidates: list[EvidenceFieldCandidate] = []
     if business_type_text:
@@ -3298,6 +3848,7 @@ def save_and_analyze_nara_notice_item(
             _usage["fallback_reason"] = str(exc)
         summary_json["notice_requirements"] = notice_requirements
         summary_markdown = f"{summary_markdown}\n{render_notice_requirements_markdown(notice_requirements)}"
+        store_notice_requirement_candidates(conn, notice_id, notice_requirements)
 
         if supported_count == 0:
             download_status = "no_supported_attachments"
@@ -3376,6 +3927,25 @@ def get_saved_nara_notice(notice_id: int):
     return jsonify(result)
 
 
+@app.route("/api/nara/saved-notices/<int:notice_id>/requirements", methods=["GET"])
+def get_saved_nara_notice_requirements(notice_id: int):
+    force = clean_text(request.args.get("force")).lower() in {"1", "true", "yes"}
+    with db_conn() as conn:
+        payload = notice_requirement_payload(conn, notice_id, force=force)
+    if not payload:
+        return jsonify({"detail": "Saved notice not found"}), 404
+    return jsonify(payload)
+
+
+@app.route("/api/nara/saved-notices/<int:notice_id>/requirements/extract", methods=["POST"])
+def extract_saved_nara_notice_requirements(notice_id: int):
+    with db_conn() as conn:
+        payload = notice_requirement_payload(conn, notice_id, force=True)
+    if not payload:
+        return jsonify({"detail": "Saved notice not found"}), 404
+    return jsonify(payload)
+
+
 @app.route("/api/nara/saved-notices/<int:notice_id>/reanalyze", methods=["POST"])
 def reanalyze_saved_nara_notice(notice_id: int):
     payload = get_json_payload()
@@ -3398,10 +3968,69 @@ def delete_saved_nara_notice(notice_id: int):
         row = conn.execute("SELECT * FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
         if not row:
             return jsonify({"detail": "Saved notice not found"}), 404
+        conn.execute("DELETE FROM notice_corporation_comparisons WHERE nara_notice_id=?", (notice_id,))
+        conn.execute("DELETE FROM notice_requirement_candidates WHERE nara_notice_id=?", (notice_id,))
         clear_nara_notice_attachments(conn, notice_id)
         conn.execute("DELETE FROM nara_notices WHERE id=?", (notice_id,))
         conn.commit()
     return jsonify({"status": "deleted"})
+
+
+@app.route("/api/corporations/<int:corporation_id>/comparison-profile", methods=["GET"])
+def get_corporation_comparison_profile(corporation_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Corporation not found"}), 404
+        payload = build_corporation_comparison_profile(conn, row)
+    return jsonify(payload)
+
+
+@app.route("/api/notice-comparisons", methods=["GET"])
+def list_notice_comparisons():
+    with db_conn() as conn:
+        rows = conn.execute("SELECT * FROM notice_corporation_comparisons ORDER BY id DESC").fetchall()
+        payload = [comparison_row_payload(conn, row) for row in rows]
+    return jsonify(payload)
+
+
+@app.route("/api/notice-comparisons", methods=["POST"])
+def create_notice_comparison():
+    payload = get_json_payload()
+    notice_id = parse_int(payload.get("nara_notice_id") or payload.get("notice_id"))
+    corporation_id = parse_int(payload.get("corporation_id"))
+    if not notice_id or not corporation_id:
+        return jsonify({"detail": "nara_notice_id and corporation_id are required"}), 400
+
+    with db_conn() as conn:
+        comparison = build_notice_corporation_comparison(conn, notice_id, corporation_id)
+    if not comparison:
+        return jsonify({"detail": "Saved notice or corporation not found"}), 404
+    return jsonify(comparison), 201
+
+
+@app.route("/api/notice-comparisons/<int:comparison_id>", methods=["GET"])
+def get_notice_comparison(comparison_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM notice_corporation_comparisons WHERE id=?", (comparison_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Comparison not found"}), 404
+        payload = comparison_row_payload(conn, row)
+    return jsonify(payload)
+
+
+@app.route("/api/nara/saved-notices/<int:notice_id>/comparisons", methods=["GET"])
+def list_notice_comparisons_by_notice(notice_id: int):
+    with db_conn() as conn:
+        notice = conn.execute("SELECT id FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
+        if not notice:
+            return jsonify({"detail": "Saved notice not found"}), 404
+        rows = conn.execute(
+            "SELECT * FROM notice_corporation_comparisons WHERE nara_notice_id=? ORDER BY id DESC",
+            (notice_id,),
+        ).fetchall()
+        payload = [comparison_row_payload(conn, row) for row in rows]
+    return jsonify(payload)
 
 
 @app.route("/api/nara/attachments/preview", methods=["GET"])
@@ -3509,7 +4138,7 @@ def test_nara_integration():
             },
         )
         with urllib.request.urlopen(req, timeout=15) as response:
-            body = response.read().decode(response.headers.get_content_charset() or "utf-8", errors="replace")
+            body = decode_http_body(response.read(), response.headers.get_content_charset())
             http_status = response.status
     except Exception as exc:
         save_integration_test_result("nara", "error", None, "", "", 0, str(exc))

@@ -68,6 +68,42 @@ const corporationWorkspaceTabs: Array<{
   { id: "directory", label: "법인 목록/준비도", description: "법인 프로필과 준비도 확인" },
 ];
 
+const statusLabels: Record<string, string> = {
+  approved: "승인 완료",
+  ai_suggested: "AI 제안",
+  classified: "자동 분류",
+  completed: "완료",
+  corrected: "보정 완료",
+  failed: "실패",
+  manual: "수동 지정",
+  needs_ocr_setup: "OCR 설정 필요",
+  needs_review: "검토 필요",
+  pending: "검토 대기",
+  rejected: "제외",
+  skipped: "건너뜀",
+  unavailable: "사용 불가",
+};
+
+function statusLabel(status?: string) {
+  if (!status) return "-";
+  return statusLabels[status] ?? status;
+}
+
+function statusTone(status?: string) {
+  if (["approved", "ai_suggested", "classified", "completed", "corrected", "manual", "skipped"].includes(status || "")) {
+    return "active";
+  }
+  if (["failed", "needs_ocr_setup", "needs_review", "rejected", "unavailable"].includes(status || "")) {
+    return "muted";
+  }
+  return "pending";
+}
+
+function evidenceDocumentTypeLabel(value?: string) {
+  if (!value) return "-";
+  return evidenceDocumentTypeOptions.find((option) => option.value === value)?.label ?? value;
+}
+
 function parseCertifications(value: string) {
   try {
     const parsed = JSON.parse(value);
@@ -760,13 +796,30 @@ export function CorporationsPage() {
               <div>
                 <dt>분류</dt>
                 <dd>
-                  {latestEvidence.document_type} / {latestEvidence.classification_status}
+                  <span className="status-stack">
+                    <span className="status-badge status-badge--active">
+                      {evidenceDocumentTypeLabel(latestEvidence.document_type)}
+                    </span>
+                    <span className={`status-badge status-badge--${statusTone(latestEvidence.classification_status)}`}>
+                      {statusLabel(latestEvidence.classification_status)}
+                    </span>
+                  </span>
                 </dd>
               </div>
               <div>
                 <dt>처리 상태</dt>
                 <dd>
-                  추출 {latestEvidence.extraction_status}, OCR {latestEvidence.ocr_status}, 검토 {latestEvidence.review_status}
+                  <span className="status-stack">
+                    <span className={`status-badge status-badge--${statusTone(latestEvidence.extraction_status)}`}>
+                      추출 {statusLabel(latestEvidence.extraction_status)}
+                    </span>
+                    <span className={`status-badge status-badge--${statusTone(latestEvidence.ocr_status)}`}>
+                      OCR {statusLabel(latestEvidence.ocr_status)}
+                    </span>
+                    <span className={`status-badge status-badge--${statusTone(latestEvidence.review_status)}`}>
+                      검토 {statusLabel(latestEvidence.review_status)}
+                    </span>
+                  </span>
                 </dd>
               </div>
             </dl>
@@ -917,8 +970,8 @@ export function CorporationsPage() {
                     />
                     <div className="candidate-meta">
                       <span>신뢰도 {Math.round(candidate.confidence * 100)}%</span>
-                      <span className={`status-badge status-badge--${candidate.status === "approved" ? "active" : "pending"}`}>
-                        {candidate.status}
+                      <span className={`status-badge status-badge--${statusTone(candidate.status)}`}>
+                        {statusLabel(candidate.status)}
                       </span>
                     </div>
                     {candidate.source_text ? <p>{candidate.source_text}</p> : null}
@@ -993,7 +1046,7 @@ export function CorporationsPage() {
                     <td>
                       {item.corporation_name || item.management_group_name || "-"}
                     </td>
-                    <td>{item.document_type}</td>
+                    <td>{evidenceDocumentTypeLabel(item.document_type)}</td>
                     <td>
                       <span className="status-badge status-badge--pending">
                         대기 {item.pending_candidate_count ?? 0}
@@ -1003,11 +1056,11 @@ export function CorporationsPage() {
                       </span>
                     </td>
                     <td>
-                      <span className={`status-badge ${item.review_status === "approved" ? "status-badge--active" : "status-badge--muted"}`}>
-                        {item.review_status}
+                      <span className={`status-badge status-badge--${statusTone(item.review_status)}`}>
+                        {statusLabel(item.review_status)}
                       </span>
                       <small>
-                        추출 {item.extraction_status} / OCR {item.ocr_status}
+                        추출 {statusLabel(item.extraction_status)} / OCR {statusLabel(item.ocr_status)}
                       </small>
                     </td>
                     <td>{new Date(item.updated_at).toLocaleString("ko-KR")}</td>

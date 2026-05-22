@@ -7,6 +7,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+try {
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [Console]::InputEncoding = $utf8NoBom
+  [Console]::OutputEncoding = $utf8NoBom
+  $OutputEncoding = $utf8NoBom
+} catch {}
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+
 $Root = Split-Path -Parent $PSScriptRoot
 $BackendDir = Join-Path $Root "backend"
 $FrontendDir = Join-Path $Root "frontend"

@@ -59,6 +59,17 @@ BUSINESS_TYPE_TOKENS = [
     "정보통신업",
 ]
 
+BUSINESS_KIND_STOP_TOKENS = [
+    "발급사유",
+    "발급일",
+    "사업자단위과세",
+    "전자세금계산서",
+    "성남세무서장",
+    "세무서장",
+    "국세청",
+    "별지출력",
+]
+
 
 @dataclass(frozen=True)
 class EvidenceFieldCandidate:
@@ -477,16 +488,9 @@ def _extract_business_kind_pair(text: str) -> tuple[str, str]:
     if not section:
         return "", ""
 
-    normalized_section = _normalize_business_kind_section(section)
-    lines = [_clean_business_kind_line(line) for line in normalized_section.splitlines()]
-    lines = [line for line in lines if line]
-
     business_types: list[str] = []
     business_items: list[str] = []
-    for line in lines:
-        if _is_business_kind_label(line):
-            continue
-
+    for line in _normalize_business_kind_lines(section):
         extracted_type, remainder = _extract_business_type_from_line(line)
         if extracted_type:
             business_types.append(extracted_type)
@@ -504,16 +508,22 @@ def _business_kind_section(text: str) -> str:
     start_index = -1
     for index, line in enumerate(lines):
         compact = _compact(line)
-        if "사업의종류" in compact or compact == "업태" or compact.startswith("업태"):
+        next_compact = _compact(lines[index + 1]) if index + 1 < len(lines) else ""
+        if (
+            "사업의종류" in compact
+            or compact == "사업의" and next_compact.startswith("종류")
+            or compact == "업태"
+            or compact.startswith("업태")
+        ):
             start_index = index
             break
     if start_index < 0:
         return ""
 
     section_lines: list[str] = []
-    for line in lines[start_index : start_index + 24]:
+    for line in lines[start_index : start_index + 36]:
         compact = _compact(line)
-        if section_lines and any(token in compact for token in ["발급사유", "사업자단위과세", "전자세금계산서", "성남세무서장"]):
+        if section_lines and _is_business_kind_stop_compact(compact):
             break
         section_lines.append(line)
     return "\n".join(section_lines)
@@ -526,6 +536,22 @@ def _normalize_business_kind_section(section: str) -> str:
     value = re.sub(r"신재생에너지\s*설비", "신재생에너지설비", value)
     value = re.sub(r"([가-힣])\s*,\s*([가-힣])", r"\1, \2", value)
     return value
+
+
+def _normalize_business_kind_lines(section: str) -> list[str]:
+    normalized_section = _normalize_business_kind_section(section)
+    lines: list[str] = []
+    for raw_line in normalized_section.splitlines():
+        line = _clean_business_kind_line(raw_line)
+        if not line or _is_business_kind_label(line):
+            continue
+        if _is_business_kind_stop_line(line):
+            break
+        if lines and _is_suffix_fragment(line) and not _is_business_type_token(lines[-1]):
+            lines[-1] = _clean_value(f"{lines[-1]}{line}")
+            continue
+        lines.append(line)
+    return lines
 
 
 def _clean_business_kind_line(line: str) -> str:
@@ -541,7 +567,25 @@ def _clean_business_kind_line(line: str) -> str:
 
 def _is_business_kind_label(line: str) -> bool:
     compact = _compact(line)
-    return compact in {"사업의종류", "업태", "종목"}
+    return compact in {"사업의", "종류", "사업의종류", "업태", "종목"}
+
+
+def _is_business_kind_stop_line(line: str) -> bool:
+    return _is_business_kind_stop_compact(_compact(line))
+
+
+def _is_business_kind_stop_compact(compact: str) -> bool:
+    return any(token in compact for token in BUSINESS_KIND_STOP_TOKENS)
+
+
+def _is_suffix_fragment(line: str) -> bool:
+    compact = _compact(line)
+    return compact in {"업", "기", "사", "자"}
+
+
+def _is_business_type_token(value: str) -> bool:
+    compact_value = _compact(value)
+    return compact_value in {_compact(token) for token in BUSINESS_TYPE_TOKENS}
 
 
 def _extract_business_type_from_line(line: str) -> tuple[str, str]:
@@ -551,21 +595,94 @@ def _extract_business_type_from_line(line: str) -> tuple[str, str]:
         if compact_line == compact_token:
             return token, ""
         if compact_line.startswith(compact_token):
-            remainder = line[len(token) :].strip(" :：,/·ㆍ")
+            remainder = _remove_compact_prefix(line, compact_token).strip(" :：,/·ㆍ")
             return token, remainder
     return "", line
+
+
+def _remove_compact_prefix(value: str, compact_prefix: str) -> str:
+    compact_seen = ""
+    for index, char in enumerate(value):
+        if char.isspace():
+            continue
+        compact_seen += char
+        if compact_seen == compact_prefix:
+            return value[index + 1 :]
+    return value
 
 
 def _split_business_items(value: str) -> list[str]:
     items: list[str] = []
     for item in re.split(r"[,/·ㆍ]", value):
         cleaned = _clean_value(item)
+        for label in ["종목", "업태"]:
+            cleaned = re.sub(rf"^{_label_pattern(label)}\s*[:：]?", "", cleaned, flags=re.IGNORECASE).strip()
         if not cleaned:
             continue
-        if _compact(cleaned) in {_compact(token) for token in BUSINESS_TYPE_TOKENS}:
+        if _is_business_kind_label(cleaned) or _is_business_kind_stop_line(cleaned):
+            continue
+        if _is_business_type_token(cleaned):
             continue
         items.append(cleaned)
     return items
+
+
+def normalize_business_kind_values(raw_business_types: Any, raw_business_items: Any) -> tuple[list[str], list[str]]:
+    business_types: list[str] = []
+    business_items: list[str] = []
+
+    for line in _iter_business_kind_input_lines(raw_business_types):
+        extracted_type, remainder = _extract_business_type_from_line(line)
+        if extracted_type:
+            business_types.append(extracted_type)
+            business_items.extend(_split_business_items(remainder))
+        else:
+            matched_type = _match_business_type_in_line(line)
+            if matched_type:
+                business_types.append(matched_type)
+
+    for line in _iter_business_kind_input_lines(raw_business_items):
+        extracted_type, remainder = _extract_business_type_from_line(line)
+        if extracted_type:
+            business_types.append(extracted_type)
+            if remainder:
+                business_items.extend(_split_business_items(remainder))
+        else:
+            business_items.extend(_split_business_items(line))
+
+    return _dedupe(business_types), _dedupe(business_items)
+
+
+def _iter_business_kind_input_lines(value: Any) -> list[str]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, list):
+        lines: list[str] = []
+        for item in value:
+            lines.extend(_iter_business_kind_input_lines(item))
+        return lines
+    if isinstance(value, dict):
+        return []
+
+    normalized = _normalize_business_kind_section(str(value))
+    lines: list[str] = []
+    for raw_line in re.split(r"\n|;", normalized):
+        line = _clean_business_kind_line(raw_line)
+        if not line or _is_business_kind_label(line) or _is_business_kind_stop_line(line):
+            continue
+        if lines and _is_suffix_fragment(line) and not _is_business_type_token(lines[-1]):
+            lines[-1] = _clean_value(f"{lines[-1]}{line}")
+            continue
+        lines.append(line)
+    return lines
+
+
+def _match_business_type_in_line(line: str) -> str:
+    compact_line = _compact(line)
+    for token in BUSINESS_TYPE_TOKENS:
+        if compact_line == _compact(token):
+            return token
+    return ""
 
 
 def _format_business_category(business_type: str, business_item: str) -> str:

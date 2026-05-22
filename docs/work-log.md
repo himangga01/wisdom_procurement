@@ -3199,3 +3199,287 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Applied to corporation evidence, Nara board, saved notices, document upload/analysis, projects, settings, and analysis rerun actions.
 - Verification:
   - `npm run build`: passed
+
+## 추가 업데이트 (2026-05-22) - Phase 1.6 안정화 계획 작성
+- Phase 2 개발 전에 먼저 수행할 `Phase 1.6 법인 증빙자료 자동 추출 안정화` 계획을 별도 문서로 작성했다.
+- 신규 문서:
+  - `docs/phase-1.6-stabilization-plan.md`
+- 주요 내용:
+  - 현재 구현 기준선 정리
+  - 안정화 목표와 비범위 명확화
+  - OCR/파싱 안정화
+  - 사업자등록증 업태/종목 정리 개선 방향
+  - LLM 정리 단계 안정화
+  - 후보값 안전 반영, 충돌 처리, 핵심 필드 보호
+  - 증빙자료 상태/재처리 UX 정리
+  - 데이터 무결성, 개인정보/로그 마스킹 점검
+  - 샘플 기반 회귀 테스트 계획
+  - Phase 1.6 완료 기준과 제품 오너 확인 질문
+- README 문서 링크에 Phase 1.6 안정화 계획을 추가했다.
+- 검증 결과:
+  - 문서 생성 및 링크 업데이트 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-22) - Phase 1.6 Stabilization Plan
+- Added a dedicated stabilization plan for Phase 1.6 corporation evidence auto-extraction before Phase 2 begins.
+- New document:
+  - `docs/phase-1.6-stabilization-plan.md`
+- Covered:
+  - current implementation baseline
+  - stabilization goals and non-scope
+  - OCR/parsing stabilization
+  - business-registration business type/item cleanup
+  - LLM cleanup reliability
+  - safe candidate application, conflict handling, and core-field protection
+  - evidence status and reprocessing UX
+  - data integrity, privacy, and log-masking review
+  - sample-based regression testing
+  - Phase 1.6 done criteria and product-owner questions
+- Added the new document link to `README.md`.
+- Verification:
+  - confirmed document creation and README link update
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-22) - Phase 1.6 안정화 실행 1차
+- Phase 1.6 안정화 계획에 따라 기준선 테스트를 먼저 수행했다.
+- 코드 수정:
+  - 사업자등록증 `사업의 종류` 영역에서 `사업의`, `종류`, `업태`, `종목` 라벨이 후보값에 섞이지 않도록 후처리를 강화했다.
+  - `전문기` + `업`, `도매 및` + `소매업`처럼 OCR 줄바꿈으로 끊어진 값을 자동 결합하도록 보강했다.
+  - Gemini/OpenAI가 사업자등록증 업태/종목을 정리한 뒤에도 `business_type`, `business_item`, `business_category` 후보를 다시 sanitize하도록 변경했다.
+  - LLM이 `사업의 종류`, `업태`, `종목` 같은 표 라벨을 반환해도 사용자 검토 후보에는 정리된 값만 남도록 방어했다.
+- 테스트 추가:
+  - 라벨이 여러 줄로 깨진 사업자등록증 OCR 텍스트 회귀 테스트
+  - 라벨이 한 줄에 섞인 사업자등록증 OCR 텍스트 회귀 테스트
+  - LLM 업태/종목 정리 결과 sanitize 테스트
+  - API 레벨 LLM sloppy output sanitize 테스트
+  - 실제 사업자등록증 이미지 opt-in OCR 테스트에 후처리 후보 검증 추가
+- 문서 업데이트:
+  - `docs/phase-1.6-stabilization-plan.md`에 진행 상태를 추가했다.
+- UX 수정:
+  - 법인 증빙자료 상세/목록/후보 카드에서 `pending`, `skipped`, `classified` 같은 개발자용 상태값을 한국어 배지 라벨로 표시하도록 변경했다.
+  - 증빙서류 유형도 코드값 대신 `사업자등록증 사본`, `중소기업확인서`처럼 사용자용 라벨로 표시하도록 정리했다.
+- 검증 결과:
+  - `py -3.13 -m unittest tests.test_corporation_evidence -v`: 12개 테스트 통과
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_business_registration_kind_fields_use_ai_cleanup_when_configured tests.test_api_flows.ApiFlowTests.test_business_registration_ai_cleanup_sanitizes_sloppy_label_output -v`: 2개 테스트 통과
+  - 사용자 제공 사업자등록증 이미지 opt-in 테스트: PaddleOCR 완료 및 업태/종목 후보 검증 통과
+  - `py -3.13 -m unittest discover -s tests -v`: 47개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 통과
+  - `scripts/smoke-test.ps1`: `SMOKE_OK` 통과
+  - `git diff --check`: 공백 오류 없음, 기존 Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-22) - Phase 1.6 Stabilization Execution 1
+- Established the current Phase 1.6 regression baseline before changing code.
+- Code changes:
+  - hardened business-registration `business kind` cleanup so table labels such as `사업의`, `종류`, `업태`, and `종목` do not leak into candidates
+  - joined OCR-split suffixes such as `전문기` + `업` and split business type labels such as `도매 및` + `소매업`
+  - sanitized Gemini/OpenAI business-kind cleanup output before turning it into `business_type`, `business_item`, and `business_category` candidates
+  - prevented sloppy LLM label output from degrading review candidates
+- Tests added:
+  - multiline broken business-registration OCR regression
+  - inline-label business-registration OCR regression
+  - LLM business-kind sanitize unit test
+  - API-level sloppy LLM output sanitize test
+  - post-OCR candidate assertions in the real business-registration image opt-in test
+- Documentation:
+  - updated `docs/phase-1.6-stabilization-plan.md` with progress notes
+- UX:
+  - replaced raw developer statuses such as `pending`, `skipped`, and `classified` with Korean badge labels in evidence detail/list/candidate cards
+  - displayed evidence document types with stakeholder-friendly labels instead of raw code values
+- Verification:
+  - `py -3.13 -m unittest tests.test_corporation_evidence -v`: 12 passed
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_business_registration_kind_fields_use_ai_cleanup_when_configured tests.test_api_flows.ApiFlowTests.test_business_registration_ai_cleanup_sanitizes_sloppy_label_output -v`: 2 passed
+  - user-provided business-registration image opt-in test: PaddleOCR completed and business type/item extraction passed
+  - `py -3.13 -m unittest discover -s tests -v`: 47 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: passed with `SMOKE_OK`
+  - `git diff --check`: no whitespace errors, only existing Windows CRLF warnings
+
+## 추가 업데이트 (2026-05-22) - 서버 한글깨짐 방지 수정
+- 서버 소스와 스크립트의 한글깨짐 가능 지점을 점검했다.
+- 코드 수정:
+  - Flask JSON 응답에서 한글이 `\uXXXX` 형태로만 보이지 않도록 `app.json.ensure_ascii = False`와 `JSON_AS_ASCII = False`를 설정했다.
+  - 나라장터/외부 API 텍스트 응답 디코딩을 `decode_http_body()` 공통 함수로 정리했다.
+  - 외부 응답 charset이 잘못되거나 누락되어도 `charset -> utf-8-sig -> utf-8 -> cp949 -> euc-kr` 순서로 fallback하도록 변경했다.
+  - `scripts/test-nara-api.py`도 동일한 디코딩 fallback을 사용하도록 수정했다.
+  - `scripts/manage-servers.ps1`, `scripts/smoke-test.ps1`에 UTF-8 콘솔 입출력과 `PYTHONIOENCODING=utf-8`, `PYTHONUTF8=1` 설정을 추가했다.
+  - `scripts/check-encoding.py`를 추가해 서버/테스트/스크립트/문서의 UTF-8 디코딩 실패와 mojibake 패턴을 검사하도록 했다.
+  - 스모크 테스트 시작 시 인코딩 체크를 먼저 실행하도록 연결했다.
+- 테스트 추가:
+  - CP949로 들어온 한글 응답이 UTF-8 charset 오표기 상황에서도 정상 복원되는 단위 테스트를 추가했다.
+- 검증 결과:
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `py -3.13 -m py_compile scripts/check-encoding.py scripts/test-nara-api.py`: 통과
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_decode_http_body_falls_back_to_korean_legacy_encodings -v`: 통과
+  - `py -3.13 -m unittest discover -s tests -v`: 48개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 통과
+  - `scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - 스모크 테스트 후 FE/BE 서버 종료 상태 확인
+  - `git diff --check`: 공백 오류 없음, 기존 Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-22) - Korean Encoding Hardening
+- Reviewed Korean text corruption risks across backend source and operational scripts.
+- Code changes:
+  - configured Flask JSON output with `app.json.ensure_ascii = False` and `JSON_AS_ASCII = False`
+  - centralized external text response decoding in `decode_http_body()`
+  - added decode fallback order: `charset -> utf-8-sig -> utf-8 -> cp949 -> euc-kr`
+  - updated `scripts/test-nara-api.py` to use the same fallback decoding strategy
+  - configured UTF-8 console input/output and Python UTF-8 mode in `scripts/manage-servers.ps1` and `scripts/smoke-test.ps1`
+  - added `scripts/check-encoding.py` to detect UTF-8 decode failures and mojibake patterns in backend/tests/scripts/docs
+  - wired the encoding check into smoke test startup
+- Tests:
+  - added coverage for CP949 Korean response fallback when charset is incorrectly reported as UTF-8
+- Verification:
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `py -3.13 -m py_compile scripts/check-encoding.py scripts/test-nara-api.py`: passed
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_decode_http_body_falls_back_to_korean_legacy_encodings -v`: passed
+  - `py -3.13 -m unittest discover -s tests -v`: 48 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - confirmed FE/BE servers stopped after smoke test
+  - `git diff --check`: no whitespace errors, only existing Windows CRLF warnings
+
+## 추가 업데이트 (2026-05-22) - Phase 1.7 부족조건 미리보기 1차 구현
+- Phase 1.7A부터 1.7F까지 순서대로 구현했다.
+- 개발 범위:
+  - 저장한 나라장터 공고에서 요구조건 후보를 DB 테이블로 분리 저장하는 구조 추가
+  - `notice_requirement_candidates` 테이블 추가
+  - `notice_corporation_comparisons` 테이블 추가
+  - 저장 공고 분석 완료 시 요구조건 후보 자동 생성
+  - 요구조건 후보 조회/재추출 API 추가
+  - 법인 프로필을 비교용 구조로 정규화하는 API 추가
+  - 공고 요구조건 후보와 법인 준비상태를 비교하는 1차 rule-based 엔진 추가
+  - 비교 결과 저장, 상세 조회, 전체 이력 조회, 공고별 이력 조회 API 추가
+  - 요구조건 재추출 시 기존 비교 결과를 무효화해 stale 결과가 남지 않도록 처리
+  - 포탈에 `부족조건 미리보기` 메뉴와 화면 추가
+  - 공고 선택, 법인 선택, 요구조건 후보 확인, 법인 비교 프로필 확인, 비교 실행, 최근 비교 이력 확인 UX 추가
+- 중요한 제약:
+  - Phase 1.7 결과는 최종 지원 가능/불가능 판정이 아니다.
+  - 출력 상태는 `준비된 항목`, `부족 가능성`, `확인 필요`, `법인 정보 없음`으로 제한했다.
+  - 기준문서 RAG와 최종 판단 엔진은 아직 구현하지 않았다.
+- 테스트 추가:
+  - 저장 공고 요구조건 후보 API 테스트
+  - 법인 비교 프로필 정규화 API 테스트
+  - 공고-법인 부족조건 미리보기 생성/저장 테스트
+  - 비교 이력 조회 테스트
+  - 요구조건 재추출 시 기존 비교 이력 무효화 테스트
+- 검증 결과:
+  - `py -3.13 -m unittest discover -s tests -v`: 51개 테스트 통과, 1개 선택 OCR 테스트 skip
+  - `npm run build`: 통과
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - 브라우저 확인: `http://127.0.0.1:5199/notice-comparison` 라우팅, 주요 버튼 렌더링, 콘솔 에러 없음 확인
+  - 브라우저 확인 후 FE/BE 서버 종료 확인
+  - `git diff --check`: 공백 오류 없음, 기존 Windows CRLF 경고만 확인
+
+## Additional Update (2026-05-22) - Phase 1.7 Gap Preview Initial Implementation
+- Implemented Phase 1.7A through 1.7F in order.
+- Scope delivered:
+  - added a persisted requirement-candidate model for saved Nara notices
+  - added `notice_requirement_candidates`
+  - added `notice_corporation_comparisons`
+  - auto-generates requirement candidates when saved-notice analysis finishes
+  - added requirement candidate read/re-extract APIs
+  - added corporation comparison-profile normalization API
+  - added first-pass rule-based comparison between notice requirements and corporation readiness profile
+  - added comparison creation, detail, global history, and notice-specific history APIs
+  - invalidates stale comparisons when requirement candidates are re-extracted
+  - added the portal `Gap Preview` menu/page
+  - added UX for selecting a saved notice and corporation, reviewing requirement candidates/profile, running comparison, and viewing comparison history
+- Guardrails:
+  - Phase 1.7 output is not a final eligibility verdict.
+  - statuses are limited to `prepared`, `possibly_missing`, `needs_review`, and `not_found`.
+  - basis-document RAG and final judgment engine remain out of scope.
+- Tests added:
+  - saved-notice requirement candidate API test
+  - corporation comparison profile normalization API test
+  - notice/corporation gap-preview creation and persistence test
+  - comparison history retrieval test
+  - stale comparison invalidation test after requirement re-extraction
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 51 passed, 1 optional OCR test skipped
+  - `npm run build`: passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - browser check: confirmed `http://127.0.0.1:5199/notice-comparison` route, primary button rendering, and no console errors
+  - confirmed FE/BE servers were stopped after browser verification
+  - `git diff --check`: no whitespace errors, only existing Windows CRLF warnings
+
+## 추가 업데이트 (2026-05-22) - 로컬 Python 3.13 워크스페이스 설정
+- 로컬 개발 도구가 Python 3.13을 기본으로 사용하도록 VS Code 워크스페이스 설정을 추가했다.
+- 변경 파일:
+  - `.vscode/settings.json`
+- 설정 내용:
+  - `python.defaultInterpreterPath`를 `backend/.venv313/Scripts/python.exe`로 고정
+  - `python.envFile`을 `backend/.env`로 지정
+  - Pylance 분석 경로에 `backend` 추가
+  - VS Code 테스트 실행을 Python `unittest` 기준으로 설정
+  - Windows 터미널 환경에 `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8` 추가
+- 확인한 내용:
+  - 루트 `.python-version`은 이미 `3.13.13`
+  - `backend/.venv313`은 Python `3.13.13`
+  - `backend/.venv`는 Python `3.14.3` 기반이므로 기본 인터프리터로 쓰지 않도록 워크스페이스 설정에서 제외
+- 검증 결과:
+  - `.\.venv313\Scripts\python.exe -c "import sys; print(sys.version); print(sys.executable)"`: Python `3.13.13` 확인
+  - `.\.venv313\Scripts\python.exe -m unittest tests.test_api_flows.ApiFlowTests.test_decode_http_body_falls_back_to_korean_legacy_encodings -v`: 통과
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-05-22) - Local Python 3.13 Workspace Settings
+- Added VS Code workspace settings so local development tools prefer Python 3.13.
+- Changed file:
+  - `.vscode/settings.json`
+- Settings:
+  - pinned `python.defaultInterpreterPath` to `backend/.venv313/Scripts/python.exe`
+  - set `python.envFile` to `backend/.env`
+  - added `backend` to Pylance analysis paths
+  - configured VS Code tests to use Python `unittest`
+  - added `PYTHONUTF8=1` and `PYTHONIOENCODING=utf-8` to Windows terminal env
+- Confirmed:
+  - root `.python-version` already contains `3.13.13`
+  - `backend/.venv313` uses Python `3.13.13`
+  - `backend/.venv` uses Python `3.14.3`, so the workspace explicitly avoids selecting it as the default interpreter
+- Verification:
+  - `.\.venv313\Scripts\python.exe -c "import sys; print(sys.version); print(sys.executable)"`: confirmed Python `3.13.13`
+  - `.\.venv313\Scripts\python.exe -m unittest tests.test_api_flows.ApiFlowTests.test_decode_http_body_falls_back_to_korean_legacy_encodings -v`: passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 추가 업데이트 (2026-05-22) - Phase 1.7 안정화 계획 작성
+- Phase 1.7 `부족조건 미리보기` 기능의 안정화 계획 문서를 추가했다.
+- 새 문서:
+  - `docs/phase-1.7-stabilization-plan.md`
+- 포함 내용:
+  - 현재 구현 기준
+  - 안정화 목표
+  - 비범위
+  - 핵심 원칙
+  - 요구조건 후보 추출 안정화
+  - 법인 비교 프로필 정규화 안정화
+  - 비교 엔진 안전성 개선
+  - 포탈 UX 안정화
+  - 재분석/재추출/이력 무결성
+  - 테스트 및 샘플 QA 체계
+  - 보안/개인정보/로그 점검
+  - 권장 개발 순서
+  - 완료 기준
+  - Product Owner 확인 질문
+- README 문서 링크에 Phase 1.7 안정화 계획을 추가했다.
+
+## Additional Update (2026-05-22) - Phase 1.7 Stabilization Plan
+- Added a stabilization plan document for the Phase 1.7 `Gap Preview` feature.
+- New document:
+  - `docs/phase-1.7-stabilization-plan.md`
+- Covered:
+  - current implementation baseline
+  - stabilization goals
+  - non-scope
+  - core principles
+  - requirement candidate extraction hardening
+  - corporation comparison profile normalization hardening
+  - comparison engine safety
+  - portal UX stabilization
+  - re-analysis/re-extraction/history integrity
+  - testing and sample QA strategy
+  - security/privacy/logging review
+  - recommended execution order
+  - completion criteria
+  - product-owner questions
+- Added the Phase 1.7 stabilization plan link to README.

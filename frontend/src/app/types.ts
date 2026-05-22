@@ -301,3 +301,91 @@ export type SavedNaraNotice = {
   updated_at: string;
   attachments?: SavedNaraAttachment[];
 };
+
+export type NoticeRequirementCandidate = {
+  id: number;
+  nara_notice_id: number;
+  requirement_type: string;
+  requirement_key: string;
+  label: string;
+  required_value: string;
+  normalized_value: string;
+  confidence: number;
+  source_text: string;
+  status: string;
+  extraction_method: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NoticeRequirementPayload = {
+  notice_id: number;
+  requirements: NoticeRequirementCandidate[];
+  summary: {
+    total_count: number;
+    type_counts: Record<string, number>;
+    status: string;
+    note: string;
+  };
+};
+
+export type CorporationComparisonProfile = {
+  corporation_id: number;
+  corporation_name: string;
+  management_group_name: string;
+  regions: string[];
+  business_types: string[];
+  licenses: string[];
+  company_types: string[];
+  certifications: string[];
+  preference_tags: string[];
+  direct_production_items: string[];
+  required_documents: string[];
+  approved_evidence_count: number;
+  approved_evidence_labels: string[];
+  profile_note: string;
+};
+
+export type NoticeComparisonItem = {
+  requirement_candidate_id: number | null;
+  requirement_type: string;
+  label: string;
+  required_value: string;
+  normalized_value: string;
+  source_text: string;
+  confidence: number;
+  status: string;
+  status_label: string;
+  matched_value: string;
+  reason: string;
+};
+
+export type NoticeCorporationComparison = {
+  id: number;
+  nara_notice_id: number;
+  corporation_id: number;
+  status: string;
+  summary_json: string;
+  result_json: string;
+  requirement_count: number;
+  prepared_count: number;
+  possibly_missing_count: number;
+  needs_review_count: number;
+  not_found_count: number;
+  prompt_version: string;
+  created_at: string;
+  updated_at: string;
+  summary: {
+    requirement_count: number;
+    prepared_count: number;
+    possibly_missing_count: number;
+    needs_review_count: number;
+    not_found_count: number;
+    status: string;
+    note: string;
+  };
+  items: NoticeComparisonItem[];
+  profile: CorporationComparisonProfile;
+  notice: SavedNaraNotice | null;
+  corporation: Corporation | null;
+};

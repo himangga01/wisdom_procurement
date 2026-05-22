@@ -47,6 +47,13 @@ def make_docx_bytes(text: str) -> bytes:
 
 
 class ApiFlowTests(unittest.TestCase):
+    def test_decode_http_body_falls_back_to_korean_legacy_encodings(self) -> None:
+        encoded = "공고명: 미세먼지 저감숲".encode("cp949")
+
+        decoded = runtime.decode_http_body(encoded, "utf-8")
+
+        self.assertEqual(decoded, "공고명: 미세먼지 저감숲")
+
     def setUp(self) -> None:
         runtime.app.config["TESTING"] = True
         self.client = runtime.app.test_client()
@@ -57,6 +64,8 @@ class ApiFlowTests(unittest.TestCase):
                 DELETE FROM corporation_profile_update_candidates;
                 DELETE FROM corporation_evidence_documents;
                 DELETE FROM nara_notice_attachments;
+                DELETE FROM notice_corporation_comparisons;
+                DELETE FROM notice_requirement_candidates;
                 DELETE FROM nara_notices;
                 DELETE FROM integration_test_results;
                 DELETE FROM project_documents;
@@ -440,6 +449,62 @@ class ApiFlowTests(unittest.TestCase):
             self.assertIn("컴퓨터 관련 주변기기", fields["business_item"])
             self.assertIn("업태: 건설업", fields["business_category"])
             self.assertTrue(any("AI 업태/종목 정리" in warning for warning in result.warnings))
+        finally:
+            runtime.generate_json_with_ai = previous_generator
+            runtime.GEMINI_API_KEY = previous_gemini_key
+
+    def test_business_registration_ai_cleanup_sanitizes_sloppy_label_output(self) -> None:
+        previous_generator = runtime.generate_json_with_ai
+        previous_gemini_key = runtime.GEMINI_API_KEY
+
+        def fake_json_generator(prompt: str, selection: dict):
+            return (
+                {
+                    "business_type": ["사업의 종류", "업태 건설업", "도매 및\n소매업"],
+                    "business_item": [
+                        "종목 전기공사,신재생에너지설비설치전문기\n업",
+                        "건설업 정보통신공사업, 토목공사업",
+                    ],
+                    "business_category": "사업의 종류: 업태 건설업 종목 전기공사",
+                    "warnings": [],
+                },
+                {"provider": "gemini", "model": selection["model"]},
+            )
+
+        ocr_text = """
+        사업자등록증
+        등록번호 : 142-81-28387
+        법인명(단체명) : 주식회사 온세이엔씨
+        대표자 : 안영식
+        사업의 종류:
+        업태
+        건설업
+        종목
+        전기공사,신재생에너지설비설치전문기
+        업
+        건설업
+        정보통신공사업, 토목공사업
+        도매 및
+        소매업
+        컴퓨터 관련 주변기기
+        """
+
+        try:
+            runtime.GEMINI_API_KEY = "gemini-test-key"
+            runtime.generate_json_with_ai = fake_json_generator
+            result = runtime.analyze_corporation_evidence_text(
+                ocr_text,
+                "사업자등록증.png",
+                "auto",
+            )
+
+            fields = {candidate.field_key: candidate.extracted_value for candidate in result.candidates}
+            self.assertEqual(fields["business_type"], "건설업, 도매 및 소매업")
+            self.assertIn("전기공사", fields["business_item"])
+            self.assertIn("신재생에너지설비설치전문기업", fields["business_item"])
+            self.assertIn("정보통신공사업", fields["business_item"])
+            self.assertNotIn("사업의 종류", fields["business_category"])
+            self.assertNotIn("종목", fields["business_item"])
         finally:
             runtime.generate_json_with_ai = previous_generator
             runtime.GEMINI_API_KEY = previous_gemini_key
@@ -831,6 +896,139 @@ class ApiFlowTests(unittest.TestCase):
         saved_response = self.client.get(f"/api/nara/saved-notices/{payload['notice']['id']}")
         self.assertEqual(saved_response.status_code, 200)
         self.assertEqual(saved_response.get_json()["bid_ntce_nm"], "테스트 나라장터 공고")
+
+    def test_saved_notice_requirements_api_returns_candidate_rows(self) -> None:
+        response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500011",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "요구조건 후보 공고",
+                    "ntceInsttNm": "테스트 공고기관",
+                    "dminsttNm": "테스트 수요기관",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidBeginDt": "2026-05-10 09:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "opengDt": "2026-05-21 11:00",
+                    "presmptPrce": "1000000",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "조경식재공사업",
+                }
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+        saved = self.wait_for_saved_nara_notice(response.get_json()["notice"]["id"])
+
+        requirements_response = self.client.get(f"/api/nara/saved-notices/{saved['id']}/requirements")
+        self.assertEqual(requirements_response.status_code, 200)
+        payload = requirements_response.get_json()
+
+        self.assertEqual(payload["notice_id"], saved["id"])
+        self.assertGreaterEqual(payload["summary"]["total_count"], 4)
+        self.assertEqual(payload["summary"]["status"], "candidate_only")
+        requirement_types = {item["requirement_type"] for item in payload["requirements"]}
+        self.assertIn("region", requirement_types)
+        self.assertIn("license", requirement_types)
+        self.assertIn("date", requirement_types)
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+
+    def test_corporation_comparison_profile_normalizes_profile_and_evidence(self) -> None:
+        response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "비교 테스트 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "business_type": "건설업",
+                "business_item": "조경식재공사업",
+                "company_size_classification": "소기업",
+                "certifications_json": ["여성기업"],
+                "direct_production_items_json": ["조경식재"],
+                "license_summary": "조경식재공사업",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        corporation = response.get_json()
+
+        profile_response = self.client.get(f"/api/corporations/{corporation['id']}/comparison-profile")
+        self.assertEqual(profile_response.status_code, 200)
+        profile = profile_response.get_json()
+
+        self.assertIn("경기도", profile["regions"])
+        self.assertIn("조경식재공사업", profile["licenses"])
+        self.assertIn("소기업", profile["company_types"])
+        self.assertIn("사업자등록증", profile["required_documents"])
+        self.assertIn("직접생산확인증명서", profile["required_documents"])
+
+    def test_notice_comparison_preview_persists_missing_items_without_final_verdict(self) -> None:
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "부족조건 비교 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "business_item": "조경식재공사업",
+                "company_size_classification": "중소기업",
+                "license_summary": "조경식재공사업",
+            },
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500012",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "부족조건 비교 공고",
+                    "ntceInsttNm": "테스트 공고기관",
+                    "dminsttNm": "테스트 수요기관",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidBeginDt": "2026-05-10 09:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "opengDt": "2026-05-21 11:00",
+                    "presmptPrce": "1000000",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "산림사업법인",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        comparison_response = self.client.post(
+            "/api/notice-comparisons",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+        )
+        self.assertEqual(comparison_response.status_code, 201)
+        comparison = comparison_response.get_json()
+
+        self.assertEqual(comparison["status"], "preview")
+        self.assertGreaterEqual(comparison["summary"]["prepared_count"], 1)
+        self.assertGreaterEqual(comparison["summary"]["possibly_missing_count"], 1)
+        self.assertGreaterEqual(comparison["summary"]["needs_review_count"], 1)
+        self.assertNotIn("eligible", json.dumps(comparison).lower())
+
+        list_response = self.client.get("/api/notice-comparisons")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.get_json()[0]["id"], comparison["id"])
+
+        notice_history_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/comparisons")
+        self.assertEqual(notice_history_response.status_code, 200)
+        self.assertEqual(len(notice_history_response.get_json()), 1)
+
+        detail_response = self.client.get(f"/api/notice-comparisons/{comparison['id']}")
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail_response.get_json()["summary"]["status"], "preview_only")
+
+        extract_response = self.client.post(f"/api/nara/saved-notices/{notice['id']}/requirements/extract")
+        self.assertEqual(extract_response.status_code, 200)
+
+        stale_history_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/comparisons")
+        self.assertEqual(stale_history_response.status_code, 200)
+        self.assertEqual(stale_history_response.get_json(), [])
 
     def test_notice_requirement_extraction_reads_text_candidates_without_verdict(self) -> None:
         requirements = runtime.extract_notice_requirements(

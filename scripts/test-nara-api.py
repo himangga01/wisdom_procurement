@@ -50,6 +50,21 @@ def build_url(base_url: str, operation: str, params: dict[str, str]) -> str:
     return f"{base}/{operation}?{query}"
 
 
+def decode_http_body(body: bytes, charset: str | None = None) -> str:
+    candidates = [charset, "utf-8-sig", "utf-8", "cp949", "euc-kr"]
+    seen: set[str] = set()
+    for candidate in candidates:
+        encoding = (candidate or "").strip().lower()
+        if not encoding or encoding in seen:
+            continue
+        seen.add(encoding)
+        try:
+            return body.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return body.decode("utf-8", errors="replace")
+
+
 def request_text(url: str, timeout: int = 20) -> tuple[int, str]:
     request = urllib.request.Request(
         url,
@@ -61,10 +76,10 @@ def request_text(url: str, timeout: int = 20) -> tuple[int, str]:
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read()
-            charset = response.headers.get_content_charset() or "utf-8"
-            return response.status, body.decode(charset, errors="replace")
+            charset = response.headers.get_content_charset()
+            return response.status, decode_http_body(body, charset)
     except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
+        body = decode_http_body(exc.read(), exc.headers.get_content_charset() if exc.headers else None)
         return exc.code, body
 
 
