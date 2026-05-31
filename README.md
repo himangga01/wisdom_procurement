@@ -338,6 +338,19 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 ### 10. 나라장터 API 테스트
 나라장터 API 인증키가 있을 때만 실행합니다.
 
+인증키 발급 절차:
+1. 공공데이터포털에 로그인합니다.
+2. [조달청_나라장터 입찰공고정보서비스](https://www.data.go.kr/data/15129394/openapi.do) 페이지로 이동합니다.
+3. `활용신청`을 누르고 신청을 완료합니다.
+4. 승인 후 공공데이터포털의 마이페이지 또는 활용신청 내역에서 일반 인증키를 확인합니다.
+5. 받은 키를 `backend/.env`의 `NARA_API_SERVICE_KEY`에 넣거나, 테스트 실행 전 PowerShell 환경변수로 넣습니다.
+
+참고:
+- 이 API는 REST 방식이며 JSON/XML 응답을 제공합니다.
+- 공공데이터포털 기준 개발단계와 운영단계 모두 자동승인으로 표시되어 있습니다.
+- 개발계정 기본 트래픽은 1,000건으로 표시됩니다. 운영 트래픽은 활용사례 등록 후 증설 신청이 필요할 수 있습니다.
+- 인증키 원문은 README, 로그, 프론트엔드 화면, Git 커밋에 남기지 않습니다.
+
 ```powershell
 $env:NARA_API_SERVICE_KEY="your_key_here"
 py -3.13 scripts\test-nara-api.py --date 20260505 --num-of-rows 10
@@ -533,6 +546,7 @@ Environment notes:
 - `scripts/manage-servers.ps1` copies `.env.example` files when `.env` files are missing.
 - API keys are optional for basic local tests.
 - Real Gemini/OpenAI/Nara API tests require keys in `backend/.env` or process environment variables.
+- Nara API users must apply for access on the [Public Data Portal Nara Bid Notice API page](https://www.data.go.kr/data/15129394/openapi.do), then copy the issued service key into `NARA_API_SERVICE_KEY`.
 - Never commit API keys.
 
 Phase 1.6 should be delivered incrementally:

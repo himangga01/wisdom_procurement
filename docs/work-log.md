@@ -4810,3 +4810,33 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Added an English `Quick Setup And Verification` section under `AI / Engineering Version`.
 - Verification:
   - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-05-31) - README 나라장터 API 활용신청 안내 보강
+- 사용자 질문에 따라 README의 나라장터 API 테스트 가이드에 공공데이터포털 활용신청 절차가 충분히 들어 있는지 확인했다.
+- 기존 README에는 `NARA_API_SERVICE_KEY` 입력과 API 키 관리 주의는 있었지만, 사용자가 어느 페이지에서 활용신청해야 하는지까지는 명확하지 않았다.
+- 공공데이터포털의 `조달청_나라장터 입찰공고정보서비스` 페이지를 확인했다.
+  - URL: `https://www.data.go.kr/data/15129394/openapi.do`
+  - 페이지에는 `활용신청` 버튼, REST API, JSON/XML 포맷, 개발/운영 자동승인, 개발계정 기본 트래픽 1,000건 안내가 표시된다.
+- README 보강 내용:
+  - 공공데이터포털 로그인
+  - `조달청_나라장터 입찰공고정보서비스` 페이지 이동
+  - `활용신청`
+  - 승인 후 인증키 확인
+  - `backend/.env`의 `NARA_API_SERVICE_KEY` 또는 PowerShell 환경변수에 키 입력
+  - 인증키 원문을 README/로그/프론트엔드/Git에 남기지 말라는 주의
+- 영어 Quick Setup 섹션에도 Nara API 신청 페이지와 `NARA_API_SERVICE_KEY` 입력 안내를 추가했다.
+
+## Additional Update (2026-05-31) - README Nara API Application Guidance
+- Checked whether the README clearly explains how users should apply for and enter the Nara API token.
+- The README already mentioned `NARA_API_SERVICE_KEY`, but it did not clearly point users to the Public Data Portal application page.
+- Verified the Public Data Portal page:
+  - URL: `https://www.data.go.kr/data/15129394/openapi.do`
+  - The page shows the Nara Bid Notice API, `활용신청`, REST API, JSON/XML format, automatic approval for development/operation stages, and a 1,000-request development quota.
+- README updates:
+  - log in to the Public Data Portal
+  - open the Nara Bid Notice API page
+  - apply via `활용신청`
+  - retrieve the issued service key after approval
+  - enter it in `backend/.env` as `NARA_API_SERVICE_KEY` or set it as a PowerShell environment variable
+  - do not expose raw API keys in README, logs, frontend screens, or Git commits
+- Added the Nara API application link to the English Quick Setup notes as well.
