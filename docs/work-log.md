@@ -4866,3 +4866,37 @@ Per user request, it must be updated whenever new work is performed in this thre
   - Checked all 18 README document links exist: `README_DOC_LINKS_OK count=18`
   - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
   - `git diff --check -- README.md docs/work-log.md`: passed
+
+## 작업 기록 (2026-05-31) - README Gemini API 키 발급 안내 추가
+- 사용자 요청에 따라 README에 Gemini API 사용을 위한 토큰/API 키 발급 방법을 추가했다.
+- 공식 Google AI Developers 문서를 확인했다.
+  - Gemini API 키는 Google AI Studio의 API keys 페이지에서 생성/관리할 수 있다.
+  - Gemini SDK는 일반적으로 `GEMINI_API_KEY` 또는 `GOOGLE_API_KEY` 환경변수를 읽을 수 있다.
+- README 보강 내용:
+  - Google AI Studio 로그인
+  - Google AI Studio API keys 페이지 이동
+  - 약관 동의
+  - `Create API key` 또는 `API 키 만들기`
+  - Google Cloud 프로젝트 선택/생성 후 키 발급
+  - `backend/.env`의 `GEMINI_API_KEY`에 입력
+  - PowerShell 임시 환경변수 입력 예시
+  - 이 프로젝트는 `GEMINI_API_KEY`를 표준으로 사용한다는 안내
+  - Gemini API 키 원문을 README/로그/프론트엔드/Git에 남기지 말라는 주의
+- 영어 Quick Setup 섹션에도 Google AI Studio API keys 링크와 `GEMINI_API_KEY` 입력 안내를 추가했다.
+
+## Additional Update (2026-05-31) - README Gemini API Key Guide
+- Added Gemini API token/key issuance guidance to the README per the user's request.
+- Checked the official Google AI Developers documentation.
+  - Gemini API keys can be created and managed from the Google AI Studio API keys page.
+  - Gemini SDKs can generally read `GEMINI_API_KEY` or `GOOGLE_API_KEY` environment variables.
+- README updates:
+  - sign in to Google AI Studio
+  - open the Google AI Studio API keys page
+  - accept Terms of Service if prompted
+  - create an API key
+  - choose or create a Google Cloud project
+  - copy the key into `backend/.env` as `GEMINI_API_KEY`
+  - add a temporary PowerShell environment variable example
+  - note that this project standardizes on `GEMINI_API_KEY`
+  - warn not to expose raw Gemini API keys in README, logs, frontend screens, or Git commits
+- Added the Google AI Studio API keys link to the English Quick Setup section as well.

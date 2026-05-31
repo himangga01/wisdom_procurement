@@ -233,6 +233,35 @@ NARA_API_SERVICE_KEY=
 - 프론트엔드에는 전체 API 키를 노출하지 않습니다.
 - `scripts/manage-servers.ps1`로 실행하면 기본 백엔드 주소는 `http://127.0.0.1:18111`, 프론트 주소는 `http://127.0.0.1:5199`입니다.
 
+### 5-1. Gemini API 키 발급
+Gemini 기반 AI 요약/비교 기능을 실제로 테스트하려면 Google AI Studio에서 Gemini API 키를 발급받아야 합니다.
+
+발급 절차:
+1. Google 계정으로 [Google AI Studio](https://aistudio.google.com/)에 로그인합니다.
+2. [Google AI Studio API keys](https://aistudio.google.com/app/apikey) 페이지로 이동합니다.
+3. 처음 사용하는 계정이면 약관에 동의합니다.
+4. `Create API key` 또는 `API 키 만들기`를 선택합니다.
+5. 새 Google Cloud 프로젝트를 만들거나 기존 프로젝트를 선택해 API 키를 생성합니다.
+6. 생성된 키를 복사해 `backend/.env`에 입력합니다.
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+AI_PROVIDER_DEFAULT=gemini
+AI_MODEL_DEFAULT=gemini-2.5-flash
+GEMINI_MODEL_PRIMARY=gemini-2.5-flash
+```
+
+PowerShell에서 임시로만 넣고 테스트하려면:
+
+```powershell
+$env:GEMINI_API_KEY="your_gemini_api_key_here"
+```
+
+참고:
+- Google 공식 문서 기준 Gemini API 키는 Google AI Studio의 API keys 페이지에서 만들고 관리합니다.
+- Gemini SDK는 일반적으로 `GEMINI_API_KEY` 또는 `GOOGLE_API_KEY` 환경변수를 읽을 수 있지만, 이 프로젝트는 `GEMINI_API_KEY`를 표준으로 사용합니다.
+- Gemini API 키도 나라장터 키와 마찬가지로 README, 로그, 프론트엔드 화면, Git 커밋에 원문을 남기지 않습니다.
+
 ### 6. 서버 실행
 가장 쉬운 방법은 서버 관리 스크립트를 쓰는 것입니다.
 
@@ -546,6 +575,7 @@ Environment notes:
 - `scripts/manage-servers.ps1` copies `.env.example` files when `.env` files are missing.
 - API keys are optional for basic local tests.
 - Real Gemini/OpenAI/Nara API tests require keys in `backend/.env` or process environment variables.
+- Gemini API users can create and manage keys in [Google AI Studio API keys](https://aistudio.google.com/app/apikey), then copy the issued key into `GEMINI_API_KEY`.
 - Nara API users must apply for access on the [Public Data Portal Nara Bid Notice API page](https://www.data.go.kr/data/15129394/openapi.do), then copy the issued service key into `NARA_API_SERVICE_KEY`.
 - Never commit API keys.
 
