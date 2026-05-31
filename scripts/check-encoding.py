@@ -9,6 +9,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 SCAN_TARGETS = [
     ROOT_DIR / "backend" / "app",
     ROOT_DIR / "backend" / "tests",
+    ROOT_DIR / "frontend" / "src",
+    ROOT_DIR / "frontend" / "index.html",
     ROOT_DIR / "scripts",
     ROOT_DIR / "docs",
     ROOT_DIR / "README.md",

@@ -1,13 +1,21 @@
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { AnalysisPage } from "../pages/AnalysisPage";
+import { BackupsPage } from "../pages/BackupsPage";
+import { BasisDocumentsPage } from "../pages/BasisDocumentsPage";
+import { BasisRetrievalEvaluationsPage } from "../pages/BasisRetrievalEvaluationsPage";
+import { BasisRuleCandidatesPage } from "../pages/BasisRuleCandidatesPage";
 import { CorporationsPage } from "../pages/CorporationsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
+import { JudgmentRunsPage } from "../pages/JudgmentRunsPage";
+import { NaraCollectionRunsPage } from "../pages/NaraCollectionRunsPage";
 import { NaraBoardPage } from "../pages/NaraBoardPage";
 import { NoticeComparisonPage } from "../pages/NoticeComparisonPage";
 import { NaraSavedNoticeDetailPage } from "../pages/NaraSavedNoticeDetailPage";
 import { NaraSavedNoticesPage } from "../pages/NaraSavedNoticesPage";
+import { OperationRunsPage } from "../pages/OperationRunsPage";
+import { OperationsPage } from "../pages/OperationsPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { WorkOverlayProvider } from "./workOverlay";
@@ -28,7 +36,12 @@ type NavGroup = {
 const navGroups: NavGroup[] = [
   {
     title: "업무 현황",
-    items: [{ to: "/", icon: "OV", label: "대시보드", note: "오늘 처리할 일과 시스템 상태" }],
+    items: [
+      { to: "/", icon: "OV", label: "대시보드", note: "오늘 처리할 일과 시스템 상태" },
+      { to: "/operations", icon: "OP", label: "운영 대시보드", note: "실패, 검토대기, 연동 상태" },
+      { to: "/operation-runs", icon: "OR", label: "작업 이력", note: "실행, 실패 사유, 재시도" },
+      { to: "/backups", icon: "BK", label: "백업/복원", note: "백업 생성, 검증, dry-run" },
+    ],
   },
   {
     title: "공고 업무",
@@ -36,6 +49,8 @@ const navGroups: NavGroup[] = [
       { to: "/nara-board", icon: "NB", label: "나라장터 공고 검색", note: "API 조회, 선택 저장, 자동 분석" },
       { to: "/nara-saved-notices", icon: "SN", label: "저장한 공고", note: "저장 공고와 첨부 처리 상태" },
       { to: "/notice-comparison", icon: "PV", label: "부족조건 미리보기", note: "공고 요구조건과 법인 준비상태 비교" },
+      { to: "/judgment-runs", icon: "JR", label: "판단 검토", note: "부족조건, citation 후보, 검토 상태 관리" },
+      { to: "/nara-collection-runs", icon: "NC", label: "자동 수집 관리", note: "나라장터 API 수집 실행과 이력 확인" },
     ],
   },
   {
@@ -46,10 +61,22 @@ const navGroups: NavGroup[] = [
     title: "기준문서 / RAG",
     items: [
       {
+        to: "/basis-documents",
         icon: "RG",
         label: "기준문서 관리",
-        note: "Phase 2에서 업로드/청킹/인덱싱 예정",
-        disabled: true,
+        note: "PDF 업로드, 청킹, 로컬 검색 인덱스",
+      },
+      {
+        to: "/basis-rule-candidates",
+        icon: "RC",
+        label: "규칙 후보 관리",
+        note: "기준문서 조건 후보 승인, 반려, 수정",
+      },
+      {
+        to: "/basis-retrieval-evaluations",
+        icon: "EV",
+        label: "검색 평가",
+        note: "검색 coverage와 citation 누락 확인",
       },
     ],
   },
@@ -74,6 +101,24 @@ const pageMeta = [
     description: "공고, 문서, 분석 상태를 운영형 대시보드로 정리해 다음 액션을 빠르게 찾습니다.",
   },
   {
+    match: (pathname: string) => pathname.startsWith("/backups"),
+    eyebrow: "Backup & Restore",
+    title: "로컬 데이터 백업과 복원 검증",
+    description: "SQLite DB와 storage 파일을 백업하고, 복원 전 dry-run으로 검증합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/operation-runs"),
+    eyebrow: "Operation Runs",
+    title: "작업 실행과 실패 사유 관리",
+    description: "운영 작업의 실행 이력, 요청/결과, 실패 사유와 재시도 흐름을 확인합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/operations"),
+    eyebrow: "Operations Control",
+    title: "운영 상태와 실패 작업 관리",
+    description: "Phase 4 운영 제품화를 위한 상태 요약, 실패 목록, 검토 대기 큐를 확인합니다.",
+  },
+  {
     match: (pathname: string) => pathname.startsWith("/corporations"),
     eyebrow: "Corporation Workspace",
     title: "법인 기본 정보 관리",
@@ -90,6 +135,18 @@ const pageMeta = [
     eyebrow: "Document Analysis",
     title: "문서 업로드와 분석 관리",
     description: "PDF/DOCX 업로드, 분석 실행, 결과 확인 흐름을 한곳에서 관리합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/basis-documents"),
+    eyebrow: "Basis Library",
+    title: "기준문서 청킹과 검색 인덱스",
+    description: "재사용 기준문서를 일반 업로드 문서와 분리해 관리합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/basis-rule-candidates"),
+    eyebrow: "Rule Candidate Review",
+    title: "기준 규칙 후보 검토",
+    description: "기준문서에서 추출한 조건 후보를 승인, 반려, 수정하며 citation 품질을 관리합니다.",
   },
   {
     match: (pathname: string) => pathname.startsWith("/settings"),
@@ -110,10 +167,28 @@ const pageMeta = [
     description: "로컬 DB에 저장한 공고, 첨부 다운로드 상태, 분석 결과를 확인합니다.",
   },
   {
+    match: (pathname: string) => pathname.startsWith("/nara-collection-runs"),
+    eyebrow: "Nara Collection Runs",
+    title: "나라장터 자동 수집 관리",
+    description: "나라장터 API 수집 실행 조건과 결과, 실패 사유, 재시도 대상을 확인합니다.",
+  },
+  {
     match: (pathname: string) => pathname.startsWith("/notice-comparison"),
     eyebrow: "Gap Preview",
     title: "공고별 부족조건 미리보기",
     description: "저장 공고의 요구조건 후보와 법인 준비상태를 비교해 부족 가능성이 있는 항목을 먼저 확인합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/judgment-runs"),
+    eyebrow: "Judgment Review",
+    title: "부족조건 판단 검토",
+    description: "공고 요구조건, 법인 준비상태, 기준문서 citation 후보를 묶어 검토 가능한 결과로 정리합니다.",
+  },
+  {
+    match: (pathname: string) => pathname.startsWith("/basis-retrieval-evaluations"),
+    eyebrow: "Retrieval Evaluation",
+    title: "기준문서 검색 품질 확인",
+    description: "평가 질의셋별 검색 coverage와 누락 citation을 확인합니다.",
   },
 ];
 
@@ -197,14 +272,22 @@ export function App() {
         <section className="page-stage">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/operations" element={<OperationsPage />} />
+            <Route path="/operation-runs" element={<OperationRunsPage />} />
+            <Route path="/backups" element={<BackupsPage />} />
             <Route path="/corporations" element={<CorporationsPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/:documentId/analysis" element={<AnalysisPage />} />
+            <Route path="/basis-documents" element={<BasisDocumentsPage />} />
+            <Route path="/basis-rule-candidates" element={<BasisRuleCandidatesPage />} />
+            <Route path="/basis-retrieval-evaluations" element={<BasisRetrievalEvaluationsPage />} />
             <Route path="/nara-board" element={<NaraBoardPage />} />
             <Route path="/nara-saved-notices" element={<NaraSavedNoticesPage />} />
             <Route path="/nara-saved-notices/:id" element={<NaraSavedNoticeDetailPage />} />
             <Route path="/notice-comparison" element={<NoticeComparisonPage />} />
+            <Route path="/judgment-runs" element={<JudgmentRunsPage />} />
+            <Route path="/nara-collection-runs" element={<NaraCollectionRunsPage />} />
             <Route path="/settings/integrations/nara" element={<SettingsPage />} />
           </Routes>
         </section>

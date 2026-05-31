@@ -2,9 +2,11 @@
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 
 import fitz
@@ -37,6 +39,14 @@ def make_pdf_bytes(text: str) -> bytes:
     return payload
 
 
+def make_blank_pdf_bytes() -> bytes:
+    doc = fitz.open()
+    doc.new_page(width=300, height=200)
+    payload = doc.tobytes()
+    doc.close()
+    return payload
+
+
 def make_docx_bytes(text: str) -> bytes:
     doc = Document()
     for line in text.strip().splitlines():
@@ -54,6 +64,348 @@ class ApiFlowTests(unittest.TestCase):
 
         self.assertEqual(decoded, "공고명: 미세먼지 저감숲")
 
+    def test_json_responses_declare_utf8_for_korean_text(self) -> None:
+        response = self.client.get("/api/operations/summary")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("charset=utf-8", response.content_type.lower())
+
+    def test_phase4a_operations_summary_handles_empty_database(self) -> None:
+        response = self.client.get("/api/operations/summary")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertIn(payload["overall_status"], {"ok", "warning", "action_required"})
+        self.assertEqual(payload["counts"]["failed_jobs_24h"], 0)
+        self.assertEqual(payload["counts"]["pending_reviews"], 0)
+        self.assertEqual(payload["health"]["database"]["status"], "ok")
+        self.assertEqual(payload["health"]["ocr"]["status"], "unavailable")
+        self.assertEqual(payload["health"]["nara_api"]["configured"], False)
+        self.assertEqual(payload["last_backup"]["status"], "not_available")
+
+    def test_phase4a_operations_summary_reports_failures_and_review_queues(self) -> None:
+        now = runtime.now_iso()
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO nara_collection_runs (
+                  status, mode, keyword, start_date, end_date, searched_count,
+                  saved_count, skipped_count, error_message, criteria_json,
+                  result_json, created_at, updated_at
+                ) VALUES ('failed', 'api', '조경', '2026-05-23', '2026-05-24',
+                  0, 0, 0, 'network timeout', '{}', '{}', ?, ?)
+                """,
+                (now, now),
+            )
+            conn.execute(
+                """
+                INSERT INTO basis_documents (
+                  title, original_file_name, stored_file_path, processing_status,
+                  parse_status, ocr_status, chunk_status, index_status,
+                  error_message, created_at, updated_at
+                ) VALUES ('기준문서 실패 샘플', 'basis.pdf', 'missing.pdf',
+                  'failed', 'failed', 'pending', 'failed', 'failed',
+                  'Stored file not found', ?, ?)
+                """,
+                (now, now),
+            )
+            conn.execute(
+                """
+                INSERT INTO corporation_evidence_documents (
+                  original_file_name, stored_file_path, extraction_status,
+                  ocr_status, review_status, created_at, updated_at
+                ) VALUES ('증빙.pdf', 'evidence.pdf', 'completed', 'skipped',
+                  'pending', ?, ?)
+                """,
+                (now, now),
+            )
+            conn.execute(
+                """
+                INSERT INTO backup_runs (
+                  backup_type, status, file_name, file_path, file_size_bytes,
+                  manifest_json, validation_json, error_message,
+                  created_at, completed_at, updated_at
+                ) VALUES ('full_local', 'failed', 'failed-backup.zip', '',
+                  0, '{}', '{}', 'checksum mismatch', ?, ?, ?)
+                """,
+                (now, now, now),
+            )
+            conn.commit()
+
+        response = self.client.get("/api/operations/summary")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["overall_status"], "action_required")
+        self.assertGreaterEqual(payload["counts"]["failed_jobs_24h"], 2)
+        self.assertGreaterEqual(payload["counts"]["pending_reviews"], 1)
+        failure_types = {item["operation_type"] for item in payload["recent_failures"]}
+        self.assertIn("nara_collection", failure_types)
+        self.assertIn("basis_document_processing", failure_types)
+        self.assertIn("backup_create", failure_types)
+        self.assertEqual(payload["last_backup"]["status"], "failed")
+        self.assertEqual(payload["last_backup"]["file_name"], "failed-backup.zip")
+        queue_types = {item["queue_type"] for item in payload["review_queues"]}
+        self.assertIn("corporation_evidence", queue_types)
+
+    def test_phase4a_operations_summary_never_exposes_raw_api_keys(self) -> None:
+        original_nara_key = runtime.NARA_API_SERVICE_KEY
+        original_gemini_key = runtime.GEMINI_API_KEY
+        runtime.NARA_API_SERVICE_KEY = "PHASE4_RAW_NARA_SECRET_123456"
+        runtime.GEMINI_API_KEY = "PHASE4_RAW_GEMINI_SECRET_123456"
+        try:
+            response = self.client.get("/api/operations/summary")
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_nara_key
+            runtime.GEMINI_API_KEY = original_gemini_key
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        body = json.dumps(payload, ensure_ascii=False)
+        self.assertTrue(payload["health"]["nara_api"]["configured"])
+        self.assertTrue(payload["health"]["ai_provider"]["configured"])
+        self.assertNotIn("PHASE4_RAW_NARA_SECRET_123456", body)
+        self.assertNotIn("PHASE4_RAW_GEMINI_SECRET_123456", body)
+
+    def test_phase4b_operation_runs_record_nara_collection(self) -> None:
+        response = self.client.post(
+            "/api/nara/collection-runs",
+            json={
+                "keyword": "조경",
+                "start_date": "2026-05-23",
+                "end_date": "2026-05-24",
+                "dry_run": True,
+                "notices": [
+                    {
+                        "bidNtceNo": "PHASE4B-001",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "Phase 4B 운영 이력 테스트",
+                        "ntceInsttNm": "테스트기관",
+                        "ntceSpecFileNm1": "공고문.pdf",
+                        "ntceSpecDocUrl1": "https://example.com/notice.pdf",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        collection_run = response.get_json()
+
+        list_response = self.client.get("/api/operation-runs?operation_type=nara_collection")
+
+        self.assertEqual(list_response.status_code, 200)
+        runs = list_response.get_json()
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0]["operation_type"], "nara_collection")
+        self.assertEqual(runs[0]["target_id"], collection_run["id"])
+        self.assertEqual(runs[0]["status"], "completed")
+        self.assertEqual(runs[0]["request"]["keyword"], "조경")
+
+    def test_phase4c_operation_run_retry_creates_new_linked_run(self) -> None:
+        response = self.client.post(
+            "/api/nara/collection-runs",
+            json={
+                "keyword": "재시도",
+                "start_date": "2026-05-23",
+                "end_date": "2026-05-24",
+                "dry_run": False,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["status"], "not_configured")
+        runs = self.client.get("/api/operation-runs?operation_type=nara_collection").get_json()
+        original_run = runs[0]
+
+        retry_response = self.client.post(f"/api/operation-runs/{original_run['id']}/retry")
+
+        self.assertEqual(retry_response.status_code, 201)
+        retry_run = retry_response.get_json()
+        self.assertEqual(retry_run["retry_of_run_id"], original_run["id"])
+        self.assertEqual(retry_run["retry_count"], 1)
+        self.assertEqual(retry_run["operation_type"], "nara_collection")
+        self.assertEqual(retry_run["status"], "not_configured")
+        self.assertEqual(retry_run["error_code"], "missing_api_key")
+
+        second_retry_response = self.client.post(f"/api/operation-runs/{original_run['id']}/retry")
+        self.assertEqual(second_retry_response.status_code, 201)
+        self.assertEqual(second_retry_response.get_json()["retry_count"], 2)
+
+    def test_phase4d_backup_create_validate_and_exclude_env(self) -> None:
+        storage_root = Path(os.environ["STORAGE_ROOT"])
+        upload_dir = storage_root / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        (upload_dir / "sample.txt").write_text("backup sample", encoding="utf-8")
+        (upload_dir / ".env").write_text("UPLOAD_SECRET=1", encoding="utf-8")
+        nested_dir = upload_dir / "nested"
+        nested_dir.mkdir()
+        (nested_dir / ".env.local").write_text("NESTED_SECRET=1", encoding="utf-8")
+        (storage_root / ".env").write_text("SHOULD_NOT_BE_INCLUDED=1", encoding="utf-8")
+        self.upload_basis_document(
+            "Direct production confirmation certificate is a required document candidate.",
+            file_name="backup-basis-index.pdf",
+        )
+
+        response = self.client.post("/api/backups", json={})
+
+        self.assertEqual(response.status_code, 201)
+        backup = response.get_json()
+        self.assertEqual(backup["status"], "completed")
+        backup_path = Path(backup["file_path"])
+        self.assertTrue(backup_path.exists())
+        with zipfile.ZipFile(backup_path, "r") as zip_file:
+            names = set(zip_file.namelist())
+        self.assertIn("manifest.json", names)
+        self.assertIn("database/app.db", names)
+        self.assertIn("storage/uploads/sample.txt", names)
+        self.assertIn("storage/basis-index/basis-index.json", names)
+        self.assertNotIn("storage/uploads/.env", names)
+        self.assertNotIn("storage/uploads/nested/.env.local", names)
+        self.assertNotIn(".env", names)
+        self.assertFalse(any(name.endswith(".env") or "/.env" in name for name in names))
+        self.assertEqual(backup["manifest"]["basis_index"]["status"], "included")
+        self.assertTrue(backup["manifest"]["basis_index"]["sha256"])
+
+        validate_response = self.client.post("/api/backups/validate", json={"backup_id": backup["id"]})
+        self.assertEqual(validate_response.status_code, 200)
+        validation = validate_response.get_json()
+        self.assertTrue(validation["valid"])
+
+    def test_phase4d_backup_uses_sqlite_snapshot_and_removes_temp_file(self) -> None:
+        corporation = self.create_corporation()
+
+        response = self.client.post("/api/backups", json={})
+
+        self.assertEqual(response.status_code, 201)
+        backup = response.get_json()
+        backup_path = Path(backup["file_path"])
+        self.assertTrue(backup_path.exists())
+        self.assertFalse(list(backup_path.parent.glob("*.db.snapshot.tmp")))
+
+        with zipfile.ZipFile(backup_path, "r") as zip_file:
+            db_bytes = zip_file.read("database/app.db")
+        snapshot_db = Path(tempfile.mkdtemp(prefix="wisdom_backup_snapshot_")) / "snapshot.db"
+        snapshot_db.write_bytes(db_bytes)
+        try:
+            with sqlite3.connect(snapshot_db) as conn:
+                row = conn.execute("SELECT name FROM corporations WHERE id=?", (corporation["id"],)).fetchone()
+            self.assertEqual(row[0], corporation["name"])
+        finally:
+            shutil.rmtree(snapshot_db.parent, ignore_errors=True)
+
+    def test_phase4d_failed_backup_returns_payload_and_records_operation(self) -> None:
+        previous_create_backup_run = runtime.create_backup_run
+
+        def fake_create_backup_run(conn, *, sqlite_path, storage_root):
+            now = runtime.now_iso()
+            validation = {"valid": False, "errors": ["forced validation failure"], "warnings": []}
+            cur = conn.execute(
+                """
+                INSERT INTO backup_runs (
+                  backup_type, status, file_name, file_path, file_size_bytes,
+                  manifest_json, validation_json, error_message,
+                  created_at, completed_at, updated_at
+                ) VALUES ('full_local', 'failed', 'failed.zip', '', 0,
+                  '{}', ?, 'forced validation failure', ?, ?, ?)
+                """,
+                (json.dumps(validation, ensure_ascii=False), now, now, now),
+            )
+            return runtime.get_backup_run_payload(conn, cur.lastrowid)
+
+        try:
+            runtime.create_backup_run = fake_create_backup_run
+            response = self.client.post("/api/backups", json={})
+        finally:
+            runtime.create_backup_run = previous_create_backup_run
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["validation"]["errors"], ["forced validation failure"])
+
+        operation_runs = self.client.get("/api/operation-runs?operation_type=backup_create").get_json()
+        self.assertEqual(operation_runs[0]["status"], "failed")
+
+    def test_phase4d_exception_backup_failure_returns_validation_shape(self) -> None:
+        previous_create_backup_run = runtime.create_backup_run
+
+        def fake_create_backup_run(conn, *, sqlite_path, storage_root):
+            return previous_create_backup_run(
+                conn,
+                sqlite_path=Path(storage_root) / "missing-app.db",
+                storage_root=storage_root,
+            )
+
+        try:
+            runtime.create_backup_run = fake_create_backup_run
+            response = self.client.post("/api/backups", json={})
+        finally:
+            runtime.create_backup_run = previous_create_backup_run
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "failed")
+        self.assertFalse(payload["validation"]["valid"])
+        self.assertTrue(payload["validation"]["errors"])
+        self.assertIn("SQLite DB not found", payload["validation"]["errors"][0])
+        self.assertIsInstance(payload["validation"]["warnings"], list)
+        self.assertIsInstance(payload["validation"]["manifest"], dict)
+
+    def test_phase4d_backup_file_path_is_limited_to_backup_directory(self) -> None:
+        outside_zip = Path(tempfile.mkdtemp(prefix="wisdom_external_backup_")) / "external.zip"
+        with zipfile.ZipFile(outside_zip, "w") as zip_file:
+            zip_file.writestr("manifest.json", "{}")
+        try:
+            response = self.client.post("/api/backups/validate", json={"file_path": str(outside_zip)})
+        finally:
+            shutil.rmtree(outside_zip.parent, ignore_errors=True)
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_phase4d_restore_dry_run_rejects_backup_path_outside_backup_directory(self) -> None:
+        outside_zip = Path(tempfile.mkdtemp(prefix="wisdom_external_restore_")) / "external.zip"
+        with zipfile.ZipFile(outside_zip, "w") as zip_file:
+            zip_file.writestr("manifest.json", "{}")
+        now = runtime.now_iso()
+        try:
+            with runtime.db_conn() as conn:
+                cur = conn.execute(
+                    """
+                    INSERT INTO backup_runs (
+                      backup_type, status, file_name, file_path, file_size_bytes,
+                      manifest_json, validation_json, error_message,
+                      created_at, completed_at, updated_at
+                    ) VALUES ('full_local', 'completed', 'external.zip', ?, 0,
+                      '{}', '{}', '', ?, ?, ?)
+                    """,
+                    (str(outside_zip), now, now, now),
+                )
+                backup_id = cur.lastrowid
+
+            response = self.client.post(f"/api/backups/{backup_id}/restore", json={"dry_run": True})
+        finally:
+            shutil.rmtree(outside_zip.parent, ignore_errors=True)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("outside the allowed backup directory", response.get_json()["detail"])
+
+    def test_phase4d_restore_plan_is_dry_run_and_blocks_direct_restore(self) -> None:
+        create_response = self.client.post("/api/backups", json={})
+        self.assertEqual(create_response.status_code, 201)
+        backup = create_response.get_json()
+
+        plan_response = self.client.post("/api/backups/restore-plan", json={"backup_id": backup["id"]})
+
+        self.assertEqual(plan_response.status_code, 200)
+        plan = plan_response.get_json()
+        self.assertTrue(plan["dry_run"])
+        self.assertTrue(plan["can_restore"])
+
+        direct_response = self.client.post(f"/api/backups/{backup['id']}/restore", json={"dry_run": False})
+        self.assertEqual(direct_response.status_code, 400)
+
+        dry_run_response = self.client.post(f"/api/backups/{backup['id']}/restore", json={"dry_run": True})
+        self.assertEqual(dry_run_response.status_code, 200)
+        self.assertTrue(dry_run_response.get_json()["dry_run"])
+
     def setUp(self) -> None:
         runtime.app.config["TESTING"] = True
         self.client = runtime.app.test_client()
@@ -61,6 +413,14 @@ class ApiFlowTests(unittest.TestCase):
             conn.executescript(
                 """
                 DELETE FROM analyses;
+                DELETE FROM backup_runs;
+                DELETE FROM operation_runs;
+                DELETE FROM nara_collection_runs;
+                DELETE FROM judgment_runs;
+                DELETE FROM basis_retrieval_evaluations;
+                DELETE FROM basis_rule_candidates;
+                DELETE FROM basis_document_chunks;
+                DELETE FROM basis_documents;
                 DELETE FROM corporation_profile_update_candidates;
                 DELETE FROM corporation_evidence_documents;
                 DELETE FROM nara_notice_attachments;
@@ -156,6 +516,23 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response.get_json()
 
+    def upload_basis_document(self, text: str, file_name: str = "basis.pdf") -> dict:
+        response = self.client.post(
+            "/api/basis-documents",
+            data={
+                "title": "지방계약 기준문서",
+                "category": "local_contract",
+                "document_version": "2026.05",
+                "issuing_agency": "테스트 기관",
+                "effective_date": "2026-05-22",
+                "memo": "Phase 2 테스트 기준문서",
+                "file": (io.BytesIO(make_pdf_bytes(text)), file_name),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(response.status_code, 201)
+        return response.get_json()
+
     def wait_for_saved_nara_notice(self, notice_id: int, timeout: float = 5.0) -> dict:
         deadline = time.time() + timeout
         last_payload: dict | None = None
@@ -245,6 +622,1217 @@ class ApiFlowTests(unittest.TestCase):
 
         self.assertEqual(doc_count, 0)
         self.assertEqual(analysis_count, 0)
+
+    def test_phase2a_2b_basis_document_crud_and_pdf_guard(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            제1조 목적
+            이 기준문서는 입찰 참가자격과 제출서류 관리 절차를 설명한다.
+            사업자등록증, 납세증명서, 직접생산확인증명서는 검토 대상 자료이다.
+            """
+        )
+        stored_path = Path(basis["stored_file_path"])
+        self.assertTrue(stored_path.exists())
+        self.assertEqual(basis["title"], "지방계약 기준문서")
+        self.assertEqual(basis["category"], "local_contract")
+        self.assertIn(basis["processing_status"], {"completed", "needs_ocr_setup"})
+
+        invalid_response = self.client.post(
+            "/api/basis-documents",
+            data={
+                "title": "잘못된 기준문서",
+                "file": (io.BytesIO(make_docx_bytes("PDF가 아닌 기준문서")), "basis.docx"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(invalid_response.status_code, 400)
+
+        list_response = self.client.get("/api/basis-documents")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.get_json()[0]["id"], basis["id"])
+
+        patch_response = self.client.patch(
+            f"/api/basis-documents/{basis['id']}",
+            json={"title": "수정된 기준문서", "memo": "메모 수정"},
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(patch_response.get_json()["title"], "수정된 기준문서")
+
+        delete_response = self.client.delete(f"/api/basis-documents/{basis['id']}")
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertFalse(stored_path.exists())
+
+        with runtime.db_conn() as conn:
+            doc_count = conn.execute("SELECT COUNT(*) c FROM basis_documents").fetchone()["c"]
+            chunk_count = conn.execute("SELECT COUNT(*) c FROM basis_document_chunks").fetchone()["c"]
+        self.assertEqual(doc_count, 0)
+        self.assertEqual(chunk_count, 0)
+
+    def test_phase2c_2d_basis_processing_extracts_normalizes_and_chunks(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            Article 1 Purpose
+            This basis document manages public procurement standards as reusable knowledge assets.
+
+            Article 2 Required Documents
+            Bidders should prepare business registration, national tax certificate, local tax certificate,
+            and direct production confirmation documents.
+            """
+        )
+
+        self.assertEqual(basis["processing_status"], "completed")
+        self.assertEqual(basis["parse_status"], "completed")
+        self.assertGreaterEqual(basis["chunk_count"], 1)
+        self.assertIn("parser", basis["metadata"])
+        self.assertIn("ocr", basis["metadata"])
+        self.assertIn("chunker", basis["metadata"])
+        self.assertIn("business registration", basis["extracted_text_preview"])
+
+        chunk_response = self.client.get(f"/api/basis-documents/{basis['id']}/chunks")
+        self.assertEqual(chunk_response.status_code, 200)
+        chunks = chunk_response.get_json()
+        self.assertGreaterEqual(len(chunks), 1)
+        self.assertIn("chunker", chunks[0]["metadata"])
+        self.assertTrue(chunks[0]["chunk_hash"])
+
+        reprocess_response = self.client.post(f"/api/basis-documents/{basis['id']}/reprocess")
+        self.assertEqual(reprocess_response.status_code, 200)
+        self.assertEqual(reprocess_response.get_json()["chunk_count"], len(chunks))
+
+    def test_basis_reprocess_failure_preserves_existing_chunks_and_rule_candidates(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        basis = self.upload_basis_document(
+            """
+            Required document: business registration certificate must be submitted.
+            License requirement: landscape construction business license must be held.
+            """,
+            file_name="basis-reprocess-safe.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        extracted_payload = extract_response.get_json()
+        original_candidate_count = extracted_payload["candidate_count"]
+        candidate = extracted_payload["candidates"][0]
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 200)
+
+        with runtime.db_conn() as conn:
+            old_chunk_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_document_chunks WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+            old_candidate_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_rule_candidates WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+
+        previous_indexer = basis_pipeline.index_basis_chunks
+
+        def failing_indexer(conn, basis_document_id, processing_run_id=None):
+            raise RuntimeError("forced index failure")
+
+        try:
+            basis_pipeline.index_basis_chunks = failing_indexer
+            response = self.client.post(f"/api/basis-documents/{basis['id']}/reprocess")
+        finally:
+            basis_pipeline.index_basis_chunks = previous_indexer
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["processing_status"], "failed")
+        with runtime.db_conn() as conn:
+            new_chunk_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_document_chunks WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+            new_candidate_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_rule_candidates WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+        self.assertEqual(new_chunk_ids, old_chunk_ids)
+        self.assertEqual(new_candidate_ids, old_candidate_ids)
+
+    def test_basis_reprocess_swap_failure_preserves_existing_chunks_index_and_candidate_status(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        basis = self.upload_basis_document(
+            """
+            Required document: national tax certificate must be submitted.
+            License requirement: information communication construction license must be held.
+            """,
+            file_name="basis-reprocess-swap-safe.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        extracted_payload = extract_response.get_json()
+        original_candidate_count = extracted_payload["candidate_count"]
+        candidate = extracted_payload["candidates"][0]
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 200)
+
+        with runtime.db_conn() as conn:
+            old_chunk_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_document_chunks WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+            old_candidate = conn.execute(
+                "SELECT id, status FROM basis_rule_candidates WHERE id=?",
+                (candidate["id"],),
+            ).fetchone()
+        old_index = basis_pipeline.load_basis_index()
+
+        previous_marker = basis_pipeline.mark_basis_rule_candidates_for_revalidation
+
+        def failing_marker(conn, basis_document_id):
+            raise RuntimeError("forced swap failure after old chunk cleanup")
+
+        try:
+            basis_pipeline.mark_basis_rule_candidates_for_revalidation = failing_marker
+            response = self.client.post(f"/api/basis-documents/{basis['id']}/reprocess")
+        finally:
+            basis_pipeline.mark_basis_rule_candidates_for_revalidation = previous_marker
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["processing_status"], "failed")
+        with runtime.db_conn() as conn:
+            new_chunk_ids = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM basis_document_chunks WHERE basis_document_id=? ORDER BY id",
+                    (basis["id"],),
+                ).fetchall()
+            ]
+            new_candidate = conn.execute(
+                "SELECT id, status FROM basis_rule_candidates WHERE id=?",
+                (candidate["id"],),
+            ).fetchone()
+
+        self.assertEqual(new_chunk_ids, old_chunk_ids)
+        self.assertEqual(dict(new_candidate), dict(old_candidate))
+        self.assertEqual(basis_pipeline.load_basis_index(), old_index)
+
+    def test_phase2c_basis_blank_pdf_degrades_when_ocr_is_unavailable(self) -> None:
+        response = self.client.post(
+            "/api/basis-documents",
+            data={
+                "title": "OCR 필요 기준문서",
+                "category": "ocr_required",
+                "file": (io.BytesIO(make_blank_pdf_bytes()), "blank-basis.pdf"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        self.assertEqual(payload["processing_status"], "needs_ocr_setup")
+        self.assertEqual(payload["ocr_status"], "needs_ocr_setup")
+        self.assertEqual(payload["chunk_count"], 0)
+        self.assertEqual(payload["index_status"], "skipped")
+
+    def test_phase2e_2f_basis_index_and_search_returns_candidates_only(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            Article 1 Scope
+            This basis document is used when reviewing small business and women-owned business preferences.
+
+            Article 2 Direct Production
+            A direct production confirmation certificate is managed as a required document candidate
+            for goods procurement bids.
+            """
+        )
+        self.assertEqual(basis["index_status"], "completed")
+        self.assertEqual(basis["vector_count"], basis["chunk_count"])
+
+        search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "direct production certificate required document", "top_k": 3},
+        )
+        self.assertEqual(search_response.status_code, 200)
+        payload = search_response.get_json()
+        self.assertGreaterEqual(payload["result_count"], 1)
+        self.assertEqual(payload["index_source"], "json_basis_index")
+        self.assertEqual(payload["results"][0]["index_source"], "json_basis_index")
+        self.assertTrue(payload["results"][0]["citation_candidate_id"].startswith("basis:"))
+        self.assertIn("direct production confirmation certificate", payload["results"][0]["chunk"]["chunk_text"])
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+        self.assertNotIn("지원 가능", json.dumps(payload, ensure_ascii=False))
+
+    def test_basis_search_excludes_failed_or_unindexed_chunks(self) -> None:
+        basis = self.upload_basis_document(
+            "Direct production confirmation certificate is required for goods procurement bids.",
+            file_name="basis-search-active-filter.pdf",
+        )
+
+        search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "direct production confirmation certificate", "top_k": 3},
+        )
+        self.assertEqual(search_response.status_code, 200)
+        self.assertGreaterEqual(search_response.get_json()["result_count"], 1)
+
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                UPDATE basis_documents
+                SET processing_status='failed', index_status='failed'
+                WHERE id=?
+                """,
+                (basis["id"],),
+            )
+
+        failed_search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "direct production confirmation certificate", "top_k": 3},
+        )
+        self.assertEqual(failed_search_response.status_code, 409)
+        self.assertEqual(failed_search_response.get_json()["status"], "basis_index_unavailable")
+
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                UPDATE basis_documents
+                SET processing_status='completed', index_status='completed'
+                WHERE id=?
+                """,
+                (basis["id"],),
+            )
+            conn.execute(
+                """
+                UPDATE basis_document_chunks
+                SET vector_status='pending', vector_id=''
+                WHERE basis_document_id=?
+                """,
+                (basis["id"],),
+            )
+
+        unindexed_search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "direct production confirmation certificate", "top_k": 3},
+        )
+        self.assertEqual(unindexed_search_response.status_code, 409)
+        self.assertEqual(unindexed_search_response.get_json()["status"], "basis_index_unavailable")
+
+    def test_basis_index_status_detects_corruption_and_rebuild_restores_search(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        self.upload_basis_document(
+            "Small business certificate submission is used for bidder qualification review.",
+            file_name="basis-index-corrupt-rebuild.pdf",
+        )
+        status_response = self.client.get("/api/basis-index/status")
+        self.assertEqual(status_response.status_code, 200)
+        status_payload = status_response.get_json()
+        self.assertTrue(status_payload["valid"])
+        self.assertTrue(status_payload["can_search"])
+        self.assertEqual(status_payload["status"], "ok")
+
+        basis_pipeline.BASIS_INDEX_PATH.write_text("{not valid json", encoding="utf-8")
+        corrupt_status_response = self.client.get("/api/basis-index/status")
+        self.assertEqual(corrupt_status_response.status_code, 200)
+        corrupt_payload = corrupt_status_response.get_json()
+        self.assertEqual(corrupt_payload["status"], "corrupt")
+        self.assertFalse(corrupt_payload["valid"])
+        self.assertTrue(corrupt_payload["rebuild_required"])
+
+        blocked_search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "small business certificate", "top_k": 3},
+        )
+        self.assertEqual(blocked_search_response.status_code, 409)
+        self.assertEqual(blocked_search_response.get_json()["status"], "basis_index_unavailable")
+
+        rebuild_response = self.client.post("/api/basis-index/rebuild", json={})
+        self.assertEqual(rebuild_response.status_code, 200)
+        rebuild_payload = rebuild_response.get_json()
+        self.assertTrue(rebuild_payload["valid"])
+        self.assertTrue(rebuild_payload["can_search"])
+        self.assertGreaterEqual(rebuild_payload["rebuilt_chunk_count"], 1)
+        self.assertTrue(Path(rebuild_payload["archived_path"]).exists())
+
+        restored_search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "small business certificate", "top_k": 3},
+        )
+        self.assertEqual(restored_search_response.status_code, 200)
+        self.assertGreaterEqual(restored_search_response.get_json()["result_count"], 1)
+
+    def test_basis_document_delete_returns_409_when_basis_index_is_corrupt(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        basis = self.upload_basis_document(
+            "Direct production confirmation certificate is required for goods procurement bids.",
+            file_name="basis-delete-corrupt-index.pdf",
+        )
+        with runtime.db_conn() as conn:
+            chunk_count_before = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE basis_document_id=?",
+                (basis["id"],),
+            ).fetchone()[0]
+        self.assertGreaterEqual(chunk_count_before, 1)
+
+        basis_pipeline.BASIS_INDEX_PATH.write_text("{not valid json", encoding="utf-8")
+        delete_response = self.client.delete(f"/api/basis-documents/{basis['id']}")
+
+        self.assertEqual(delete_response.status_code, 409)
+        delete_payload = delete_response.get_json()
+        self.assertEqual(delete_payload["status"], "basis_index_unavailable")
+        self.assertTrue(delete_payload["rebuild_required"])
+        with runtime.db_conn() as conn:
+            basis_row = conn.execute("SELECT id FROM basis_documents WHERE id=?", (basis["id"],)).fetchone()
+            chunk_count_after = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE basis_document_id=?",
+                (basis["id"],),
+            ).fetchone()[0]
+        self.assertIsNotNone(basis_row)
+        self.assertEqual(chunk_count_after, chunk_count_before)
+
+        rebuild_response = self.client.post("/api/basis-index/rebuild", json={})
+        self.assertEqual(rebuild_response.status_code, 200)
+        self.assertTrue(rebuild_response.get_json()["valid"])
+        retry_delete_response = self.client.delete(f"/api/basis-documents/{basis['id']}")
+        self.assertEqual(retry_delete_response.status_code, 200)
+        self.assertEqual(retry_delete_response.get_json()["status"], "deleted")
+
+    def test_basis_document_delete_returns_409_when_basis_index_is_missing(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        first = self.upload_basis_document(
+            "Small business confirmation is required for restricted procurement bids.",
+            file_name="basis-delete-missing-index-1.pdf",
+        )
+        second = self.upload_basis_document(
+            "Direct production confirmation is required for goods procurement bids.",
+            file_name="basis-delete-missing-index-2.pdf",
+        )
+        with runtime.db_conn() as conn:
+            indexed_chunk_count_before = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE vector_status='indexed'"
+            ).fetchone()[0]
+        self.assertGreaterEqual(indexed_chunk_count_before, 2)
+
+        basis_pipeline.BASIS_INDEX_PATH.unlink()
+        delete_response = self.client.delete(f"/api/basis-documents/{first['id']}")
+
+        self.assertEqual(delete_response.status_code, 409)
+        delete_payload = delete_response.get_json()
+        self.assertEqual(delete_payload["status"], "basis_index_unavailable")
+        self.assertEqual(delete_payload["index_status"], "missing")
+        self.assertTrue(delete_payload["rebuild_required"])
+        with runtime.db_conn() as conn:
+            remaining_documents = conn.execute("SELECT COUNT(*) FROM basis_documents").fetchone()[0]
+            indexed_chunk_count_after = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE vector_status='indexed'"
+            ).fetchone()[0]
+        self.assertEqual(remaining_documents, 2)
+        self.assertEqual(indexed_chunk_count_after, indexed_chunk_count_before)
+
+        rebuild_response = self.client.post("/api/basis-index/rebuild", json={})
+        self.assertEqual(rebuild_response.status_code, 200)
+        self.assertTrue(rebuild_response.get_json()["valid"])
+        retry_delete_response = self.client.delete(f"/api/basis-documents/{first['id']}")
+        self.assertEqual(retry_delete_response.status_code, 200)
+        self.assertEqual(retry_delete_response.get_json()["status"], "deleted")
+        search_response = self.client.post("/api/basis-search", json={"query": "direct production", "top_k": 3})
+        self.assertEqual(search_response.status_code, 200)
+        self.assertIn(str(second["id"]), search_response.get_json()["results"][0]["citation_candidate_id"])
+
+    def test_basis_document_delete_returns_409_when_basis_index_is_inconsistent(self) -> None:
+        from app.pipelines import basis_document as basis_pipeline
+
+        first = self.upload_basis_document(
+            "Small business confirmation is required for restricted procurement bids.",
+            file_name="basis-delete-inconsistent-index-1.pdf",
+        )
+        second = self.upload_basis_document(
+            "Direct production confirmation is required for goods procurement bids.",
+            file_name="basis-delete-inconsistent-index-2.pdf",
+        )
+        with runtime.db_conn() as conn:
+            indexed_chunk_count_before = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE vector_status='indexed'"
+            ).fetchone()[0]
+        self.assertGreaterEqual(indexed_chunk_count_before, 2)
+
+        payload = json.loads(basis_pipeline.BASIS_INDEX_PATH.read_text(encoding="utf-8"))
+        chunks = payload["chunks"]
+        removed_vector_id = next(
+            vector_id
+            for vector_id, item in chunks.items()
+            if int(item["basis_document_id"]) == second["id"]
+        )
+        chunks.pop(removed_vector_id)
+        basis_pipeline.save_basis_index(payload)
+
+        delete_response = self.client.delete(f"/api/basis-documents/{first['id']}")
+
+        self.assertEqual(delete_response.status_code, 409)
+        delete_payload = delete_response.get_json()
+        self.assertEqual(delete_payload["status"], "basis_index_unavailable")
+        self.assertEqual(delete_payload["index_status"], "inconsistent")
+        self.assertTrue(delete_payload["rebuild_required"])
+        with runtime.db_conn() as conn:
+            remaining_documents = conn.execute("SELECT COUNT(*) FROM basis_documents").fetchone()[0]
+            indexed_chunk_count_after = conn.execute(
+                "SELECT COUNT(*) FROM basis_document_chunks WHERE vector_status='indexed'"
+            ).fetchone()[0]
+        self.assertEqual(remaining_documents, 2)
+        self.assertEqual(indexed_chunk_count_after, indexed_chunk_count_before)
+
+        rebuild_response = self.client.post("/api/basis-index/rebuild", json={})
+        self.assertEqual(rebuild_response.status_code, 200)
+        self.assertTrue(rebuild_response.get_json()["valid"])
+        retry_delete_response = self.client.delete(f"/api/basis-documents/{first['id']}")
+        self.assertEqual(retry_delete_response.status_code, 200)
+        self.assertEqual(retry_delete_response.get_json()["status"], "deleted")
+
+    def test_phase2_closeout_summary_documents_baseline_and_known_issues(self) -> None:
+        known_issue_path = _TMP_DIR / "qa-known-issues.json"
+        known_issue_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "type": "mupdf_internal_syntax_warning",
+                        "severity": "low",
+                        "sample_path": "backend/tests/nara-notice-pdf-samples/sample.pdf",
+                    }
+                ],
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        previous_path = os.environ.get("NARA_NOTICE_PDF_KNOWN_ISSUES_PATH")
+        os.environ["NARA_NOTICE_PDF_KNOWN_ISSUES_PATH"] = str(known_issue_path)
+        try:
+            response = self.client.get("/api/qa/phase2-closeout")
+            self.assertEqual(response.status_code, 200)
+            payload = response.get_json()
+        finally:
+            if previous_path is None:
+                os.environ.pop("NARA_NOTICE_PDF_KNOWN_ISSUES_PATH", None)
+            else:
+                os.environ["NARA_NOTICE_PDF_KNOWN_ISSUES_PATH"] = previous_path
+
+        self.assertEqual(payload["status"], "phase2_mvp_complete")
+        self.assertIn("default_backend", payload["test_baseline"])
+        self.assertEqual(payload["sample_policy"]["notice_pdf_use"], "공고문 PDF 파이프라인 안정성 테스트용")
+        self.assertEqual(payload["known_issues"][0]["type"], "mupdf_internal_syntax_warning")
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+        self.assertNotIn("지원 가능", json.dumps(payload, ensure_ascii=False))
+
+    def test_phase25a_basis_rule_candidate_extraction_keeps_review_status(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            Bidder qualification: a small business certificate must be submitted.
+            License requirement: a landscape construction business license must be held.
+            Required document: business registration and national tax payment certificate must be submitted.
+            """,
+            file_name="basis-rules.pdf",
+        )
+
+        response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+
+        self.assertGreaterEqual(payload["candidate_count"], 3)
+        self.assertTrue(all(item["status"] == "needs_review" for item in payload["candidates"]))
+        self.assertTrue(all(item["citation_candidate_id"].startswith("basis:") for item in payload["candidates"]))
+        rule_types = {item["rule_type"] for item in payload["candidates"]}
+        self.assertIn("company_type", rule_types)
+        self.assertIn("license", rule_types)
+        self.assertIn("required_document", rule_types)
+
+        list_response = self.client.get(f"/api/basis-documents/{basis['id']}/rule-candidates")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.get_json()["candidate_count"], payload["candidate_count"])
+
+    def test_basis_rule_candidate_reextract_preserves_reviewed_candidates(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            License requirement: forest business license must be held.
+            Required document: national tax payment certificate must be submitted.
+            """,
+            file_name="basis-rules-reextract-preserve.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidates = extract_response.get_json()["candidates"]
+        approved_target = next(item for item in candidates if item["rule_type"] == "license")
+        rejected_target = next(item for item in candidates if item["id"] != approved_target["id"])
+
+        manual_condition = "Manual reviewed forest business license requirement."
+        approve_response = self.client.post(
+            f"/api/basis-rule-candidates/{approved_target['id']}/approve",
+            json={
+                "condition_text": manual_condition,
+                "required_evidence_types": ["수동 면허 확인서"],
+                "related_profile_fields": ["license_summary"],
+                "reviewer_name": "tester",
+                "review_note": "면허 기준 승인",
+            },
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        reject_response = self.client.post(
+            f"/api/basis-rule-candidates/{rejected_target['id']}/reject",
+            json={"reviewer_name": "tester", "review_note": "중복 후보 반려"},
+        )
+        self.assertEqual(reject_response.status_code, 200)
+
+        reextract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(reextract_response.status_code, 200)
+        payload = reextract_response.get_json()
+        by_id = {item["id"]: item for item in payload["candidates"]}
+
+        self.assertEqual(by_id[approved_target["id"]]["status"], "approved")
+        self.assertEqual(by_id[approved_target["id"]]["condition_text"], manual_condition)
+        self.assertEqual(by_id[approved_target["id"]]["required_evidence_types"], ["수동 면허 확인서"])
+        self.assertEqual(by_id[approved_target["id"]]["related_profile_fields"], ["license_summary"])
+        self.assertNotEqual(by_id[approved_target["id"]]["source_condition_text"], manual_condition)
+        self.assertTrue(by_id[approved_target["id"]]["extraction_key"])
+        self.assertEqual(by_id[rejected_target["id"]]["status"], "rejected")
+        self.assertEqual(payload["new_candidate_count"], 0)
+        self.assertGreaterEqual(payload["updated_candidate_count"], 2)
+
+    def test_basis_rule_candidate_extraction_requires_completed_indexed_basis(self) -> None:
+        basis = self.upload_basis_document(
+            "Required document: national tax payment certificate must be submitted.",
+            file_name="basis-rules-not-ready.pdf",
+        )
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                UPDATE basis_documents
+                SET index_status='pending'
+                WHERE id=?
+                """,
+                (basis["id"],),
+            )
+
+        response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(response.status_code, 409)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "basis_not_ready")
+        self.assertEqual(payload["candidate_count"], 0)
+
+        runs_response = self.client.get("/api/operation-runs?operation_type=basis_rule_candidate_extraction")
+        self.assertEqual(runs_response.status_code, 200)
+        runs = runs_response.get_json()
+        self.assertEqual(runs[0]["status"], "failed")
+        self.assertEqual(runs[0]["error_code"], "basis_not_ready")
+
+    def test_basis_rule_candidate_zero_reextract_preserves_existing_candidates(self) -> None:
+        previous_extractor = runtime.extract_basis_rule_candidates_from_chunk
+        basis = self.upload_basis_document(
+            "Required document: local tax payment certificate must be submitted.",
+            file_name="basis-rules-zero-reextract.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        extracted_payload = extract_response.get_json()
+        original_candidate_count = extracted_payload["candidate_count"]
+        candidate = extracted_payload["candidates"][0]
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 200)
+
+        def no_candidates(_chunk):
+            return []
+
+        try:
+            runtime.extract_basis_rule_candidates_from_chunk = no_candidates
+            reextract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        finally:
+            runtime.extract_basis_rule_candidates_from_chunk = previous_extractor
+
+        self.assertEqual(reextract_response.status_code, 200)
+        payload = reextract_response.get_json()
+        self.assertEqual(payload["status"], "no_candidates_extracted_existing_preserved")
+        self.assertEqual(payload["candidate_count"], original_candidate_count)
+        self.assertEqual(payload["candidates"][0]["id"], candidate["id"])
+        self.assertEqual(payload["candidates"][0]["status"], "approved")
+
+    def test_basis_rule_candidate_can_be_reviewed_updated_approved_and_rejected(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            Bidder qualification: a small business certificate must be submitted.
+            License requirement: a landscape construction business license must be held.
+            """,
+            file_name="basis-rules-review.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidates = extract_response.get_json()["candidates"]
+        first = candidates[0]
+
+        update_response = self.client.patch(
+            f"/api/basis-rule-candidates/{first['id']}",
+            json={
+                "condition_text": "Small business certificate must be submitted before bidding.",
+                "required_evidence_types": ["중소기업확인서"],
+                "related_profile_fields": ["company_size_classification"],
+                "review_note": "문구 정리",
+            },
+        )
+        self.assertEqual(update_response.status_code, 200)
+        updated = update_response.get_json()
+        self.assertEqual(updated["condition_text"], "Small business certificate must be submitted before bidding.")
+        self.assertEqual(updated["status"], "needs_review")
+        self.assertEqual(updated["review_note"], "문구 정리")
+
+        approve_response = self.client.post(
+            f"/api/basis-rule-candidates/{first['id']}/approve",
+            json={"review_note": "근거 확인", "reviewer_name": "tester"},
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        approved = approve_response.get_json()
+        self.assertEqual(approved["status"], "approved")
+        self.assertEqual(approved["review_note"], "근거 확인")
+        self.assertEqual(approved["reviewer_name"], "tester")
+        self.assertTrue(approved["reviewed_at"])
+        self.assertIsNotNone(approved["basis_document"])
+        self.assertIsNotNone(approved["chunk"])
+
+        approved_list_response = self.client.get("/api/basis-rule-candidates?status=approved")
+        self.assertEqual(approved_list_response.status_code, 200)
+        self.assertEqual(approved_list_response.get_json()["candidate_count"], 1)
+
+        second = candidates[1]
+        reject_response = self.client.post(
+            f"/api/basis-rule-candidates/{second['id']}/reject",
+            json={"review_note": "중복 후보"},
+        )
+        self.assertEqual(reject_response.status_code, 200)
+        self.assertEqual(reject_response.get_json()["status"], "rejected")
+
+    def test_basis_rule_candidate_approval_requires_citation(self) -> None:
+        basis = self.upload_basis_document(
+            "Required document: business registration certificate must be submitted.",
+            file_name="basis-rules-no-citation.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidate = extract_response.get_json()["candidates"][0]
+
+        update_response = self.client.patch(
+            f"/api/basis-rule-candidates/{candidate['id']}",
+            json={"citation_candidate_id": ""},
+        )
+        self.assertEqual(update_response.status_code, 200)
+
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 400)
+        self.assertIn("citation_candidate_id", approve_response.get_json()["detail"])
+
+    def test_basis_rule_candidate_approval_rejects_mismatched_citation(self) -> None:
+        basis = self.upload_basis_document(
+            "License requirement: forest business license must be held.",
+            file_name="basis-rules-bad-citation.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidate = extract_response.get_json()["candidates"][0]
+
+        update_response = self.client.patch(
+            f"/api/basis-rule-candidates/{candidate['id']}",
+            json={"citation_candidate_id": f"basis:{basis['id'] + 999}:chunk:{candidate['basis_chunk_id']}"},
+        )
+        self.assertEqual(update_response.status_code, 200)
+
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 400)
+        self.assertIn("basis_document_id", approve_response.get_json()["detail"])
+
+    def test_basis_rule_candidate_approval_rejects_unindexed_chunk(self) -> None:
+        basis = self.upload_basis_document(
+            "License requirement: forest business license must be held.",
+            file_name="basis-rules-unindexed-citation.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidate = extract_response.get_json()["candidates"][0]
+
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                UPDATE basis_document_chunks
+                SET vector_status='pending', vector_id=''
+                WHERE id=?
+                """,
+                (candidate["basis_chunk_id"],),
+            )
+
+        approve_response = self.client.post(f"/api/basis-rule-candidates/{candidate['id']}/approve", json={})
+        self.assertEqual(approve_response.status_code, 400)
+        self.assertIn("indexed", approve_response.get_json()["detail"])
+
+    def test_basis_rule_candidate_reopen_clears_review_metadata(self) -> None:
+        basis = self.upload_basis_document(
+            "Required document: national tax payment certificate must be submitted.",
+            file_name="basis-rules-reopen.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidate = extract_response.get_json()["candidates"][0]
+
+        approve_response = self.client.post(
+            f"/api/basis-rule-candidates/{candidate['id']}/approve",
+            json={"reviewer_name": "tester", "review_note": "승인"},
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        approved = approve_response.get_json()
+        self.assertTrue(approved["reviewed_at"])
+        self.assertEqual(approved["reviewer_name"], "tester")
+
+        reopen_response = self.client.patch(
+            f"/api/basis-rule-candidates/{candidate['id']}",
+            json={"status": "needs_review", "review_note": "재검토"},
+        )
+        self.assertEqual(reopen_response.status_code, 200)
+        reopened = reopen_response.get_json()
+        self.assertEqual(reopened["status"], "needs_review")
+        self.assertEqual(reopened["reviewed_at"], "")
+        self.assertEqual(reopened["reviewer_name"], "")
+
+    def test_phase25b_structured_notice_requirements_are_phase3_inputs(self) -> None:
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510001",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "구조화 요구조건 공고",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "presmptPrce": "1000000",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "조경식재공사업",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/requirements/structured")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+
+        self.assertEqual(payload["contract_version"], "phase3_gap_judgment_contract_v1")
+        self.assertGreaterEqual(payload["requirement_count"], 3)
+        first = payload["requirements"][0]
+        self.assertIn("requirement_input_id", first)
+        self.assertIn("related_profile_fields", first)
+        self.assertIn("comparison_strategy", first)
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+
+    def test_phase25c_retrieval_evaluation_tracks_citation_coverage(self) -> None:
+        basis = self.upload_basis_document(
+            """
+            Small business certificate submission is used for bidder qualification review.
+            Landscape construction business license is used for license requirement review.
+            """,
+            file_name="retrieval-basis.pdf",
+        )
+        search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "small business certificate submission", "top_k": 3},
+        )
+        self.assertEqual(search_response.status_code, 200)
+        expected_citation_id = search_response.get_json()["results"][0]["citation_candidate_id"]
+
+        response = self.client.post(
+            "/api/basis-retrieval-evaluations",
+            json={
+                "name": "Phase 2.5C 검색 평가",
+                "queries": [
+                    {
+                        "query": "small business certificate submission",
+                        "expected_citation_candidate_ids": [expected_citation_id],
+                    },
+                    {
+                        "query": "landscape construction business license",
+                        "expected_citation_candidate_ids": ["basis:missing:chunk:0"],
+                    },
+                    "landscape construction business license",
+                ],
+                "top_k": 3,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        self.assertEqual(payload["query_count"], 3)
+        self.assertEqual(payload["citation_coverage"], 0.5)
+        self.assertEqual(payload["result"]["metrics"]["result_coverage"], 1.0)
+        self.assertEqual(payload["result"]["metrics"]["expected_citation_query_count"], 2)
+        self.assertEqual(payload["result"]["metrics"]["expected_citation_coverage"], 0.5)
+        self.assertGreater(payload["average_top_score"], 0)
+        self.assertEqual(payload["result"]["index_source"], "json_basis_index")
+        self.assertIn("JSON", payload["result"]["policy"])
+        self.assertEqual(payload["result"]["query_results"][0]["result_count"], 1)
+        self.assertEqual(payload["result"]["query_results"][0]["results"][0]["index_source"], "json_basis_index")
+        self.assertTrue(payload["result"]["query_results"][0]["expected_citation_hit"])
+        self.assertFalse(payload["result"]["query_results"][1]["expected_citation_hit"])
+        self.assertEqual(payload["result"]["query_results"][2]["expected_citation_hit"], None)
+        self.assertEqual(payload["result"]["query_results"][1]["missed_expected_citation_ids"], ["basis:missing:chunk:0"])
+        self.assertIn(str(basis["id"]), payload["result"]["query_results"][0]["citation_candidate_ids"][0])
+
+    def test_phase25d_judgment_contract_exposes_gap_first_contract(self) -> None:
+        response = self.client.get("/api/judgment-contract")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+
+        self.assertEqual(payload["contract_version"], "phase3_gap_judgment_contract_v1")
+        self.assertIn("notice_requirement_inputs", payload["input_schema"])
+        self.assertIn("matched", payload["output_schema"]["item_statuses"])
+        self.assertIn("missing", payload["output_schema"]["item_statuses"])
+        self.assertIn("preparation_guide", payload["output_schema"])
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+
+    def test_phase3_judgment_run_citations_preparation_and_review_workflow(self) -> None:
+        self.upload_basis_document(
+            """
+            Landscape construction business license is a citation candidate for bidder qualification review.
+            Forest business license is a citation candidate for bidder qualification review.
+            Small business certificate is a required document candidate for company type review.
+            National tax payment certificate is a contract document candidate.
+            """,
+            file_name="judgment-basis.pdf",
+        )
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "판단 테스트 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "business_item": "landscape construction business license",
+                "license_summary": "landscape construction business license",
+                "company_size_classification": "중소기업",
+            },
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510002",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "판단 실행 공고",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "presmptPrce": "1000000",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "forest business license",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["review_status"], "pending")
+        self.assertGreaterEqual(payload["summary"]["matched_count"], 1)
+        self.assertGreaterEqual(payload["summary"]["missing_count"], 1)
+        self.assertIn("preparation_guide", payload["result"])
+        self.assertTrue(payload["input_snapshot"]["notice_requirements"])
+        statuses = {item["match_status"] for item in payload["result"]["items"]}
+        self.assertIn("matched", statuses)
+        self.assertIn("missing", statuses)
+        cited_items = [item for item in payload["result"]["items"] if item["citation_candidates"]]
+        self.assertTrue(cited_items)
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+        self.assertNotIn("지원 가능", json.dumps(payload, ensure_ascii=False))
+
+        review_response = self.client.patch(
+            f"/api/judgment-runs/{payload['id']}/review",
+            json={"review_status": "needs_followup", "reviewer_note": "면허 증빙 추가 확인"},
+        )
+        self.assertEqual(review_response.status_code, 200)
+        reviewed = review_response.get_json()
+        self.assertEqual(reviewed["review_status"], "needs_followup")
+        self.assertEqual(reviewed["reviewer_note"], "면허 증빙 추가 확인")
+
+    def test_phase3_judgment_prefers_approved_rule_candidate_citations(self) -> None:
+        basis = self.upload_basis_document(
+            "License requirement: forest business license must be held by the bidder.",
+            file_name="judgment-approved-rule-basis.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        candidates = extract_response.get_json()["candidates"]
+        license_candidate = next(item for item in candidates if item["rule_type"] == "license")
+        approve_response = self.client.post(
+            f"/api/basis-rule-candidates/{license_candidate['id']}/approve",
+            json={"reviewer_name": "tester", "review_note": "면허 기준 확인"},
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        approved = approve_response.get_json()
+
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={"name": "승인 규칙 판단 법인", "region": "경기도", "license_summary": ""},
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510006",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "승인 규칙 citation 공고",
+                    "lcnsLmtNm": "forest business license",
+                    "bidClseDt": "2026-05-20 17:00",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        approved_items = [
+            item
+            for item in payload["result"]["items"]
+            if approved["id"] in item.get("approved_rule_candidate_ids", [])
+        ]
+        self.assertTrue(approved_items)
+        self.assertTrue(any(not item["basis_search_fallback_used"] for item in approved_items))
+        self.assertTrue(
+            any(
+                citation.get("source_type") == "approved_rule_candidate"
+                for item in approved_items
+                for citation in item["citation_candidates"]
+            )
+        )
+        self.assertIn("approved_rule_candidate_policy", payload["input_snapshot"])
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+
+    def test_phase3_judgment_excludes_unhealthy_approved_rule_candidates(self) -> None:
+        basis = self.upload_basis_document(
+            "License requirement: forest business license must be held by the bidder.",
+            file_name="judgment-unhealthy-approved-rule-basis.pdf",
+        )
+        extract_response = self.client.post(f"/api/basis-documents/{basis['id']}/rule-candidates/extract")
+        self.assertEqual(extract_response.status_code, 200)
+        license_candidate = next(item for item in extract_response.get_json()["candidates"] if item["rule_type"] == "license")
+        approve_response = self.client.post(
+            f"/api/basis-rule-candidates/{license_candidate['id']}/approve",
+            json={"reviewer_name": "tester", "review_note": "면허 기준 확인"},
+        )
+        self.assertEqual(approve_response.status_code, 200)
+
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                UPDATE basis_documents
+                SET processing_status='failed', index_status='failed'
+                WHERE id=?
+                """,
+                (basis["id"],),
+            )
+
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={"name": "비정상 기준문서 판단 법인", "region": "경기도", "license_summary": ""},
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510007",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "비정상 기준문서 citation 공고",
+                    "lcnsLmtNm": "forest business license",
+                    "bidClseDt": "2026-05-20 17:00",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+        cited_candidate_ids = [
+            candidate_id
+            for item in payload["result"]["items"]
+            for candidate_id in item.get("approved_rule_candidate_ids", [])
+        ]
+        self.assertNotIn(license_candidate["id"], cited_candidate_ids)
+
+    def test_phase3_judgment_marks_low_score_citations_as_weak_not_ready(self) -> None:
+        self.upload_basis_document(
+            "Forest appears only as a glossary heading and is not a usable license requirement citation.",
+            file_name="weak-citation-basis.pdf",
+        )
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={"name": "약한 citation 테스트 법인", "region": "서울"},
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510005",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "약한 citation 공고",
+                    "lcnsLmtNm": "Forest business license specialized rare permit",
+                    "bidClseDt": "2026-05-20 17:00",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        weak_items = [item for item in payload["result"]["items"] if item["citation_status"] == "weak_candidate"]
+        self.assertTrue(weak_items)
+        self.assertEqual(payload["citation_coverage"], 0)
+        self.assertTrue(all(not item["review_evidence_ready"] for item in weak_items))
+        self.assertTrue(any(item["citation_candidates"] for item in weak_items))
+        self.assertTrue(payload["result"]["preparation_guide"]["uncertainty_notes"])
+
+    def test_phase3f_nara_collection_run_uses_injected_api_items_without_crawling(self) -> None:
+        response = self.client.post(
+            "/api/nara/collection-runs",
+            json={
+                "keyword": "조경",
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-22",
+                "save": True,
+                "notices": [
+                    {
+                        "bidNtceNo": "20260510003",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "자동 수집 테스트 공고",
+                        "bidNtceDt": "2026-05-05 10:00",
+                        "bidClseDt": "2026-05-20 17:00",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        self.assertEqual(payload["mode"], "injected")
+        self.assertEqual(payload["searched_count"], 1)
+        self.assertEqual(payload["saved_count"], 1)
+        self.assertIn("HTML", payload["result"]["policy"])
+        saved_response = self.client.get("/api/nara/saved-notices")
+        self.assertEqual(saved_response.status_code, 200)
+        self.assertEqual(saved_response.get_json()[0]["save_status"], "discovered")
+
+        list_response = self.client.get("/api/nara/collection-runs?status=completed&keyword=조경")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(len(list_response.get_json()), 1)
+
+        missing_key_response = self.client.post(
+            "/api/nara/collection-runs",
+            json={"keyword": "조경", "start_date": "2026-05-01", "end_date": "2026-05-22"},
+        )
+        self.assertEqual(missing_key_response.status_code, 201)
+        self.assertEqual(missing_key_response.get_json()["status"], "not_configured")
+
+        failed_list_response = self.client.get("/api/nara/collection-runs?status=not_configured")
+        self.assertEqual(failed_list_response.status_code, 200)
+        self.assertEqual(len(failed_list_response.get_json()), 1)
+
+        partial_response = self.client.post(
+            "/api/nara/collection-runs",
+            json={
+                "keyword": "부분실패",
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-22",
+                "save": True,
+                "notices": [
+                    {"bidNtceNo": "20260510007", "bidNtceOrd": "000", "bidNtceNm": "부분 성공 공고"},
+                    {"bidNtceNm": "공고번호 없는 항목"},
+                ],
+            },
+        )
+        self.assertEqual(partial_response.status_code, 201)
+        partial_payload = partial_response.get_json()
+        self.assertEqual(partial_payload["status"], "partial_failed")
+        self.assertTrue(partial_payload["result"]["retryable"])
+
+        partial_list_response = self.client.get("/api/nara/collection-runs?status=partial_failed&keyword=Some")
+        self.assertEqual(partial_list_response.status_code, 200)
+        self.assertEqual(len(partial_list_response.get_json()), 1)
+
+    def test_phase3g_judgment_marks_missing_citations_as_review_risk(self) -> None:
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={"name": "Citation 없는 법인", "region": "서울"},
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260510004",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Citation 없는 공고",
+                    "prtcptPsblRgnNm": "부산",
+                    "lcnsLmtNm": "정보통신공사업",
+                    "bidClseDt": "2026-05-20 17:00",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+
+        self.assertEqual(payload["citation_coverage"], 0)
+        self.assertTrue(payload["result"]["preparation_guide"]["uncertainty_notes"])
+        self.assertTrue(all(item["citation_status"] == "missing" for item in payload["result"]["items"]))
+        self.assertNotIn("eligible", json.dumps(payload).lower())
+        self.assertNotIn("지원 가능", json.dumps(payload, ensure_ascii=False))
 
     def test_ai_model_settings_masks_keys_and_defaults_to_gemini(self) -> None:
         previous_gemini_key = runtime.GEMINI_API_KEY
@@ -848,6 +2436,205 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("url is required", response.get_json()["detail"])
 
+    def test_attachment_preview_rejects_private_network_url(self) -> None:
+        response = self.client.get(
+            "/api/nara/attachments/preview",
+            query_string={"url": "http://127.0.0.1/private.pdf", "name": "private.pdf"},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_nara_notice_attachment_download_rejects_private_network_url(self) -> None:
+        response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260509991",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "내부망 URL 차단 공고",
+                    "ntceSpecFileNm1": "private.pdf",
+                    "ntceSpecDocUrl1": "http://127.0.0.1/private.pdf",
+                }
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+
+        saved = self.wait_for_saved_nara_notice(response.get_json()["notice"]["id"])
+        self.assertEqual(saved["download_status"], "partial_failed")
+        self.assertEqual(saved["analysis_status"], "partial_failed")
+        self.assertEqual(saved["attachments"][0]["download_status"], "failed")
+        self.assertIn("Unsafe attachment URL", saved["attachments"][0]["error_message"])
+
+    def test_nara_reanalysis_partial_failure_preserves_existing_requirements(self) -> None:
+        original_request_binary = runtime.request_binary
+
+        def fake_request_binary(url, timeout=30, max_bytes=50 * 1024 * 1024):
+            if url == "https://example.com/valid.pdf":
+                return (
+                    200,
+                    {"content-type": "application/pdf"},
+                    make_pdf_bytes("제출서류: 국세 납세증명서. 면허: 조경식재공사업."),
+                )
+            return original_request_binary(url, timeout=timeout, max_bytes=max_bytes)
+
+        runtime.request_binary = fake_request_binary
+        try:
+            initial_response = self.client.post(
+                "/api/nara/notices/save-and-analyze",
+                json={
+                    "notice": {
+                        "bidNtceNo": "20260509992",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "재분석 보존 공고",
+                        "prtcptPsblRgnNm": "경기도",
+                        "lcnsLmtNm": "조경식재공사업",
+                        "ntceSpecFileNm1": "valid.pdf",
+                        "ntceSpecDocUrl1": "https://example.com/valid.pdf",
+                    }
+                },
+            )
+            self.assertEqual(initial_response.status_code, 202)
+            notice_id = initial_response.get_json()["notice"]["id"]
+            initial_saved = self.wait_for_saved_nara_notice(notice_id)
+            self.assertEqual(initial_saved["analysis_status"], "completed")
+            self.assertTrue(initial_saved["attachments"])
+            self.assertTrue(all(item["download_status"] == "completed" for item in initial_saved["attachments"]))
+            initial_attachment_ids = {item["id"] for item in initial_saved["attachments"]}
+            initial_requirements = self.client.get(f"/api/nara/saved-notices/{notice_id}/requirements").get_json()
+            self.assertGreater(len(initial_requirements["requirements"]), 0)
+
+            retry_response = self.client.post(
+                "/api/nara/notices/save-and-analyze",
+                json={
+                    "notice": {
+                        "bidNtceNo": "20260509992",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "재분석 보존 공고",
+                        "prtcptPsblRgnNm": "경기도",
+                        "lcnsLmtNm": "조경식재공사업",
+                        "ntceSpecFileNm1": "private.pdf",
+                        "ntceSpecDocUrl1": "http://127.0.0.1/private.pdf",
+                    }
+                },
+            )
+            self.assertEqual(retry_response.status_code, 202)
+
+            deadline = time.time() + 5
+            latest = {}
+            while time.time() < deadline:
+                detail_response = self.client.get(f"/api/nara/saved-notices/{notice_id}")
+                self.assertEqual(detail_response.status_code, 200)
+                latest = detail_response.get_json()
+                if "기존 분석 결과를 유지" in latest.get("error_message", ""):
+                    break
+                time.sleep(0.05)
+
+            self.assertIn("기존 분석 결과를 유지", latest.get("error_message", ""))
+            requirements_after = self.client.get(f"/api/nara/saved-notices/{notice_id}/requirements").get_json()
+            self.assertEqual(len(requirements_after["requirements"]), len(initial_requirements["requirements"]))
+            self.assertEqual({item["id"] for item in latest["attachments"]}, initial_attachment_ids)
+        finally:
+            runtime.request_binary = original_request_binary
+
+    def test_nara_reanalysis_without_supported_attachments_preserves_existing_results(self) -> None:
+        original_request_binary = runtime.request_binary
+
+        def fake_request_binary(url, timeout=30, max_bytes=50 * 1024 * 1024):
+            if url == "https://example.com/valid-preserve.pdf":
+                return (
+                    200,
+                    {"content-type": "application/pdf"},
+                    make_pdf_bytes("제출서류: 지방세 납세증명서. 면허: 정보통신공사업."),
+                )
+            return original_request_binary(url, timeout=timeout, max_bytes=max_bytes)
+
+        runtime.request_binary = fake_request_binary
+        try:
+            initial_response = self.client.post(
+                "/api/nara/notices/save-and-analyze",
+                json={
+                    "notice": {
+                        "bidNtceNo": "20260509993",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "첨부 누락 재분석 보존 공고",
+                        "prtcptPsblRgnNm": "서울",
+                        "lcnsLmtNm": "정보통신공사업",
+                        "ntceSpecFileNm1": "valid-preserve.pdf",
+                        "ntceSpecDocUrl1": "https://example.com/valid-preserve.pdf",
+                    }
+                },
+            )
+            self.assertEqual(initial_response.status_code, 202)
+            notice_id = initial_response.get_json()["notice"]["id"]
+            initial_saved = self.wait_for_saved_nara_notice(notice_id)
+            self.assertEqual(initial_saved["analysis_status"], "completed")
+            initial_attachment_ids = {item["id"] for item in initial_saved["attachments"]}
+            initial_requirements = self.client.get(f"/api/nara/saved-notices/{notice_id}/requirements").get_json()
+            self.assertGreater(len(initial_requirements["requirements"]), 0)
+
+            retry_response = self.client.post(
+                "/api/nara/notices/save-and-analyze",
+                json={
+                    "notice": {
+                        "bidNtceNo": "20260509993",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "첨부 누락 재분석 보존 공고",
+                        "prtcptPsblRgnNm": "서울",
+                        "lcnsLmtNm": "정보통신공사업",
+                    }
+                },
+            )
+            self.assertEqual(retry_response.status_code, 202)
+
+            deadline = time.time() + 5
+            latest = {}
+            while time.time() < deadline:
+                detail_response = self.client.get(f"/api/nara/saved-notices/{notice_id}")
+                self.assertEqual(detail_response.status_code, 200)
+                latest = detail_response.get_json()
+                if "지원 가능한 첨부" in latest.get("error_message", ""):
+                    break
+                time.sleep(0.05)
+
+            self.assertEqual(latest["download_status"], "no_supported_attachments")
+            self.assertEqual(latest["analysis_status"], "partial_failed")
+            self.assertIn("지원 가능한 첨부", latest.get("error_message", ""))
+            self.assertEqual({item["id"] for item in latest["attachments"]}, initial_attachment_ids)
+            requirements_after = self.client.get(f"/api/nara/saved-notices/{notice_id}/requirements").get_json()
+            self.assertEqual(len(requirements_after["requirements"]), len(initial_requirements["requirements"]))
+
+            unsupported_response = self.client.post(
+                "/api/nara/notices/save-and-analyze",
+                json={
+                    "notice": {
+                        "bidNtceNo": "20260509993",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "첨부 누락 재분석 보존 공고",
+                        "prtcptPsblRgnNm": "서울",
+                        "lcnsLmtNm": "정보통신공사업",
+                        "ntceSpecFileNm1": "unsupported.hwp",
+                        "ntceSpecDocUrl1": "https://example.com/unsupported.hwp",
+                    }
+                },
+            )
+            self.assertEqual(unsupported_response.status_code, 202)
+
+            deadline = time.time() + 5
+            latest = {}
+            while time.time() < deadline:
+                detail_response = self.client.get(f"/api/nara/saved-notices/{notice_id}")
+                self.assertEqual(detail_response.status_code, 200)
+                latest = detail_response.get_json()
+                if "unsupported.hwp" in latest.get("raw_json", "") and "지원 가능한 첨부" in latest.get("error_message", ""):
+                    break
+                time.sleep(0.05)
+
+            self.assertIn("지원 가능한 첨부", latest.get("error_message", ""))
+            self.assertEqual({item["id"] for item in latest["attachments"]}, initial_attachment_ids)
+            requirements_after_unsupported = self.client.get(f"/api/nara/saved-notices/{notice_id}/requirements").get_json()
+            self.assertEqual(len(requirements_after_unsupported["requirements"]), len(initial_requirements["requirements"]))
+        finally:
+            runtime.request_binary = original_request_binary
+
     def test_nara_notice_can_be_saved_and_summarized_from_selected_raw_item(self) -> None:
         response = self.client.post(
             "/api/nara/notices/save-and-analyze",
@@ -1023,6 +2810,29 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(detail_response.get_json()["summary"]["status"], "preview_only")
 
+        internal_note_response = self.client.patch(
+            f"/api/corporations/{corporation['id']}",
+            json={"internal_notes": "비교와 무관한 메모 수정"},
+        )
+        self.assertEqual(internal_note_response.status_code, 200)
+        unchanged_history_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/comparisons")
+        self.assertEqual(len(unchanged_history_response.get_json()), 1)
+
+        profile_patch_response = self.client.patch(
+            f"/api/corporations/{corporation['id']}",
+            json={"license_summary": "산림사업법인"},
+        )
+        self.assertEqual(profile_patch_response.status_code, 200)
+        invalidated_history_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/comparisons")
+        self.assertEqual(invalidated_history_response.status_code, 200)
+        self.assertEqual(invalidated_history_response.get_json(), [])
+
+        comparison_response = self.client.post(
+            "/api/notice-comparisons",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+        )
+        self.assertEqual(comparison_response.status_code, 201)
+
         extract_response = self.client.post(f"/api/nara/saved-notices/{notice['id']}/requirements/extract")
         self.assertEqual(extract_response.status_code, 200)
 
@@ -1055,6 +2865,85 @@ class ApiFlowTests(unittest.TestCase):
         self.assertIn("국세 납세증명서", requirements["required_documents"])
         self.assertTrue(requirements["uncertainty_notes"])
         self.assertNotIn("eligible", json.dumps(requirements).lower())
+        self.assertNotIn("지원 가능", json.dumps(requirements, ensure_ascii=False))
+
+    def test_notice_requirement_extraction_handles_aliases_and_no_space_documents(self) -> None:
+        requirements = runtime.extract_notice_requirements(
+            {
+                "region_text": "전라남도 해남군",
+                "license_text": "",
+                "presmpt_prce": "103980909",
+                "bid_clse_dt": "2026-05-08 10:00",
+            },
+            """
+            입찰참가자격: 주된 영업소가 전남 해남군에 소재한 업체
+            등록요건: 조경식재·시설물공사업 또는 전기공사업 등록 업체
+            제출서류: 국세납세증명서, 지방세납세증명서, 경쟁입찰참가자격 등록증
+            자격요건: 소기업 또는 소상공인 확인서를 제출할 것
+            """,
+        )
+
+        self.assertIn("전라남도 해남군", requirements["regions"])
+        self.assertIn("전남", requirements["regions"])
+        self.assertIn("해남군", requirements["regions"])
+        self.assertIn("조경식재", requirements["licenses"])
+        self.assertIn("조경시설물", requirements["licenses"])
+        self.assertIn("전기공사업", requirements["licenses"])
+        self.assertIn("소기업", requirements["company_types"])
+        self.assertIn("소상공인", requirements["company_types"])
+        self.assertIn("국세 납세증명서", requirements["required_documents"])
+        self.assertIn("지방세 납세증명서", requirements["required_documents"])
+        self.assertIn("나라장터 경쟁입찰참가자격 등록증", requirements["required_documents"])
+
+        broad_company_requirements = runtime.extract_notice_requirements(
+            {"region_text": "", "license_text": ""},
+            "입찰참가자격: 중소기업확인서를 제출한 중소기업자",
+        )
+        self.assertIn("중소기업", broad_company_requirements["company_types"])
+        self.assertNotIn("소기업", broad_company_requirements["company_types"])
+
+    def test_comparison_matching_is_conservative_for_license_like_text(self) -> None:
+        prepared = runtime.compare_requirement_candidate(
+            {
+                "id": 1,
+                "requirement_type": "license",
+                "label": "면허/업종",
+                "required_value": "조경식재",
+                "normalized_value": "조경식재",
+                "source_text": "면허",
+                "confidence": 0.8,
+            },
+            {"licenses": ["조경식재공사업"], "business_types": []},
+        )
+        self.assertEqual(prepared["status"], "prepared")
+
+        missing = runtime.compare_requirement_candidate(
+            {
+                "id": 2,
+                "requirement_type": "license",
+                "label": "면허/업종",
+                "required_value": "전기공사업",
+                "normalized_value": "전기공사업",
+                "source_text": "면허",
+                "confidence": 0.8,
+            },
+            {"licenses": ["전기, 소방, 통신자재"], "business_types": []},
+        )
+        self.assertEqual(missing["status"], "possibly_missing")
+
+        document_missing = runtime.compare_requirement_candidate(
+            {
+                "id": 3,
+                "requirement_type": "required_document",
+                "label": "필요서류",
+                "required_value": "지방세 납세증명서",
+                "normalized_value": "지방세 납세증명서",
+                "source_text": "제출서류",
+                "confidence": 0.8,
+            },
+            {"required_documents": ["국세 납세증명서"], "business_types": []},
+        )
+        self.assertEqual(document_missing["status"], "possibly_missing")
 
     def test_standard_notice_url_is_named_in_korean_when_present(self) -> None:
         attachments = runtime.collect_nara_attachments(

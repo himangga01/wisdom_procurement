@@ -2,8 +2,8 @@
 import json
 import mimetypes
 import os
+import re
 import sqlite3
-import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -12,12 +12,14 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-import xml.etree.ElementTree as ET
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 
+from app.core.citations import expected_basis_citation_candidate_id
+from app.core.json_utils import parse_json_dict, parse_json_list
+from app.core.text import clean_text, parse_int
 from app.pipelines.corporation_evidence import (
     FIELD_LABELS,
     EvidenceExtractionResult,
@@ -28,7 +30,56 @@ from app.pipelines.corporation_evidence import (
     normalize_business_kind_values,
 )
 from app.pipelines.ocr import run_ocr, run_ocr_if_needed
+from app.pipelines.basis_document import (
+    BASIS_CITATION_MIN_SCORE,
+    BASIS_INDEX_DIR,
+    BasisIndexError,
+    basis_chunk_payload,
+    basis_document_payload,
+    basis_index_status_payload,
+    basis_search_results,
+    delete_basis_vectors,
+    process_basis_document,
+    rebuild_basis_index,
+    validate_basis_index,
+)
 from app.pipelines.parser import extract_document
+from app.services.basis_rule_candidates import (
+    basis_rule_candidate_match_score,
+    merge_citation_results,
+    prepare_basis_rule_candidate_update,
+)
+from app.services.backups import (
+    create_backup_run,
+    get_backup_run_payload,
+    list_backup_runs_payload,
+    restore_plan_for_backup,
+    validate_backup_file,
+)
+from app.services.nara_api import (
+    attachment_extension,
+    build_nara_summary_text,
+    build_nara_url,
+    collect_nara_attachments,
+    date_to_api_datetime,
+    decode_http_body,
+    inline_content_type,
+    is_safe_external_url,
+    item_first,
+    merge_notice_items,
+    normalize_nara_notice,
+    parse_nara_response,
+    parse_public_data_text,
+    request_binary,
+    request_text,
+)
+from app.services.operations import build_operations_summary
+from app.services.operations import (
+    error_code_for_status,
+    get_operation_run_payload,
+    list_operation_runs_payload,
+    record_operation_run,
+)
 
 load_dotenv()
 
@@ -64,6 +115,7 @@ NARA_PUBDATA_API_BASE_URL = os.getenv(
 NARA_API_RESPONSE_TYPE = os.getenv("NARA_API_RESPONSE_TYPE", "json")
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+BASIS_ALLOWED_EXTENSIONS = {".pdf"}
 EVIDENCE_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
 EVIDENCE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 UNSUPPORTED_NARA_EXTENSIONS = {".hwp", ".hwpx", ".xlsx", ".xls", ".zip"}
@@ -88,6 +140,16 @@ COMPARISON_STATUS_LABELS = {
     "not_found": "법인 정보 없음",
 }
 
+JUDGMENT_STATUS_LABELS = {
+    "matched": "준비 확인",
+    "missing": "부족 조건",
+    "uncertain": "불확실",
+    "needs_review": "확인 필요",
+    "not_applicable": "해당 없음",
+}
+
+PHASE3_CONTRACT_VERSION = "phase3_gap_judgment_contract_v1"
+
 EVIDENCE_DOCUMENT_LABELS = {
     "business_registration_certificate": "사업자등록증",
     "business_registration_proof": "사업자등록증명",
@@ -105,10 +167,99 @@ EVIDENCE_DOCUMENT_LABELS = {
     "financial_statement_certificate": "재무/매출 증빙",
 }
 
+REGION_ALIAS_GROUPS = {
+    "서울": ["서울", "서울특별시"],
+    "부산": ["부산", "부산광역시"],
+    "대구": ["대구", "대구광역시"],
+    "인천": ["인천", "인천광역시"],
+    "광주": ["광주", "광주광역시"],
+    "대전": ["대전", "대전광역시"],
+    "울산": ["울산", "울산광역시"],
+    "세종": ["세종", "세종특별자치시"],
+    "경기": ["경기", "경기도"],
+    "강원": ["강원", "강원도", "강원특별자치도"],
+    "충북": ["충북", "충청북도"],
+    "충남": ["충남", "충청남도"],
+    "전북": ["전북", "전라북도", "전북특별자치도"],
+    "전남": ["전남", "전라남도"],
+    "경북": ["경북", "경상북도"],
+    "경남": ["경남", "경상남도"],
+    "제주": ["제주", "제주도", "제주특별자치도"],
+}
+
+LICENSE_TOKEN_GROUPS = {
+    "건설업": ["건설업"],
+    "조경식재": ["조경식재", "조경식재공사업", "조경식재·시설물공사업", "조경식재시설물공사업"],
+    "조경시설물": ["조경시설물", "조경시설물설치공사업", "조경식재·시설물공사업", "조경식재시설물공사업"],
+    "산림사업법인": ["산림사업법인", "산림사업"],
+    "전기공사업": ["전기공사업", "전기공사"],
+    "정보통신공사업": ["정보통신공사업", "정보통신공사"],
+    "소방시설공사업": ["소방시설공사업", "전문소방시설공사업", "일반소방시설공사업"],
+    "폐기물처리": ["폐기물처리", "폐기물처리업"],
+    "엔지니어링사업자": ["엔지니어링사업자", "엔지니어링활동주체"],
+    "소프트웨어사업자": ["소프트웨어사업자", "소프트웨어사업"],
+    "직접생산확인": ["직접생산확인", "직접생산확인증명서"],
+}
+
+COMPANY_TYPE_TOKEN_GROUPS = {
+    "중소기업": ["중소기업", "중소기업자"],
+    "소기업": ["소기업"],
+    "소상공인": ["소상공인"],
+    "여성기업": ["여성기업"],
+    "장애인기업": ["장애인기업"],
+    "사회적기업": ["사회적기업"],
+    "창업기업": ["창업기업"],
+    "벤처기업": ["벤처기업"],
+}
+
+DOCUMENT_TOKEN_GROUPS = {
+    "사업자등록증": ["사업자등록증", "사업자 등록증"],
+    "법인등기부등본": ["법인등기부등본", "법인 등기부 등본", "등기사항전부증명서"],
+    "인감증명서": ["인감증명서", "법인인감증명서"],
+    "사용인감계": ["사용인감계"],
+    "국세 납세증명서": ["국세 납세증명서", "국세납세증명서"],
+    "지방세 납세증명서": ["지방세 납세증명서", "지방세납세증명서"],
+    "4대보험 완납증명서": ["4대보험 완납증명서", "4대 보험 완납증명서", "보험료 완납증명서"],
+    "중소기업확인서": ["중소기업확인서", "중소기업 확인서"],
+    "직접생산확인증명서": ["직접생산확인증명서", "직접생산 확인증명서", "직접생산확인"],
+    "나라장터 경쟁입찰참가자격 등록증": ["경쟁입찰참가자격 등록증", "입찰참가자격 등록증", "나라장터 등록증"],
+    "기업신용평가등급확인서": ["기업신용평가등급확인서", "신용평가등급확인서", "신용평가등급"],
+    "실적증명서": ["실적증명서", "수행실적증명서"],
+    "입찰보증서": ["입찰보증서", "입찰보증금"],
+    "청렴계약이행서약서": ["청렴계약이행서약서", "청렴계약 이행서약서"],
+}
+
+COMPARISON_AFFECTING_CORPORATION_FIELDS = {
+    "name",
+    "management_group_name",
+    "business_category",
+    "region",
+    "certifications_json",
+    "company_size_classification",
+    "business_registration_number",
+    "business_address",
+    "headquarters_address",
+    "business_type",
+    "business_item",
+    "preference_tags_json",
+    "direct_production_items_json",
+    "license_summary",
+    "procurement_registration_status",
+    "evidence_verification_status",
+}
+
 app = Flask(__name__)
 app.json.ensure_ascii = False
 app.config["JSON_AS_ASCII"] = False
 CORS(app)
+
+
+@app.after_request
+def ensure_utf8_json_response(response: Response) -> Response:
+    if response.mimetype == "application/json" and "charset=" not in response.content_type.lower():
+        response.content_type = "application/json; charset=utf-8"
+    return response
+
 
 SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
 NARA_NOTICE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="nara-notice-worker")
@@ -137,12 +288,6 @@ def get_json_payload() -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def clean_text(value, default: str = "") -> str:
-    if value is None:
-        return default
-    return str(value).strip()
-
-
 def normalize_management_group_name(value) -> str:
     return clean_text(value) or DEFAULT_MANAGEMENT_GROUP_NAME
 
@@ -157,13 +302,6 @@ def normalize_business_registration_number(value) -> str:
 
 def business_registration_match_key(value) -> str:
     return "".join(ch for ch in clean_text(value) if ch.isdigit())
-
-
-def parse_int(value, default: int = 0) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
 
 
 AI_PROVIDERS = {"gemini", "openai"}
@@ -283,103 +421,6 @@ def mask_secret(value: str) -> str:
     return value[:4] + "*" * (len(value) - 8) + value[-4:]
 
 
-def parse_nara_response(payload: dict) -> tuple[str, str, int]:
-    response = payload.get("response", payload) if isinstance(payload, dict) else {}
-    header = response.get("header", {}) if isinstance(response, dict) else {}
-    body = response.get("body", {}) if isinstance(response, dict) else {}
-    return (
-        str(header.get("resultCode", "")),
-        str(header.get("resultMsg", "")),
-        parse_int(body.get("totalCount"), 0),
-    )
-
-
-def normalize_json_items(items: Any) -> list[dict]:
-    if not items:
-        return []
-    if isinstance(items, dict):
-        item = items.get("item")
-        if isinstance(item, list):
-            return [row for row in item if isinstance(row, dict)]
-        if isinstance(item, dict):
-            return [item]
-    if isinstance(items, list):
-        return [row for row in items if isinstance(row, dict)]
-    return []
-
-
-def xml_children_to_dict(element: ET.Element | None) -> dict[str, str]:
-    if element is None:
-        return {}
-    return {child.tag: (child.text or "") for child in list(element)}
-
-
-def parse_public_data_text(raw_text: str) -> dict:
-    text = raw_text.strip()
-    if not text:
-        return {"format": "empty", "header": {}, "body": {}, "items": [], "total_count": 0}
-
-    if text.startswith("{") or text.startswith("["):
-        payload = json.loads(text)
-        response = payload.get("response", payload) if isinstance(payload, dict) else {}
-        header = response.get("header", {}) if isinstance(response, dict) else {}
-        body = response.get("body", {}) if isinstance(response, dict) else {}
-        items = normalize_json_items(body.get("items")) if isinstance(body, dict) else []
-        return {
-            "format": "json",
-            "header": header,
-            "body": body,
-            "items": items,
-            "total_count": parse_int(body.get("totalCount", len(items))) if isinstance(body, dict) else len(items),
-        }
-
-    root = ET.fromstring(text)
-    body = xml_children_to_dict(root.find("./body"))
-    items = [xml_children_to_dict(item) for item in root.findall("./body/items/item")]
-    return {
-        "format": "xml",
-        "header": xml_children_to_dict(root.find("./header")),
-        "body": body,
-        "items": items,
-        "total_count": parse_int(body.get("totalCount", len(items))),
-    }
-
-
-def build_nara_url(base_url: str, operation: str, params: dict[str, str]) -> str:
-    return f"{base_url.rstrip('/')}/{operation}?{urllib.parse.urlencode(params, doseq=True, safe='%')}"
-
-
-def decode_http_body(body: bytes, charset: str | None = None) -> str:
-    candidates = [charset, "utf-8-sig", "utf-8", "cp949", "euc-kr"]
-    seen: set[str] = set()
-    for candidate in candidates:
-        encoding = (candidate or "").strip().lower()
-        if not encoding or encoding in seen:
-            continue
-        seen.add(encoding)
-        try:
-            return body.decode(encoding)
-        except (LookupError, UnicodeDecodeError):
-            continue
-    return body.decode("utf-8", errors="replace")
-
-
-def request_text(url: str, timeout: int = 20) -> tuple[int, str]:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json, application/xml;q=0.9, */*;q=0.8",
-            "User-Agent": "SMART-Procurement-Calculator/local-portal",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            body = decode_http_body(response.read(), response.headers.get_content_charset())
-            return response.status, body
-    except urllib.error.HTTPError as exc:
-        return exc.code, decode_http_body(exc.read(), exc.headers.get_content_charset() if exc.headers else None)
-
-
 def request_nara_operation(operation: str, params: dict[str, str]) -> dict:
     url = build_nara_url(NARA_BID_PUBLIC_API_BASE_URL, operation, params)
     http_status, body = request_text(url)
@@ -391,101 +432,6 @@ def request_nara_operation(operation: str, params: dict[str, str]) -> dict:
         {**params, "ServiceKey": "***"},
     )
     return parsed
-
-
-def date_to_api_datetime(value: str, suffix: str) -> str:
-    cleaned = clean_text(value)
-    if len(cleaned) == 10 and cleaned[4] == "-" and cleaned[7] == "-":
-        return cleaned.replace("-", "") + suffix
-    if len(cleaned) == 8 and cleaned.isdigit():
-        return cleaned + suffix
-    return cleaned
-
-
-def item_first(item: dict, keys: list[str]) -> str:
-    for key in keys:
-        value = clean_text(item.get(key))
-        if value:
-            return value
-    return ""
-
-
-def attachment_extension(name: str, url: str, content_type: str = "") -> str:
-    candidates = [name, urllib.parse.urlparse(url).path]
-    for candidate in candidates:
-        suffix = Path(candidate).suffix.lower()
-        if suffix:
-            return suffix
-    guessed = mimetypes.guess_extension(content_type.split(";")[0].strip()) if content_type else ""
-    return guessed or ""
-
-
-def collect_nara_attachments(items: list[dict]) -> list[dict]:
-    attachments: list[dict] = []
-    seen: set[tuple[str, str]] = set()
-
-    def add_attachment(name: str, url: str, source_field: str) -> None:
-        name = clean_text(name) or Path(urllib.parse.urlparse(url).path).name or source_field
-        url = clean_text(url)
-        if not url and name == source_field:
-            return
-        key = (name, url)
-        if key in seen or (not name and not url):
-            return
-        seen.add(key)
-        suffix = attachment_extension(name, url)
-        support_status = "supported" if url and suffix in NARA_SUPPORTED_EXTENSIONS else "unsupported"
-        if not suffix and not url:
-            support_status = "unsupported"
-        attachments.append(
-            {
-                "file_name": name,
-                "source_url": url,
-                "source_field": source_field,
-                "file_extension": suffix,
-                "support_status": support_status,
-            }
-        )
-
-    for item in items:
-        for index in range(1, 11):
-            add_attachment(
-                clean_text(item.get(f"ntceSpecFileNm{index}")),
-                clean_text(item.get(f"ntceSpecDocUrl{index}")),
-                f"ntceSpecDocUrl{index}",
-            )
-
-        std_notice_url = clean_text(item.get("stdNtceDocUrl"))
-        if std_notice_url:
-            add_attachment("표준공고문.pdf", std_notice_url, "stdNtceDocUrl")
-        add_attachment(clean_text(item.get("eorderAtchFileNm")), clean_text(item.get("eorderAtchFileUrl")), "eorderAtchFileUrl")
-
-    return attachments
-
-
-def normalize_nara_notice(item: dict, attachments: list[dict] | None = None) -> dict:
-    attachment_rows = attachments if attachments is not None else collect_nara_attachments([item])
-    supported_count = len([row for row in attachment_rows if row["support_status"] == "supported"])
-    return {
-        "bid_ntce_no": item_first(item, ["bidNtceNo"]),
-        "bid_ntce_ord": item_first(item, ["bidNtceOrd"]) or "000",
-        "bid_ntce_nm": item_first(item, ["bidNtceNm"]),
-        "ntce_instt_nm": item_first(item, ["ntceInsttNm"]),
-        "dminstt_nm": item_first(item, ["dminsttNm"]),
-        "bid_ntce_dt": item_first(item, ["bidNtceDt"]),
-        "bid_begin_dt": item_first(item, ["bidBeginDt"]),
-        "bid_clse_dt": item_first(item, ["bidClseDt"]),
-        "openg_dt": item_first(item, ["opengDt"]),
-        "presmpt_prce": item_first(item, ["presmptPrce", "asignBdgtAmt"]),
-        "bdgt_amt": item_first(item, ["bdgtAmt", "asignBdgtAmt"]),
-        "bssamt": item_first(item, ["bssamt", "bssAmt"]),
-        "region_text": item_first(item, ["prtcptPsblRgnNm", "cnstrtsiteRgnNm", "rgstTyNm"]),
-        "license_text": item_first(item, ["lcnsLmtNm", "indstrytyNm", "indstrytyLmtYn"]),
-        "source_url": item_first(item, ["bidNtceUrl", "bidNtceDtlUrl"]),
-        "attachment_count": len(attachment_rows),
-        "supported_attachment_count": supported_count,
-        "raw": item,
-    }
 
 
 def fetch_nara_detail_bundle(bid_no: str, bid_ord: str) -> dict:
@@ -524,78 +470,6 @@ def fetch_nara_detail_bundle(bid_no: str, bid_ord: str) -> dict:
     return bundle
 
 
-def merge_notice_items(base_item: dict, detail_items: list[dict]) -> dict:
-    merged = dict(base_item)
-    for item in detail_items:
-        for key, value in item.items():
-            if clean_text(value) and not clean_text(merged.get(key)):
-                merged[key] = value
-    return merged
-
-
-def request_binary(url: str, timeout: int = 30, max_bytes: int = 50 * 1024 * 1024) -> tuple[int, dict[str, str], bytes]:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, */*",
-            "User-Agent": "SMART-Procurement-Calculator/attachment-download",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as response:
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            chunk = response.read(1024 * 1024)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_bytes:
-                raise ValueError("download exceeded 50MB limit")
-            chunks.append(chunk)
-        return response.status, {key.lower(): value for key, value in response.headers.items()}, b"".join(chunks)
-
-
-def is_safe_external_url(url: str) -> bool:
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        return False
-    hostname = parsed.hostname.lower()
-    if hostname in {"localhost", "127.0.0.1", "::1"}:
-        return False
-    return True
-
-
-def inline_content_type(file_name: str, url: str, upstream_content_type: str, body: bytes) -> str:
-    suffix = attachment_extension(file_name, url, upstream_content_type)
-    if body.startswith(b"%PDF") or suffix == ".pdf":
-        return "application/pdf"
-    if body.startswith(b"PK\x03\x04") or suffix == ".docx":
-        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    return upstream_content_type.split(";")[0].strip() or "application/octet-stream"
-
-
-def build_nara_summary_text(notice: dict, attachment_texts: list[str]) -> str:
-    lines = [
-        f"공고명: {notice.get('bid_ntce_nm', '')}",
-        f"공고번호: {notice.get('bid_ntce_no', '')}-{notice.get('bid_ntce_ord', '')}",
-        f"공고기관: {notice.get('ntce_instt_nm', '')}",
-        f"수요기관: {notice.get('dminstt_nm', '')}",
-        f"공고일시: {notice.get('bid_ntce_dt', '')}",
-        f"입찰개시: {notice.get('bid_begin_dt', '')}",
-        f"입찰마감: {notice.get('bid_clse_dt', '')}",
-        f"개찰일시: {notice.get('openg_dt', '')}",
-        f"추정가격: {notice.get('presmpt_prce', '')}",
-        f"기초금액: {notice.get('bssamt', '')}",
-        f"지역: {notice.get('region_text', '')}",
-        f"면허/업종 제한: {notice.get('license_text', '')}",
-        "",
-        "첨부문서 추출 내용:",
-    ]
-    for index, text in enumerate(attachment_texts, start=1):
-        lines.extend([f"[첨부 {index}]", text[:20000], ""])
-    return "\n".join(lines).strip()
-
-
 def _dedupe_text_items(items: list[str]) -> list[str]:
     result: list[str] = []
     seen: set[str] = set()
@@ -613,81 +487,77 @@ def _find_notice_tokens(text: str, tokens: list[str]) -> list[str]:
     return [token for token in tokens if token.replace(" ", "") in compact]
 
 
+def _find_notice_token_labels(text: str, token_groups: dict[str, list[str]]) -> list[str]:
+    compact = compact_match_value(text)
+    found: list[str] = []
+    for label, aliases in token_groups.items():
+        if any(token_alias_in_compact_text(compact, compact_match_value(alias)) for alias in aliases):
+            found.append(label)
+    return found
+
+
+def token_alias_in_compact_text(text_compact: str, alias_compact: str) -> bool:
+    if not text_compact or not alias_compact:
+        return False
+    if alias_compact == "소기업":
+        # `중소기업` is a broader concept and must not be treated as an explicit small-enterprise condition.
+        return alias_compact in text_compact.replace("중소기업", "")
+    return alias_compact in text_compact
+
+
+def _extract_notice_region_candidates(notice: dict, text: str) -> list[str]:
+    candidates = [notice.get("region_text", "")]
+    compact = compact_match_value(text)
+    for canonical, aliases in REGION_ALIAS_GROUPS.items():
+        if any(compact_match_value(alias) in compact for alias in aliases):
+            candidates.append(canonical)
+
+    for match in re.findall(r"[가-힣]{2,12}(?:시|군|구)", text):
+        if match in {"공고시", "개찰시", "입찰시", "공고일시", "입찰개시", "개찰일시"}:
+            continue
+        candidates.append(match)
+
+    return _dedupe_text_items(candidates)
+
+
 def extract_notice_requirements(notice: dict, notice_text: str) -> dict:
     text = notice_text or ""
-    region_tokens = [
-        "서울",
-        "부산",
-        "대구",
-        "인천",
-        "광주",
-        "대전",
-        "울산",
-        "세종",
-        "경기도",
-        "강원",
-        "충북",
-        "충남",
-        "전북",
-        "전남",
-        "경북",
-        "경남",
-        "제주",
-    ]
-    license_tokens = [
-        "건설업",
-        "조경식재",
-        "조경시설물",
-        "산림사업법인",
-        "전기공사업",
-        "정보통신공사업",
-        "소방시설공사업",
-        "폐기물처리",
-        "엔지니어링사업자",
-        "소프트웨어사업자",
-        "직접생산확인",
-    ]
-    company_type_tokens = [
-        "중소기업",
-        "소기업",
-        "소상공인",
-        "여성기업",
-        "장애인기업",
-        "사회적기업",
-        "창업기업",
-        "벤처기업",
-    ]
-    document_tokens = [
-        "사업자등록증",
-        "법인등기부등본",
-        "인감증명서",
-        "사용인감계",
-        "국세 납세증명서",
-        "지방세 납세증명서",
-        "4대보험 완납증명서",
-        "중소기업확인서",
-        "직접생산확인증명서",
-        "기업신용평가등급확인서",
-        "실적증명서",
-        "입찰보증서",
-        "청렴계약이행서약서",
-    ]
     requirement_lines = []
     for line in text.splitlines():
         cleaned = clean_text(line)
         if not cleaned:
             continue
-        if any(token in cleaned for token in ["참가자격", "입찰참가", "제출서류", "구비서류", "면허", "업종", "직접생산", "중소기업"]):
+        if any(
+            token in cleaned
+            for token in [
+                "참가자격",
+                "입찰참가",
+                "입찰 참가",
+                "제출서류",
+                "제출 서류",
+                "구비서류",
+                "자격요건",
+                "등록요건",
+                "면허",
+                "업종",
+                "직접생산",
+                "중소기업",
+                "소기업",
+                "소상공인",
+                "지역제한",
+                "영업소",
+            ]
+        ):
             requirement_lines.append(cleaned[:260])
-        if len(requirement_lines) >= 12:
+        if len(requirement_lines) >= 16:
             break
 
     return {
-        "extraction_method": "rule_based_phase_1_6",
-        "regions": _dedupe_text_items([notice.get("region_text", ""), *_find_notice_tokens(text, region_tokens)]),
-        "licenses": _dedupe_text_items([notice.get("license_text", ""), *_find_notice_tokens(text, license_tokens)]),
-        "company_types": _dedupe_text_items(_find_notice_tokens(text, company_type_tokens)),
-        "required_documents": _dedupe_text_items(_find_notice_tokens(text, document_tokens)),
+        "extraction_method": "rule_based_phase_1_7_stabilized",
+        "regions": _extract_notice_region_candidates(notice, text),
+        "licenses": _dedupe_text_items([notice.get("license_text", ""), *_find_notice_token_labels(text, LICENSE_TOKEN_GROUPS)]),
+        "company_types": _dedupe_text_items(_find_notice_token_labels(text, COMPANY_TYPE_TOKEN_GROUPS)),
+        "required_documents": _dedupe_text_items(_find_notice_token_labels(text, DOCUMENT_TOKEN_GROUPS)),
         "requirement_lines": _dedupe_text_items(requirement_lines),
         "money": {
             "presmpt_prce": clean_text(notice.get("presmpt_prce")),
@@ -701,7 +571,7 @@ def extract_notice_requirements(notice: dict, notice_text: str) -> dict:
             "openg_dt": clean_text(notice.get("openg_dt")),
         },
         "uncertainty_notes": [
-            "Phase 1.6에서는 요구조건 후보만 추출하며 법인별 지원 가능 여부는 판단하지 않습니다."
+            "Phase 1.7에서는 요구조건 후보와 부족 가능성만 정리하며 최종 자격 판정은 수행하지 않습니다."
         ],
     }
 
@@ -721,7 +591,7 @@ def render_notice_requirements_markdown(requirements: dict) -> str:
             f"- 추정가격: {(requirements.get('money') or {}).get('presmpt_prce') or '원문 확인 필요'}",
             f"- 입찰마감: {(requirements.get('dates') or {}).get('bid_clse_dt') or '원문 확인 필요'}",
             "",
-            "※ 위 항목은 자동 추출 후보이며, 최종 지원 가능 여부 판단이 아닙니다.",
+            "※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
         ]
     )
 
@@ -860,6 +730,7 @@ def store_notice_requirement_candidates(conn: sqlite3.Connection, notice_id: int
     now = now_iso()
     conn.execute("DELETE FROM notice_requirement_candidates WHERE nara_notice_id=?", (notice_id,))
     conn.execute("DELETE FROM notice_corporation_comparisons WHERE nara_notice_id=?", (notice_id,))
+    conn.execute("DELETE FROM judgment_runs WHERE nara_notice_id=?", (notice_id,))
     for candidate in candidates:
         conn.execute(
             """
@@ -885,6 +756,12 @@ def store_notice_requirement_candidates(conn: sqlite3.Connection, notice_id: int
             ),
         )
     return candidates
+
+
+def invalidate_corporation_comparisons(conn: sqlite3.Connection, corporation_id: int | None) -> None:
+    if corporation_id:
+        conn.execute("DELETE FROM notice_corporation_comparisons WHERE corporation_id=?", (corporation_id,))
+        conn.execute("DELETE FROM judgment_runs WHERE corporation_id=?", (corporation_id,))
 
 
 def ensure_notice_requirement_candidates(conn: sqlite3.Connection, notice_id: int, force: bool = False) -> list[dict] | None:
@@ -932,30 +809,14 @@ def append_unique_text(target: list[str], values: list[Any]) -> None:
 
 
 def extract_region_terms(*values: Any) -> list[str]:
-    region_tokens = [
-        "서울",
-        "부산",
-        "대구",
-        "인천",
-        "광주",
-        "대전",
-        "울산",
-        "세종",
-        "경기도",
-        "강원",
-        "충북",
-        "충남",
-        "전북",
-        "전남",
-        "경북",
-        "경남",
-        "제주",
-        "성남",
-        "해남",
-    ]
     text = " ".join(clean_text(value) for value in values if clean_text(value))
-    compact = text.replace(" ", "")
-    return _dedupe_text_items([token for token in region_tokens if token.replace(" ", "") in compact])
+    compact = compact_match_value(text)
+    candidates: list[str] = []
+    for canonical, aliases in REGION_ALIAS_GROUPS.items():
+        if any(compact_match_value(alias) in compact for alias in aliases):
+            candidates.append(canonical)
+    candidates.extend(re.findall(r"[가-힣]{2,12}(?:시|군|구)", text))
+    return _dedupe_text_items(candidates)
 
 
 def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: sqlite3.Row | dict) -> dict:
@@ -981,6 +842,11 @@ def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: 
     certifications = parse_json_list_value(corp.get("certifications_json"))
     preference_tags = parse_json_list_value(corp.get("preference_tags_json"))
     direct_production_items = parse_json_list_value(corp.get("direct_production_items_json"))
+    business_category_values = parse_json_list_value(corp.get("business_category"))
+    business_type_values = parse_json_list_value(corp.get("business_type"))
+    business_item_values = parse_json_list_value(corp.get("business_item"))
+    license_values = parse_json_list_value(corp.get("license_summary"))
+    procurement_values = parse_json_list_value(corp.get("procurement_registration_status"))
 
     regions: list[str] = []
     append_unique_text(regions, [corp.get("region")])
@@ -993,9 +859,9 @@ def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: 
     append_unique_text(
         business_types,
         [
-            corp.get("business_category"),
-            corp.get("business_type"),
-            corp.get("business_item"),
+            *business_category_values,
+            *business_type_values,
+            *business_item_values,
             *direct_production_items,
         ],
     )
@@ -1004,11 +870,11 @@ def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: 
     append_unique_text(
         licenses,
         [
-            corp.get("license_summary"),
-            corp.get("procurement_registration_status"),
-            corp.get("business_type"),
-            corp.get("business_item"),
-            corp.get("business_category"),
+            *license_values,
+            *procurement_values,
+            *business_type_values,
+            *business_item_values,
+            *business_category_values,
         ],
     )
 
@@ -1034,6 +900,10 @@ def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: 
         append_unique_text(required_documents, ["나라장터 경쟁입찰참가자격 등록증"])
     if clean_text(corp.get("license_summary")):
         append_unique_text(required_documents, ["면허/등록/허가증"])
+    if any("여성기업" in item for item in company_types):
+        append_unique_text(required_documents, ["여성기업확인서"])
+    if any("장애인기업" in item for item in company_types):
+        append_unique_text(required_documents, ["장애인기업확인서"])
 
     return {
         "corporation_id": corp["id"],
@@ -1053,15 +923,69 @@ def build_corporation_comparison_profile(conn: sqlite3.Connection, corporation: 
     }
 
 
-def match_profile_values(required_value: str, profile_values: list[str]) -> tuple[bool, str]:
+def region_match_keys(value: str) -> set[str]:
+    cleaned = clean_text(value)
+    compact = compact_match_value(cleaned)
+    keys: set[str] = set()
+    for canonical, aliases in REGION_ALIAS_GROUPS.items():
+        if any(compact_match_value(alias) in compact for alias in aliases):
+            keys.add(canonical)
+    for match in re.findall(r"[가-힣]{2,12}(?:시|군|구)", cleaned):
+        keys.add(compact_match_value(match))
+    if compact:
+        keys.add(compact)
+    return keys
+
+
+def token_group_key(value: str, token_groups: dict[str, list[str]]) -> str:
+    compact = compact_match_value(value)
+    for label, aliases in token_groups.items():
+        keys = [compact_match_value(label), *(compact_match_value(alias) for alias in aliases)]
+        if compact in keys or any(key and key in compact for key in keys):
+            return label
+    return ""
+
+
+def controlled_text_match(required_key: str, value_key: str) -> bool:
+    if not required_key or not value_key:
+        return False
+    if required_key == value_key:
+        return True
+    min_len = min(len(required_key), len(value_key))
+    if min_len < 5:
+        return False
+    return required_key in value_key or value_key in required_key
+
+
+def match_profile_values(required_value: str, profile_values: list[str], requirement_type: str = "") -> tuple[bool, str]:
     required_key = compact_match_value(required_value)
     if not required_key:
         return False, ""
+
+    if requirement_type == "region":
+        required_keys = region_match_keys(required_value)
+        for value in profile_values:
+            value_keys = region_match_keys(value)
+            if required_keys & value_keys:
+                return True, value
+        return False, ""
+
+    token_groups: dict[str, list[str]] = {}
+    if requirement_type == "license":
+        token_groups = LICENSE_TOKEN_GROUPS
+    elif requirement_type == "company_type":
+        token_groups = COMPANY_TYPE_TOKEN_GROUPS
+    elif requirement_type == "required_document":
+        token_groups = DOCUMENT_TOKEN_GROUPS
+
+    required_group = token_group_key(required_value, token_groups) if token_groups else ""
     for value in profile_values:
         value_key = compact_match_value(value)
         if not value_key:
             continue
-        if required_key in value_key or value_key in required_key:
+        if required_group and required_group == token_group_key(value, token_groups):
+            return True, value
+        if controlled_text_match(required_key, value_key):
             return True, value
     return False, ""
 
@@ -1087,7 +1011,7 @@ def compare_requirement_candidate(candidate: dict, profile: dict) -> dict:
             reason = "비교할 법인 프로필 또는 승인 증빙 정보가 아직 충분하지 않습니다."
             matched_value = ""
         else:
-            matched, matched_value = match_profile_values(required_value, profile_values)
+            matched, matched_value = match_profile_values(required_value, profile_values, requirement_type)
             if matched:
                 status = "prepared"
                 reason = f"법인 프로필 또는 승인 증빙에서 '{matched_value}' 값을 찾았습니다."
@@ -1122,7 +1046,7 @@ def summarize_comparison_items(items: list[dict]) -> dict:
         "needs_review_count": counts.get("needs_review", 0),
         "not_found_count": counts.get("not_found", 0),
         "status": "preview_only",
-        "note": "부족조건 미리보기 결과입니다. 지원 가능/불가능 최종 판정이 아닙니다.",
+        "note": "부족조건 미리보기 결과입니다. 최종 자격 판정이 아닙니다.",
     }
 
 
@@ -1204,6 +1128,8 @@ def init_db() -> None:
     STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
     (STORAGE_ROOT / "uploads").mkdir(parents=True, exist_ok=True)
     (STORAGE_ROOT / "corporation-evidence").mkdir(parents=True, exist_ok=True)
+    (STORAGE_ROOT / "basis").mkdir(parents=True, exist_ok=True)
+    BASIS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
     with db_conn() as conn:
         conn.executescript(
@@ -1309,6 +1235,87 @@ def init_db() -> None:
                 FOREIGN KEY(corporation_id) REFERENCES corporations(id)
             );
 
+            CREATE TABLE IF NOT EXISTS basis_documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                category TEXT DEFAULT '',
+                document_version TEXT DEFAULT '',
+                issuing_agency TEXT DEFAULT '',
+                effective_date TEXT DEFAULT '',
+                source_url TEXT DEFAULT '',
+                original_file_name TEXT NOT NULL,
+                stored_file_path TEXT NOT NULL,
+                mime_type TEXT DEFAULT '',
+                file_size INTEGER DEFAULT 0,
+                file_hash TEXT DEFAULT '',
+                memo TEXT DEFAULT '',
+                processing_status TEXT DEFAULT 'pending',
+                parse_status TEXT DEFAULT 'pending',
+                ocr_status TEXT DEFAULT 'pending',
+                chunk_status TEXT DEFAULT 'pending',
+                index_status TEXT DEFAULT 'pending',
+                page_count INTEGER DEFAULT 0,
+                chunk_count INTEGER DEFAULT 0,
+                vector_count INTEGER DEFAULT 0,
+                extracted_text_preview TEXT DEFAULT '',
+                metadata_json TEXT DEFAULT '{}',
+                error_message TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                processed_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS basis_document_chunks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                basis_document_id INTEGER NOT NULL,
+                processing_run_id TEXT DEFAULT '',
+                chunk_index INTEGER NOT NULL,
+                chunk_text TEXT NOT NULL,
+                chunk_text_normalized TEXT NOT NULL,
+                page_start INTEGER,
+                page_end INTEGER,
+                section_title TEXT DEFAULT '',
+                article_label TEXT DEFAULT '',
+                chunk_hash TEXT DEFAULT '',
+                token_count INTEGER DEFAULT 0,
+                metadata_json TEXT DEFAULT '{}',
+                vector_id TEXT DEFAULT '',
+                vector_status TEXT DEFAULT 'pending',
+                embedding_model TEXT DEFAULT '',
+                index_error_message TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(basis_document_id) REFERENCES basis_documents(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS basis_rule_candidates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                basis_document_id INTEGER NOT NULL,
+                basis_chunk_id INTEGER NOT NULL,
+                rule_type TEXT NOT NULL,
+                condition_text TEXT NOT NULL,
+                target_scope TEXT DEFAULT '',
+                required_evidence_types_json TEXT DEFAULT '[]',
+                related_profile_fields_json TEXT DEFAULT '[]',
+                citation_candidate_id TEXT DEFAULT '',
+                confidence REAL DEFAULT 0,
+                source_condition_text TEXT DEFAULT '',
+                source_required_evidence_types_json TEXT DEFAULT '[]',
+                source_related_profile_fields_json TEXT DEFAULT '[]',
+                source_confidence REAL DEFAULT 0,
+                source_condition_hash TEXT DEFAULT '',
+                extraction_key TEXT DEFAULT '',
+                status TEXT DEFAULT 'needs_review',
+                review_note TEXT DEFAULT '',
+                reviewed_at TEXT DEFAULT '',
+                reviewer_name TEXT DEFAULT '',
+                extraction_method TEXT DEFAULT 'basis_rule_candidate_v1',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(basis_document_id) REFERENCES basis_documents(id),
+                FOREIGN KEY(basis_chunk_id) REFERENCES basis_document_chunks(id)
+            );
+
             CREATE TABLE IF NOT EXISTS nara_notices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 bid_ntce_no TEXT NOT NULL,
@@ -1395,6 +1402,93 @@ def init_db() -> None:
                 FOREIGN KEY(corporation_id) REFERENCES corporations(id)
             );
 
+            CREATE TABLE IF NOT EXISTS basis_retrieval_evaluations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                query_set_json TEXT NOT NULL,
+                result_json TEXT DEFAULT '{}',
+                query_count INTEGER DEFAULT 0,
+                citation_coverage REAL DEFAULT 0,
+                average_top_score REAL DEFAULT 0,
+                status TEXT DEFAULT 'completed',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS judgment_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nara_notice_id INTEGER NOT NULL,
+                corporation_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'completed',
+                review_status TEXT DEFAULT 'pending',
+                reviewer_note TEXT DEFAULT '',
+                input_snapshot_json TEXT DEFAULT '{}',
+                result_json TEXT DEFAULT '{}',
+                summary_json TEXT DEFAULT '{}',
+                matched_count INTEGER DEFAULT 0,
+                missing_count INTEGER DEFAULT 0,
+                uncertain_count INTEGER DEFAULT 0,
+                needs_review_count INTEGER DEFAULT 0,
+                not_applicable_count INTEGER DEFAULT 0,
+                citation_coverage REAL DEFAULT 0,
+                rule_version TEXT DEFAULT 'phase3_gap_judgment_rule_v1',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(nara_notice_id) REFERENCES nara_notices(id),
+                FOREIGN KEY(corporation_id) REFERENCES corporations(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS nara_collection_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT DEFAULT 'completed',
+                mode TEXT DEFAULT 'api',
+                keyword TEXT DEFAULT '',
+                start_date TEXT DEFAULT '',
+                end_date TEXT DEFAULT '',
+                searched_count INTEGER DEFAULT 0,
+                saved_count INTEGER DEFAULT 0,
+                skipped_count INTEGER DEFAULT 0,
+                error_message TEXT DEFAULT '',
+                criteria_json TEXT DEFAULT '{}',
+                result_json TEXT DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS operation_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                operation_type TEXT NOT NULL,
+                target_type TEXT DEFAULT '',
+                target_id INTEGER,
+                status TEXT NOT NULL,
+                requested_by TEXT DEFAULT 'local_admin',
+                request_json TEXT DEFAULT '{}',
+                result_json TEXT DEFAULT '{}',
+                error_message TEXT DEFAULT '',
+                error_code TEXT DEFAULT '',
+                retry_of_run_id INTEGER,
+                retry_count INTEGER DEFAULT 0,
+                started_at TEXT,
+                finished_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS backup_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                backup_type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                file_name TEXT DEFAULT '',
+                file_path TEXT DEFAULT '',
+                file_size_bytes INTEGER DEFAULT 0,
+                manifest_json TEXT DEFAULT '{}',
+                validation_json TEXT DEFAULT '{}',
+                error_message TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS integration_test_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 integration_name TEXT NOT NULL,
@@ -1406,6 +1500,33 @@ def init_db() -> None:
                 detail TEXT DEFAULT '',
                 tested_at TEXT NOT NULL
             );
+
+            CREATE INDEX IF NOT EXISTS idx_basis_rule_candidates_status
+            ON basis_rule_candidates(status);
+            CREATE INDEX IF NOT EXISTS idx_basis_rule_candidates_basis_document
+            ON basis_rule_candidates(basis_document_id);
+            CREATE INDEX IF NOT EXISTS idx_basis_rule_candidates_rule_type
+            ON basis_rule_candidates(rule_type);
+            CREATE INDEX IF NOT EXISTS idx_judgment_runs_notice_corporation
+            ON judgment_runs(nara_notice_id, corporation_id);
+            CREATE INDEX IF NOT EXISTS idx_judgment_runs_created_at
+            ON judgment_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_nara_collection_runs_created_at
+            ON nara_collection_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_nara_collection_runs_status
+            ON nara_collection_runs(status);
+            CREATE INDEX IF NOT EXISTS idx_basis_retrieval_evaluations_created_at
+            ON basis_retrieval_evaluations(created_at);
+            CREATE INDEX IF NOT EXISTS idx_operation_runs_created_at
+            ON operation_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_operation_runs_status
+            ON operation_runs(status);
+            CREATE INDEX IF NOT EXISTS idx_operation_runs_type
+            ON operation_runs(operation_type);
+            CREATE INDEX IF NOT EXISTS idx_backup_runs_created_at
+            ON backup_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_backup_runs_status
+            ON backup_runs(status);
             """
         )
         ensure_table_columns(
@@ -1434,6 +1555,21 @@ def init_db() -> None:
             "corporation_evidence_documents",
             {
                 "management_group_name": "TEXT DEFAULT '기본 관리그룹'",
+            },
+        )
+        ensure_table_columns(
+            conn,
+            "basis_rule_candidates",
+            {
+                "review_note": "TEXT DEFAULT ''",
+                "reviewed_at": "TEXT DEFAULT ''",
+                "reviewer_name": "TEXT DEFAULT ''",
+                "source_condition_text": "TEXT DEFAULT ''",
+                "source_required_evidence_types_json": "TEXT DEFAULT '[]'",
+                "source_related_profile_fields_json": "TEXT DEFAULT '[]'",
+                "source_confidence": "REAL DEFAULT 0",
+                "source_condition_hash": "TEXT DEFAULT ''",
+                "extraction_key": "TEXT DEFAULT ''",
             },
         )
         conn.commit()
@@ -1468,6 +1604,1419 @@ def extract_evidence_text(file_path: Path) -> tuple[str, str, dict[str, Any]]:
     ocr_result = run_ocr_if_needed(parsed.text, file_path, parsed.kind, parsed.metadata)
     text = ocr_result.text or parsed.text
     return text, parsed.kind, {"parser": parsed.metadata, "ocr": ocr_result.to_dict()}
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_phase2_known_issues() -> list[dict[str, Any]]:
+    explicit_path = clean_text(os.getenv("NARA_NOTICE_PDF_KNOWN_ISSUES_PATH"))
+    issue_paths = []
+    if explicit_path:
+        issue_paths.append(Path(explicit_path))
+    issue_paths.extend(
+        [
+            BASE_DIR / "backend" / "tests" / "nara-notice-pdf-samples" / "qa-known-issues.json",
+            BASE_DIR / "backend" / "tests" / "nara-notice-pdf-samples" / "manifest.json",
+        ]
+    )
+    for path in issue_paths:
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(payload, list):
+            issues = payload
+        elif isinstance(payload, dict):
+            issues = payload.get("known_issues") or payload.get("issues") or []
+        else:
+            issues = []
+        if not isinstance(issues, list):
+            continue
+        normalized = [issue for issue in issues if isinstance(issue, dict)]
+        if normalized:
+            return normalized
+    return []
+
+
+def phase2_closeout_summary() -> dict[str, Any]:
+    return {
+        "status": "phase2_mvp_complete",
+        "generated_at": now_iso(),
+        "test_baseline": {
+            "default_backend": "py -3.13 -m unittest discover -s tests -v",
+            "encoding": "py -3.13 scripts\\check-encoding.py",
+            "diff_check": "git diff --check",
+            "phase17_pdf_opt_in": "$env:RUN_NARA_PHASE17_QA='1'; py -3.13 -m unittest tests.test_nara_phase17_live_samples -v",
+            "phase2_pdf_opt_in": "$env:RUN_NARA_PHASE2_QA='1'; py -3.13 -m unittest tests.test_nara_phase2_basis_qa_samples -v",
+        },
+        "sample_policy": {
+            "notice_pdf_cache": "backend/tests/nara-notice-pdf-samples/",
+            "notice_pdf_manifest": "backend/tests/nara-notice-pdf-samples/manifest.json",
+            "notice_pdf_use": "공고문 PDF 파이프라인 안정성 테스트용",
+            "basis_pdf_use": "법령/예규/기준문서 검색과 citation 품질 평가용으로 별도 선정",
+            "git_policy": "PDF 샘플과 temp 비교 결과는 로컬 QA 산출물로 두고 Git에는 포함하지 않음",
+        },
+        "known_issues": load_phase2_known_issues(),
+        "guardrails": [
+            "Phase 3 전후 출력은 부족조건/확인 필요/citation 후보 중심으로 유지",
+            "citation 없는 조건은 확정 근거로 사용하지 않음",
+            "나라장터 자동화는 API 기반으로만 확장하고 HTML 크롤링은 도입하지 않음",
+        ],
+    }
+
+
+def basis_rule_candidate_payload(row: sqlite3.Row | dict) -> dict:
+    payload = dict(row)
+    payload["required_evidence_types"] = parse_json_list(payload.pop("required_evidence_types_json", "[]"))
+    payload["related_profile_fields"] = parse_json_list(payload.pop("related_profile_fields_json", "[]"))
+    payload["source_required_evidence_types"] = parse_json_list(payload.pop("source_required_evidence_types_json", "[]"))
+    payload["source_related_profile_fields"] = parse_json_list(payload.pop("source_related_profile_fields_json", "[]"))
+    return payload
+
+
+def basis_rule_candidate_detail_payload(conn: sqlite3.Connection, row: sqlite3.Row | dict) -> dict:
+    payload = basis_rule_candidate_payload(row)
+    basis = conn.execute("SELECT * FROM basis_documents WHERE id=?", (payload["basis_document_id"],)).fetchone()
+    chunk = conn.execute("SELECT * FROM basis_document_chunks WHERE id=?", (payload["basis_chunk_id"],)).fetchone()
+    payload["basis_document"] = basis_document_payload(conn, basis) if basis else None
+    payload["chunk"] = basis_chunk_payload(chunk) if chunk else None
+    expected_citation_id = expected_basis_citation_candidate_id(payload["basis_document_id"], payload["basis_chunk_id"])
+    payload["expected_citation_candidate_id"] = expected_citation_id
+    payload["citation_candidate_valid"] = payload["citation_candidate_id"] == expected_citation_id
+    payload["citation_options"] = [
+        {
+            "citation_candidate_id": expected_citation_id,
+            "basis_document_id": payload["basis_document_id"],
+            "basis_chunk_id": payload["basis_chunk_id"],
+            "basis_document_title": basis["title"] if basis else "",
+            "page_start": chunk["page_start"] if chunk else None,
+            "page_end": chunk["page_end"] if chunk else None,
+            "section_title": chunk["section_title"] if chunk else "",
+            "text_preview": clean_text(chunk["chunk_text_normalized"] if chunk else payload["condition_text"])[:500],
+        }
+    ]
+    return payload
+
+
+def update_basis_rule_candidate(
+    conn: sqlite3.Connection,
+    candidate_id: int,
+    payload: dict[str, Any],
+    forced_status: str = "",
+) -> tuple[dict[str, Any] | None, str]:
+    row = conn.execute("SELECT * FROM basis_rule_candidates WHERE id=?", (candidate_id,)).fetchone()
+    if not row:
+        return None, "not_found"
+
+    current = basis_rule_candidate_payload(row)
+    next_values, error = prepare_basis_rule_candidate_update(
+        conn,
+        current,
+        payload,
+        forced_status=forced_status,
+        reviewed_at_now=now_iso(),
+    )
+    if error:
+        return None, error
+    now = now_iso()
+    conn.execute(
+        """
+        UPDATE basis_rule_candidates
+        SET rule_type=?, condition_text=?, target_scope=?,
+            required_evidence_types_json=?, related_profile_fields_json=?,
+            citation_candidate_id=?, confidence=?, status=?, review_note=?,
+            reviewed_at=?, reviewer_name=?, updated_at=?
+        WHERE id=?
+        """,
+        (
+            next_values["rule_type"],
+            next_values["condition_text"],
+            next_values["target_scope"],
+            json.dumps([clean_text(value) for value in next_values["required_evidence_types"] if clean_text(value)], ensure_ascii=False),
+            json.dumps([clean_text(value) for value in next_values["related_profile_fields"] if clean_text(value)], ensure_ascii=False),
+            next_values["citation_candidate_id"],
+            next_values["confidence"],
+            next_values["status"],
+            next_values["review_note"],
+            next_values["reviewed_at"],
+            next_values["reviewer_name"],
+            now,
+            candidate_id,
+        ),
+    )
+    updated = conn.execute("SELECT * FROM basis_rule_candidates WHERE id=?", (candidate_id,)).fetchone()
+    return basis_rule_candidate_detail_payload(conn, updated), ""
+
+
+def rule_candidate_profile_fields(rule_type: str) -> list[str]:
+    return {
+        "region": ["region", "business_address", "headquarters_address"],
+        "license": ["license_summary", "business_type", "business_item", "procurement_registration_status"],
+        "company_type": ["company_size_classification", "certifications_json", "preference_tags_json"],
+        "required_document": ["approved_evidence_labels", "corporation_evidence_documents"],
+    }.get(rule_type, ["manual_review"])
+
+
+def rule_candidate_evidence_types(rule_type: str, condition_text: str) -> list[str]:
+    if rule_type == "license":
+        return ["면허/등록/허가증"]
+    if rule_type == "region":
+        return ["사업장 소재지 증빙"]
+    if rule_type == "company_type":
+        labels = _find_notice_token_labels(condition_text, COMPANY_TYPE_TOKEN_GROUPS)
+        if any("여성" in label for label in labels):
+            return ["여성기업확인서"]
+        if any("장애인" in label for label in labels):
+            return ["장애인기업확인서"]
+        if any("소기업" in label or "소상공인" in label or "중소기업" in label for label in labels):
+            return ["중소기업확인서"]
+        return ["기업유형 확인서"]
+    if rule_type == "required_document":
+        labels = _find_notice_token_labels(condition_text, DOCUMENT_TOKEN_GROUPS)
+        return labels or ["제출서류"]
+    return []
+
+
+def detect_basis_rule_types(condition_text: str) -> list[str]:
+    rule_types: list[str] = []
+    if _extract_notice_region_candidates({}, condition_text):
+        rule_types.append("region")
+    if _find_notice_token_labels(condition_text, LICENSE_TOKEN_GROUPS):
+        rule_types.append("license")
+    if _find_notice_token_labels(condition_text, COMPANY_TYPE_TOKEN_GROUPS):
+        rule_types.append("company_type")
+    if _find_notice_token_labels(condition_text, DOCUMENT_TOKEN_GROUPS):
+        rule_types.append("required_document")
+    lowered = condition_text.lower()
+    if any(token in lowered for token in ["small business", "women-owned", "disabled-owned", "company type"]):
+        rule_types.append("company_type")
+    if any(token in lowered for token in ["license", "permit", "registered contractor", "construction business"]):
+        rule_types.append("license")
+    if any(token in lowered for token in ["certificate", "document", "tax payment", "business registration"]):
+        rule_types.append("required_document")
+    if any(token in condition_text for token in ["하여야", "해야", "제출", "등록", "보유", "갖추"]):
+        rule_types.append("basis_rule")
+    if any(token in lowered for token in ["must", "shall", "submit", "hold", "required"]):
+        rule_types.append("basis_rule")
+    return _dedupe_text_items(rule_types)
+
+
+def stable_rule_source_hash(text: str) -> str:
+    normalized = compact_match_value(text)
+    if not normalized:
+        return ""
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def basis_rule_candidate_extraction_key(
+    *,
+    basis_document_id: int,
+    rule_type: str,
+    chunk_hash: str,
+    source_condition_hash: str,
+) -> str:
+    return (
+        f"basis:{basis_document_id}:rule:{clean_text(rule_type)}:"
+        f"chunk_hash:{clean_text(chunk_hash)}:source:{clean_text(source_condition_hash)}"
+    )
+
+
+def extract_basis_rule_candidates_from_chunk(chunk: sqlite3.Row) -> list[dict[str, Any]]:
+    text = clean_text(chunk["chunk_text_normalized"] or chunk["chunk_text"])
+    source_lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = clean_text(raw_line)
+        if not line:
+            continue
+        lower_line = line.lower()
+        if any(
+            token in line or token in lower_line
+            for token in [
+                "참가자격",
+                "입찰참가",
+                "자격요건",
+                "제출",
+                "증빙",
+                "확인서",
+                "면허",
+                "등록",
+                "소기업",
+                "중소기업",
+                "여성기업",
+                "직접생산",
+                "지역",
+                "영업소",
+                "qualification",
+                "license",
+                "certificate",
+                "document",
+                "submit",
+                "small business",
+                "required",
+            ]
+        ):
+            source_lines.append(line[:420])
+    if not source_lines and len(text) <= 420:
+        source_lines.append(text)
+
+    candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    citation_id = f"basis:{chunk['basis_document_id']}:chunk:{chunk['id']}"
+    for line in source_lines[:12]:
+        source_condition_hash = stable_rule_source_hash(line)
+        for rule_type in detect_basis_rule_types(line):
+            key = (rule_type, compact_match_value(line))
+            if not key[1] or key in seen:
+                continue
+            seen.add(key)
+            required_evidence_types = rule_candidate_evidence_types(rule_type, line)
+            related_profile_fields = rule_candidate_profile_fields(rule_type)
+            confidence = 0.72 if rule_type != "basis_rule" else 0.58
+            candidates.append(
+                {
+                    "basis_document_id": chunk["basis_document_id"],
+                    "basis_chunk_id": chunk["id"],
+                    "rule_type": rule_type,
+                    "condition_text": line,
+                    "target_scope": "procurement_readiness",
+                    "required_evidence_types": required_evidence_types,
+                    "related_profile_fields": related_profile_fields,
+                    "citation_candidate_id": citation_id,
+                    "confidence": confidence,
+                    "source_condition_text": line,
+                    "source_required_evidence_types": required_evidence_types,
+                    "source_related_profile_fields": related_profile_fields,
+                    "source_confidence": confidence,
+                    "source_condition_hash": source_condition_hash,
+                    "extraction_key": basis_rule_candidate_extraction_key(
+                        basis_document_id=chunk["basis_document_id"],
+                        rule_type=rule_type,
+                        chunk_hash=chunk["chunk_hash"],
+                        source_condition_hash=source_condition_hash,
+                    ),
+                    "status": "needs_review",
+                    "extraction_method": "basis_rule_candidate_v1",
+                }
+            )
+    return candidates
+
+
+def basis_rule_candidate_value(candidate: sqlite3.Row | dict[str, Any], key: str, default: Any = "") -> Any:
+    if isinstance(candidate, dict):
+        return candidate.get(key, default)
+    return candidate[key] if key in candidate.keys() else default
+
+
+def basis_rule_candidate_match_key(candidate: sqlite3.Row | dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        clean_text(basis_rule_candidate_value(candidate, "rule_type")),
+        compact_match_value(basis_rule_candidate_value(candidate, "condition_text")),
+        clean_text(basis_rule_candidate_value(candidate, "target_scope")),
+    )
+
+
+def basis_rule_candidate_stable_key(candidate: sqlite3.Row | dict[str, Any]) -> str:
+    return clean_text(basis_rule_candidate_value(candidate, "extraction_key"))
+
+
+def basis_rule_extraction_readiness(conn: sqlite3.Connection, basis: sqlite3.Row) -> dict[str, Any]:
+    indexed_chunk_count = conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM basis_document_chunks
+        WHERE basis_document_id=?
+          AND vector_status='indexed'
+          AND vector_id<>''
+        """,
+        (basis["id"],),
+    ).fetchone()[0]
+    ready = (
+        basis["processing_status"] == "completed"
+        and basis["index_status"] == "completed"
+        and int(indexed_chunk_count or 0) > 0
+    )
+    return {
+        "ready": ready,
+        "processing_status": basis["processing_status"],
+        "index_status": basis["index_status"],
+        "indexed_chunk_count": int(indexed_chunk_count or 0),
+    }
+
+
+def extract_basis_rule_candidates(conn: sqlite3.Connection, basis_document_id: int) -> dict[str, Any] | None:
+    basis = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+    if not basis:
+        return None
+    readiness = basis_rule_extraction_readiness(conn, basis)
+    if not readiness["ready"]:
+        existing_rows = conn.execute(
+            """
+            SELECT * FROM basis_rule_candidates
+            WHERE basis_document_id=?
+            ORDER BY id
+            """,
+            (basis_document_id,),
+        ).fetchall()
+        return {
+            "basis_document_id": basis_document_id,
+            "candidate_count": len(existing_rows),
+            "new_candidate_count": 0,
+            "updated_candidate_count": 0,
+            "revalidation_candidate_count": 0,
+            "deleted_candidate_count": 0,
+            "status": "basis_not_ready",
+            "detail": "Basis document must be completed and indexed before rule candidate extraction.",
+            **readiness,
+            "candidates": [basis_rule_candidate_payload(row) for row in existing_rows],
+        }
+    chunks = conn.execute(
+        """
+        SELECT * FROM basis_document_chunks
+        WHERE basis_document_id=?
+          AND vector_status='indexed'
+          AND vector_id<>''
+        ORDER BY chunk_index
+        """,
+        (basis_document_id,),
+    ).fetchall()
+
+    generated_candidates: list[dict[str, Any]] = []
+    generated_keys: set[str] = set()
+    for chunk in chunks:
+        for candidate in extract_basis_rule_candidates_from_chunk(chunk):
+            key = basis_rule_candidate_stable_key(candidate)
+            if not key or key in generated_keys:
+                continue
+            generated_keys.add(key)
+            generated_candidates.append(candidate)
+
+    now = now_iso()
+    existing_rows = conn.execute(
+        """
+        SELECT * FROM basis_rule_candidates
+        WHERE basis_document_id=?
+        ORDER BY id
+        """,
+        (basis_document_id,),
+    ).fetchall()
+    if not generated_candidates:
+        return {
+            "basis_document_id": basis_document_id,
+            "candidate_count": len(existing_rows),
+            "new_candidate_count": 0,
+            "updated_candidate_count": 0,
+            "revalidation_candidate_count": 0,
+            "deleted_candidate_count": 0,
+            "status": "no_candidates_extracted_existing_preserved" if existing_rows else "no_candidates_extracted",
+            "note": "새 규칙 후보가 없어 기존 후보를 보존했습니다.",
+            "candidates": [basis_rule_candidate_payload(row) for row in existing_rows],
+        }
+
+    existing_by_stable_key: dict[str, sqlite3.Row] = {}
+    existing_by_legacy_key: dict[tuple[str, str, str], sqlite3.Row] = {}
+    for row in existing_rows:
+        stable_key = basis_rule_candidate_stable_key(row)
+        if stable_key:
+            existing_by_stable_key.setdefault(stable_key, row)
+        else:
+            existing_by_legacy_key.setdefault(basis_rule_candidate_match_key(row), row)
+
+    inserted = 0
+    updated = 0
+    revalidated = 0
+    deleted = 0
+    used_existing_ids: set[int] = set()
+
+    for candidate in generated_candidates:
+        existing = existing_by_stable_key.get(basis_rule_candidate_stable_key(candidate))
+        if not existing:
+            existing = existing_by_legacy_key.get(basis_rule_candidate_match_key(candidate))
+        if existing:
+            used_existing_ids.add(existing["id"])
+            reviewed = existing["status"] in {"approved", "rejected"}
+            citation_changed = bool(clean_text(existing["citation_candidate_id"])) and (
+                clean_text(existing["citation_candidate_id"]) != clean_text(candidate["citation_candidate_id"])
+            )
+            if reviewed and citation_changed:
+                conn.execute(
+                    """
+                    UPDATE basis_rule_candidates
+                    SET basis_chunk_id=?, source_condition_text=?,
+                        source_required_evidence_types_json=?, source_related_profile_fields_json=?,
+                        source_confidence=?, source_condition_hash=?, extraction_key=?,
+                        citation_candidate_id='', status='needs_review',
+                        review_note=CASE
+                            WHEN review_note='' THEN '재추출 결과 citation 후보가 변경되어 재검토 필요'
+                            ELSE review_note || ' / 재추출 결과 citation 후보가 변경되어 재검토 필요'
+                        END,
+                        reviewed_at='', reviewer_name='', extraction_method=?, updated_at=?
+                    WHERE id=?
+                    """,
+                    (
+                        candidate["basis_chunk_id"],
+                        candidate["source_condition_text"],
+                        json.dumps(candidate["source_required_evidence_types"], ensure_ascii=False),
+                        json.dumps(candidate["source_related_profile_fields"], ensure_ascii=False),
+                        candidate["source_confidence"],
+                        candidate["source_condition_hash"],
+                        candidate["extraction_key"],
+                        candidate["extraction_method"],
+                        now,
+                        existing["id"],
+                    ),
+                )
+                revalidated += 1
+                continue
+            if reviewed:
+                conn.execute(
+                    """
+                    UPDATE basis_rule_candidates
+                    SET basis_chunk_id=?, source_condition_text=?,
+                        source_required_evidence_types_json=?, source_related_profile_fields_json=?,
+                        source_confidence=?, source_condition_hash=?, extraction_key=?,
+                        extraction_method=?, updated_at=?
+                    WHERE id=?
+                    """,
+                    (
+                        candidate["basis_chunk_id"],
+                        candidate["source_condition_text"],
+                        json.dumps(candidate["source_required_evidence_types"], ensure_ascii=False),
+                        json.dumps(candidate["source_related_profile_fields"], ensure_ascii=False),
+                        candidate["source_confidence"],
+                        candidate["source_condition_hash"],
+                        candidate["extraction_key"],
+                        candidate["extraction_method"],
+                        now,
+                        existing["id"],
+                    ),
+                )
+                updated += 1
+                continue
+            conn.execute(
+                """
+                UPDATE basis_rule_candidates
+                SET basis_chunk_id=?, rule_type=?, condition_text=?, target_scope=?,
+                    required_evidence_types_json=?, related_profile_fields_json=?,
+                    citation_candidate_id=?, confidence=?,
+                    source_condition_text=?, source_required_evidence_types_json=?,
+                    source_related_profile_fields_json=?, source_confidence=?,
+                    source_condition_hash=?, extraction_key=?, extraction_method=?, updated_at=?
+                WHERE id=?
+                """,
+                (
+                    candidate["basis_chunk_id"],
+                    candidate["rule_type"],
+                    candidate["condition_text"],
+                    candidate["target_scope"],
+                    json.dumps(candidate["required_evidence_types"], ensure_ascii=False),
+                    json.dumps(candidate["related_profile_fields"], ensure_ascii=False),
+                    candidate["citation_candidate_id"],
+                    candidate["confidence"],
+                    candidate["source_condition_text"],
+                    json.dumps(candidate["source_required_evidence_types"], ensure_ascii=False),
+                    json.dumps(candidate["source_related_profile_fields"], ensure_ascii=False),
+                    candidate["source_confidence"],
+                    candidate["source_condition_hash"],
+                    candidate["extraction_key"],
+                    candidate["extraction_method"],
+                    now,
+                    existing["id"],
+                ),
+            )
+            updated += 1
+            continue
+
+        conn.execute(
+            """
+            INSERT INTO basis_rule_candidates (
+              basis_document_id, basis_chunk_id, rule_type, condition_text,
+              target_scope, required_evidence_types_json, related_profile_fields_json,
+              citation_candidate_id, confidence, source_condition_text,
+              source_required_evidence_types_json, source_related_profile_fields_json,
+              source_confidence, source_condition_hash, extraction_key, status,
+              extraction_method, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                candidate["basis_document_id"],
+                candidate["basis_chunk_id"],
+                candidate["rule_type"],
+                candidate["condition_text"],
+                candidate["target_scope"],
+                json.dumps(candidate["required_evidence_types"], ensure_ascii=False),
+                json.dumps(candidate["related_profile_fields"], ensure_ascii=False),
+                candidate["citation_candidate_id"],
+                candidate["confidence"],
+                candidate["source_condition_text"],
+                json.dumps(candidate["source_required_evidence_types"], ensure_ascii=False),
+                json.dumps(candidate["source_related_profile_fields"], ensure_ascii=False),
+                candidate["source_confidence"],
+                candidate["source_condition_hash"],
+                candidate["extraction_key"],
+                candidate["status"],
+                candidate["extraction_method"],
+                now,
+                now,
+            ),
+        )
+        inserted += 1
+
+    for row in existing_rows:
+        if row["id"] in used_existing_ids:
+            continue
+        if row["status"] in {"approved", "rejected"}:
+            conn.execute(
+                """
+                UPDATE basis_rule_candidates
+                SET status='needs_review',
+                    citation_candidate_id='',
+                    review_note=CASE
+                        WHEN review_note='' THEN '재추출 결과 현재 청크에서 같은 조건을 찾지 못해 재검토 필요'
+                        ELSE review_note || ' / 재추출 결과 현재 청크에서 같은 조건을 찾지 못해 재검토 필요'
+                    END,
+                    reviewed_at='',
+                    reviewer_name='',
+                    updated_at=?
+                WHERE id=?
+                """,
+                (now, row["id"]),
+            )
+            revalidated += 1
+        elif row["status"] != "archived":
+            conn.execute("DELETE FROM basis_rule_candidates WHERE id=?", (row["id"],))
+            deleted += 1
+
+    rows = conn.execute(
+        "SELECT * FROM basis_rule_candidates WHERE basis_document_id=? ORDER BY id",
+        (basis_document_id,),
+    ).fetchall()
+    return {
+        "basis_document_id": basis_document_id,
+        "candidate_count": len(rows),
+        "new_candidate_count": inserted,
+        "updated_candidate_count": updated,
+        "revalidation_candidate_count": revalidated,
+        "deleted_candidate_count": deleted,
+        "status": "candidates_extracted",
+        "note": "기준문서 규칙 후보이며 관리자 검토 전에는 판단 근거로 확정하지 않습니다.",
+        "candidates": [basis_rule_candidate_payload(row) for row in rows],
+    }
+
+
+def list_basis_rule_candidates_payload(
+    conn: sqlite3.Connection,
+    basis_document_id: int | None = None,
+    status: str = "",
+    rule_type: str = "",
+    keyword: str = "",
+) -> list[dict[str, Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    if basis_document_id:
+        clauses.append("basis_document_id=?")
+        params.append(basis_document_id)
+    if status:
+        clauses.append("status=?")
+        params.append(status)
+    if rule_type:
+        clauses.append("rule_type=?")
+        params.append(rule_type)
+    if keyword:
+        clauses.append("(condition_text LIKE ? OR target_scope LIKE ? OR citation_candidate_id LIKE ?)")
+        like_value = f"%{keyword}%"
+        params.extend([like_value, like_value, like_value])
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    rows = conn.execute(
+        f"SELECT * FROM basis_rule_candidates {where} ORDER BY id DESC",
+        tuple(params),
+    ).fetchall()
+    return [basis_rule_candidate_payload(row) for row in rows]
+
+
+def structured_requirement_profile_fields(requirement_type: str) -> list[str]:
+    return {
+        "region": ["region", "business_address", "headquarters_address"],
+        "license": ["license_summary", "business_type", "business_item", "procurement_registration_status"],
+        "company_type": ["company_size_classification", "certifications_json", "preference_tags_json"],
+        "required_document": ["corporation_evidence_documents", "approved_evidence_labels"],
+        "money": ["manual_review"],
+        "date": ["manual_review"],
+        "requirement_line": ["manual_review"],
+    }.get(requirement_type, ["manual_review"])
+
+
+def structured_requirement_evidence_types(requirement_type: str, required_value: str) -> list[str]:
+    if requirement_type == "required_document":
+        return _find_notice_token_labels(required_value, DOCUMENT_TOKEN_GROUPS) or [required_value]
+    if requirement_type == "company_type":
+        return rule_candidate_evidence_types("company_type", required_value)
+    if requirement_type == "license":
+        return ["면허/등록/허가증"]
+    if requirement_type == "region":
+        return ["사업장 소재지 증빙"]
+    return []
+
+
+def phase3_requirement_input_from_candidate(candidate: dict) -> dict[str, Any]:
+    requirement_type = candidate.get("requirement_type", "")
+    required_value = clean_text(candidate.get("required_value"))
+    needs_review = requirement_type in {"money", "date", "requirement_line"} or not required_value
+    return {
+        "requirement_input_id": f"notice_requirement:{candidate.get('id')}",
+        "requirement_candidate_id": candidate.get("id"),
+        "requirement_type": requirement_type,
+        "label": candidate.get("label") or REQUIREMENT_TYPE_LABELS.get(requirement_type, requirement_type),
+        "required_value": required_value,
+        "normalized_value": candidate.get("normalized_value") or compact_match_value(required_value),
+        "source_text": candidate.get("source_text", ""),
+        "confidence": candidate.get("confidence", 0),
+        "status": "phase3_input_candidate",
+        "needs_review": needs_review,
+        "related_profile_fields": structured_requirement_profile_fields(requirement_type),
+        "required_evidence_types": structured_requirement_evidence_types(requirement_type, required_value),
+        "comparison_strategy": "manual_review" if needs_review else "controlled_text_match",
+    }
+
+
+def phase3_notice_requirement_payload(conn: sqlite3.Connection, notice_id: int, force: bool = False) -> dict | None:
+    candidates = ensure_notice_requirement_candidates(conn, notice_id, force=force)
+    if candidates is None:
+        return None
+    inputs = [phase3_requirement_input_from_candidate(candidate) for candidate in candidates]
+    type_counts: dict[str, int] = {}
+    review_count = 0
+    for item in inputs:
+        type_counts[item["requirement_type"]] = type_counts.get(item["requirement_type"], 0) + 1
+        if item["needs_review"]:
+            review_count += 1
+    return {
+        "notice_id": notice_id,
+        "contract_version": PHASE3_CONTRACT_VERSION,
+        "requirement_count": len(inputs),
+        "needs_review_count": review_count,
+        "type_counts": type_counts,
+        "requirements": inputs,
+        "note": "Phase 3 판단 입력 후보입니다. 이 응답만으로 준비 상태를 확정하지 않습니다.",
+    }
+
+
+def normalize_evaluation_queries(raw_queries: Any) -> list[dict[str, Any]]:
+    queries: list[dict[str, Any]] = []
+    if not isinstance(raw_queries, list):
+        return queries
+    for index, item in enumerate(raw_queries):
+        if isinstance(item, str):
+            query = clean_text(item)
+            expected = []
+        elif isinstance(item, dict):
+            query = clean_text(item.get("query"))
+            expected_raw = item.get("expected_citation_candidate_ids") or []
+            expected = [clean_text(value) for value in expected_raw if clean_text(value)] if isinstance(expected_raw, list) else []
+        else:
+            continue
+        if query:
+            queries.append({"id": f"q{index + 1}", "query": query, "expected_citation_candidate_ids": expected})
+    return queries
+
+
+def create_basis_retrieval_evaluation(conn: sqlite3.Connection, payload: dict[str, Any]) -> dict[str, Any]:
+    name = clean_text(payload.get("name")) or f"검색 평가 {datetime.now(KST).strftime('%Y-%m-%d %H:%M')}"
+    queries = normalize_evaluation_queries(payload.get("queries"))
+    top_k = max(1, min(parse_int(payload.get("top_k"), 5), 20))
+    category = clean_text(payload.get("category"))
+    document_version = clean_text(payload.get("document_version"))
+    query_results: list[dict[str, Any]] = []
+    top_scores: list[float] = []
+    result_hits = 0
+    expected_query_count = 0
+    expected_citation_hits = 0
+
+    for query_item in queries:
+        results = basis_search_results(conn, query_item["query"], category, document_version, top_k)
+        citation_candidate_ids = [item["citation_candidate_id"] for item in results]
+        expected_ids = query_item.get("expected_citation_candidate_ids") or []
+        matched_expected_ids = [candidate_id for candidate_id in expected_ids if candidate_id in citation_candidate_ids]
+        missed_expected_ids = [candidate_id for candidate_id in expected_ids if candidate_id not in citation_candidate_ids]
+        if results:
+            result_hits += 1
+            top_scores.append(float(results[0]["score"]))
+        if expected_ids:
+            expected_query_count += 1
+            if matched_expected_ids:
+                expected_citation_hits += 1
+        query_results.append(
+            {
+                **query_item,
+                "result_count": len(results),
+                "result_hit": bool(results),
+                "top_score": results[0]["score"] if results else 0,
+                "citation_candidate_ids": citation_candidate_ids,
+                "matched_expected_citation_ids": matched_expected_ids,
+                "missed_expected_citation_ids": missed_expected_ids,
+                "expected_citation_hit": bool(matched_expected_ids) if expected_ids else None,
+                "expected_citation_coverage": round(len(matched_expected_ids) / len(expected_ids), 4) if expected_ids else None,
+                "results": results,
+            }
+        )
+
+    query_count = len(queries)
+    result_coverage = round(result_hits / query_count, 4) if query_count else 0
+    expected_citation_coverage = (
+        round(expected_citation_hits / expected_query_count, 4) if expected_query_count else None
+    )
+    citation_coverage = expected_citation_coverage if expected_citation_coverage is not None else result_coverage
+    average_top_score = round(sum(top_scores) / len(top_scores), 4) if top_scores else 0
+    result = {
+        "query_results": query_results,
+        "metrics": {
+            "result_coverage": result_coverage,
+            "expected_citation_query_count": expected_query_count,
+            "expected_citation_coverage": expected_citation_coverage,
+            "citation_coverage": citation_coverage,
+            "average_top_score": average_top_score,
+        },
+        "policy": "검색 결과는 JSON 기준문서 인덱스 기준 citation 후보이며, 기대 citation이 지정된 평가는 실제 citation id 일치 여부를 별도로 검증합니다.",
+        "index_source": "json_basis_index",
+    }
+    now = now_iso()
+    cur = conn.execute(
+        """
+        INSERT INTO basis_retrieval_evaluations (
+          name, query_set_json, result_json, query_count, citation_coverage,
+          average_top_score, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            name,
+            json.dumps({"queries": queries, "top_k": top_k, "category": category, "document_version": document_version}, ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False),
+            query_count,
+            citation_coverage,
+            average_top_score,
+            "completed",
+            now,
+            now,
+        ),
+    )
+    row = conn.execute("SELECT * FROM basis_retrieval_evaluations WHERE id=?", (cur.lastrowid,)).fetchone()
+    return basis_retrieval_evaluation_payload(row)
+
+
+def basis_retrieval_evaluation_payload(row: sqlite3.Row | dict) -> dict[str, Any]:
+    payload = dict(row)
+    payload["query_set"] = parse_json_dict(payload.pop("query_set_json", "{}"))
+    payload["result"] = parse_json_dict(payload.pop("result_json", "{}"))
+    return payload
+
+
+def judgment_contract_payload() -> dict[str, Any]:
+    return {
+        "contract_version": PHASE3_CONTRACT_VERSION,
+        "input_schema": {
+            "notice_snapshot": ["id", "bid_ntce_no", "bid_ntce_ord", "bid_ntce_nm", "dates", "amounts"],
+            "corporation_profile_snapshot": [
+                "corporation_id",
+                "regions",
+                "licenses",
+                "company_types",
+                "required_documents",
+                "approved_evidence_labels",
+            ],
+            "notice_requirement_inputs": [
+                "requirement_input_id",
+                "requirement_type",
+                "required_value",
+                "related_profile_fields",
+                "required_evidence_types",
+                "needs_review",
+            ],
+            "basis_citation_candidates": [
+                "citation_candidate_id",
+                "basis_document_id",
+                "chunk_id",
+                "page",
+                "section",
+                "score",
+                "min_score",
+                "meets_min_score",
+            ],
+        },
+        "output_schema": {
+            "item_statuses": list(JUDGMENT_STATUS_LABELS.keys()),
+            "judgment_items": [
+                "requirement_input_id",
+                "match_status",
+                "matched_value",
+                "gap_reason",
+                "recommended_action",
+                "citation_status",
+                "citation_candidates",
+                "review_evidence_ready",
+            ],
+            "summary": [
+                "matched_count",
+                "missing_count",
+                "uncertain_count",
+                "needs_review_count",
+                "not_applicable_count",
+                "citation_coverage",
+            ],
+            "preparation_guide": ["required_documents", "actions", "uncertainty_notes"],
+        },
+        "guardrails": [
+            "결과는 준비 상태와 부족 조건 중심으로 제공한다.",
+            "기준 점수 미만이거나 citation 후보가 없는 조건은 검토 필요 상태로 유지한다.",
+            "AI 출력은 사용자 검토 후보로만 저장한다.",
+        ],
+        "citation_policy": {
+            "min_score": BASIS_CITATION_MIN_SCORE,
+            "review_evidence_ready_requires": [
+                "citation_candidate_id",
+                "basis_document_id",
+                "chunk_id",
+                "score >= min_score",
+            ],
+        },
+    }
+
+
+def judgment_status_from_comparison(comparison: dict) -> str:
+    return {
+        "prepared": "matched",
+        "possibly_missing": "missing",
+        "not_found": "missing",
+        "needs_review": "needs_review",
+    }.get(comparison.get("status"), "uncertain")
+
+
+def judgment_action_for_item(requirement: dict, status: str, citations: list[dict[str, Any]]) -> str:
+    value = requirement.get("required_value") or requirement.get("label") or "요구조건"
+    if status == "matched":
+        if citations:
+            return "보유 정보와 일치하는 후보가 있습니다. 기준문서 citation과 원문을 검토해 확정하세요."
+        return "보유 정보는 일치하지만 기준문서 citation 후보가 부족합니다. 원문 근거를 추가 확인하세요."
+    if status == "missing":
+        evidence = ", ".join(requirement.get("required_evidence_types") or [])
+        if evidence:
+            return f"{value} 조건을 충족할 증빙({evidence})을 준비하거나 법인 프로필을 보강하세요."
+        return f"{value} 조건을 충족하는 법인 정보 또는 증빙을 확인하세요."
+    if status == "needs_review":
+        return f"{value} 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요."
+    if not citations:
+        return "관련 기준문서 citation 후보가 부족합니다. 기준문서 검색 품질을 먼저 보강하세요."
+    return "검토가 필요한 항목입니다."
+
+
+def citation_payload_from_search_result(result: dict[str, Any]) -> dict[str, Any]:
+    chunk = result.get("chunk") or {}
+    document = result.get("document") or {}
+    try:
+        score = float(result.get("score", 0) or 0)
+    except (TypeError, ValueError):
+        score = 0
+    return {
+        "citation_candidate_id": result.get("citation_candidate_id", ""),
+        "score": score,
+        "min_score": BASIS_CITATION_MIN_SCORE,
+        "meets_min_score": score >= BASIS_CITATION_MIN_SCORE,
+        "basis_document_id": document.get("id"),
+        "basis_document_title": document.get("title", ""),
+        "basis_document_version": document.get("document_version", ""),
+        "chunk_id": chunk.get("id"),
+        "page_start": chunk.get("page_start"),
+        "page_end": chunk.get("page_end"),
+        "section_title": chunk.get("section_title", ""),
+        "text_preview": clean_text(chunk.get("chunk_text_normalized"))[:500],
+        "source_type": result.get("source_type", "basis_search"),
+        "basis_rule_candidate_id": result.get("basis_rule_candidate_id"),
+        "basis_rule_candidate_status": result.get("basis_rule_candidate_status", ""),
+        "basis_rule_candidate_rule_type": result.get("basis_rule_candidate_rule_type", ""),
+    }
+
+
+def citation_candidate_review_ready(candidate: dict[str, Any]) -> bool:
+    try:
+        score = float(candidate.get("score", 0) or 0)
+    except (TypeError, ValueError):
+        score = 0
+    return bool(
+        clean_text(candidate.get("citation_candidate_id"))
+        and candidate.get("basis_document_id") is not None
+        and candidate.get("chunk_id") is not None
+        and score >= BASIS_CITATION_MIN_SCORE
+    )
+
+
+def approved_basis_rule_candidate_results(
+    conn: sqlite3.Connection,
+    requirement: dict[str, Any],
+    top_k: int = 3,
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT
+          rc.id AS rule_candidate_id,
+          rc.basis_document_id,
+          rc.basis_chunk_id,
+          rc.rule_type,
+          rc.condition_text,
+          rc.target_scope,
+          rc.required_evidence_types_json,
+          rc.related_profile_fields_json,
+          rc.citation_candidate_id,
+          rc.confidence,
+          rc.status,
+          c.id AS chunk_id,
+          c.chunk_index,
+          c.chunk_text,
+          c.chunk_text_normalized,
+          c.page_start,
+          c.page_end,
+          c.section_title,
+          c.article_label,
+          c.token_count,
+          c.metadata_json,
+          d.id AS document_id,
+          d.title,
+          d.category,
+          d.document_version,
+          d.issuing_agency,
+          d.processing_status,
+          d.index_status,
+          c.vector_status,
+          c.vector_id
+        FROM basis_rule_candidates rc
+        JOIN basis_document_chunks c
+          ON c.id = rc.basis_chunk_id
+         AND c.basis_document_id = rc.basis_document_id
+        JOIN basis_documents d ON d.id = rc.basis_document_id
+        WHERE rc.status='approved'
+          AND d.processing_status='completed'
+          AND d.index_status='completed'
+          AND c.vector_status='indexed'
+          AND c.vector_id<>''
+        ORDER BY rc.updated_at DESC, rc.id DESC
+        """,
+    ).fetchall()
+    scored: list[dict[str, Any]] = []
+    for row in rows:
+        candidate = {
+            "rule_type": row["rule_type"],
+            "condition_text": row["condition_text"],
+            "target_scope": row["target_scope"],
+            "required_evidence_types": parse_json_list(row["required_evidence_types_json"]),
+            "related_profile_fields": parse_json_list(row["related_profile_fields_json"]),
+            "confidence": row["confidence"],
+        }
+        score = basis_rule_candidate_match_score(requirement, candidate)
+        if score <= 0:
+            continue
+        expected_citation_id = expected_basis_citation_candidate_id(row["basis_document_id"], row["basis_chunk_id"])
+        if row["citation_candidate_id"] != expected_citation_id:
+            continue
+        chunk = {
+            "id": row["chunk_id"],
+            "basis_document_id": row["basis_document_id"],
+            "chunk_index": row["chunk_index"],
+            "chunk_text": row["chunk_text"],
+            "chunk_text_normalized": row["chunk_text_normalized"],
+            "page_start": row["page_start"],
+            "page_end": row["page_end"],
+            "section_title": row["section_title"],
+            "article_label": row["article_label"],
+            "token_count": row["token_count"],
+            "metadata_json": row["metadata_json"],
+        }
+        scored.append(
+            {
+                "score": score,
+                "citation_candidate_id": row["citation_candidate_id"],
+                "chunk": basis_chunk_payload(chunk),
+                "document": {
+                    "id": row["document_id"],
+                    "title": row["title"],
+                    "category": row["category"],
+                    "document_version": row["document_version"],
+                    "issuing_agency": row["issuing_agency"],
+                    "processing_status": row["processing_status"],
+                    "index_status": row["index_status"],
+                },
+                "source_type": "approved_rule_candidate",
+                "basis_rule_candidate_id": row["rule_candidate_id"],
+                "basis_rule_candidate_status": row["status"],
+                "basis_rule_candidate_rule_type": row["rule_type"],
+            }
+        )
+    return sorted(scored, key=lambda item: item["score"], reverse=True)[: max(1, min(top_k, 20))]
+
+
+def build_judgment_run(conn: sqlite3.Connection, notice_id: int, corporation_id: int, top_k: int = 3) -> dict[str, Any] | None:
+    notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
+    corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
+    if not notice or not corporation:
+        return None
+
+    structured_payload = phase3_notice_requirement_payload(conn, notice_id)
+    if structured_payload is None:
+        return None
+    requirements = structured_payload["requirements"]
+    profile = build_corporation_comparison_profile(conn, corporation)
+    items: list[dict[str, Any]] = []
+    cited_count = 0
+    required_documents: list[str] = []
+    actions: list[str] = []
+    uncertainty_notes: list[str] = []
+
+    for requirement in requirements:
+        candidate_for_compare = {
+            "id": requirement["requirement_candidate_id"],
+            "requirement_type": requirement["requirement_type"],
+            "label": requirement["label"],
+            "required_value": requirement["required_value"],
+            "normalized_value": requirement["normalized_value"],
+            "source_text": requirement["source_text"],
+            "confidence": requirement["confidence"],
+        }
+        comparison = compare_requirement_candidate(candidate_for_compare, profile)
+        match_status = judgment_status_from_comparison(comparison)
+        citation_query = " ".join(
+            [
+                requirement.get("required_value", ""),
+                requirement.get("source_text", ""),
+                " ".join(requirement.get("required_evidence_types") or []),
+            ]
+        )
+        approved_results = approved_basis_rule_candidate_results(conn, requirement, top_k=top_k)
+        approved_candidates = [citation_payload_from_search_result(result) for result in approved_results]
+        approved_review_ready = [candidate for candidate in approved_candidates if citation_candidate_review_ready(candidate)]
+        fallback_used = not approved_review_ready
+        basis_index_error = ""
+        try:
+            fallback_results = basis_search_results(conn, citation_query, top_k=top_k) if fallback_used else []
+        except BasisIndexError as exc:
+            fallback_results = []
+            basis_index_error = str(exc)
+        citation_results = merge_citation_results(approved_results, fallback_results, top_k)
+        citation_candidates = [citation_payload_from_search_result(result) for result in citation_results]
+        review_ready_citations = [candidate for candidate in citation_candidates if citation_candidate_review_ready(candidate)]
+        if review_ready_citations:
+            cited_count += 1
+        citation_status = "candidate_found" if review_ready_citations else "weak_candidate" if citation_candidates else "missing"
+        action = judgment_action_for_item(requirement, match_status, review_ready_citations)
+        if match_status in {"missing", "needs_review", "uncertain"}:
+            actions.append(action)
+            append_unique_text(required_documents, requirement.get("required_evidence_types") or [])
+        if citation_status == "missing":
+            uncertainty_notes.append(f"{requirement['label']} / {requirement['required_value']}: 기준문서 citation 후보가 없습니다.")
+        elif citation_status == "weak_candidate":
+            uncertainty_notes.append(
+                f"{requirement['label']} / {requirement['required_value']}: 기준문서 citation 후보 점수가 낮아 원문 검토가 필요합니다."
+            )
+        if basis_index_error:
+            uncertainty_notes.append(
+                f"{requirement['label']} / {requirement['required_value']}: 기준문서 인덱스 오류로 검색 citation을 사용할 수 없습니다."
+            )
+        item = {
+            "requirement_input_id": requirement["requirement_input_id"],
+            "requirement_candidate_id": requirement["requirement_candidate_id"],
+            "requirement_type": requirement["requirement_type"],
+            "label": requirement["label"],
+            "required_value": requirement["required_value"],
+            "source_text": requirement["source_text"],
+            "match_status": match_status,
+            "status_label": JUDGMENT_STATUS_LABELS.get(match_status, match_status),
+            "matched_value": comparison.get("matched_value", ""),
+            "gap_reason": comparison.get("reason", ""),
+            "recommended_action": action,
+            "required_evidence_types": requirement.get("required_evidence_types") or [],
+            "related_profile_fields": requirement.get("related_profile_fields") or [],
+            "citation_status": citation_status,
+            "citation_candidates": citation_candidates,
+            "review_ready_citation_candidates": review_ready_citations,
+            "citation_min_score": BASIS_CITATION_MIN_SCORE,
+            "review_evidence_ready": bool(review_ready_citations),
+            "basis_search_fallback_used": fallback_used,
+            "basis_index_error": basis_index_error,
+            "approved_rule_candidate_ids": [
+                candidate["basis_rule_candidate_id"]
+                for candidate in citation_candidates
+                if candidate.get("source_type") == "approved_rule_candidate" and candidate.get("basis_rule_candidate_id") is not None
+            ],
+        }
+        items.append(item)
+
+    counts = {status: 0 for status in JUDGMENT_STATUS_LABELS}
+    for item in items:
+        counts[item["match_status"]] = counts.get(item["match_status"], 0) + 1
+    total = len(items)
+    citation_coverage = round(cited_count / total, 4) if total else 0
+    summary = {
+        "status": "review_ready",
+        "contract_version": PHASE3_CONTRACT_VERSION,
+        "requirement_count": total,
+        "matched_count": counts.get("matched", 0),
+        "missing_count": counts.get("missing", 0),
+        "uncertain_count": counts.get("uncertain", 0),
+        "needs_review_count": counts.get("needs_review", 0),
+        "not_applicable_count": counts.get("not_applicable", 0),
+        "citation_coverage": citation_coverage,
+        "note": "부족조건 중심 검토 결과입니다. 준비 상태를 확정하지 않습니다.",
+    }
+    result = {
+        "items": items,
+        "preparation_guide": {
+            "required_documents": required_documents,
+            "actions": _dedupe_text_items(actions),
+            "uncertainty_notes": _dedupe_text_items(uncertainty_notes),
+        },
+    }
+    input_snapshot = {
+        "notice": row_to_dict(notice),
+        "corporation": {"id": corporation["id"], "name": corporation["name"]},
+        "corporation_profile": profile,
+        "notice_requirements": requirements,
+        "basis_search_top_k": top_k,
+        "basis_citation_min_score": BASIS_CITATION_MIN_SCORE,
+        "approved_rule_candidate_policy": "approved candidates are preferred before generic basis search; generic search is fallback",
+    }
+    now = now_iso()
+    cur = conn.execute(
+        """
+        INSERT INTO judgment_runs (
+          nara_notice_id, corporation_id, status, review_status, reviewer_note,
+          input_snapshot_json, result_json, summary_json, matched_count,
+          missing_count, uncertain_count, needs_review_count, not_applicable_count,
+          citation_coverage, rule_version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            notice_id,
+            corporation_id,
+            "completed",
+            "pending",
+            json.dumps(input_snapshot, ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False),
+            json.dumps(summary, ensure_ascii=False),
+            summary["matched_count"],
+            summary["missing_count"],
+            summary["uncertain_count"],
+            summary["needs_review_count"],
+            summary["not_applicable_count"],
+            citation_coverage,
+            "phase3_gap_judgment_rule_v1",
+            now,
+            now,
+        ),
+    )
+    row = conn.execute("SELECT * FROM judgment_runs WHERE id=?", (cur.lastrowid,)).fetchone()
+    return judgment_run_payload(conn, row)
+
+
+def judgment_run_payload(conn: sqlite3.Connection, row: sqlite3.Row | dict) -> dict[str, Any]:
+    payload = dict(row)
+    payload["input_snapshot"] = parse_json_dict(payload.pop("input_snapshot_json", "{}"))
+    payload["result"] = parse_json_dict(payload.pop("result_json", "{}"))
+    payload["summary"] = parse_json_dict(payload.pop("summary_json", "{}"))
+    notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (payload["nara_notice_id"],)).fetchone()
+    corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (payload["corporation_id"],)).fetchone()
+    payload["notice"] = row_to_dict(notice)
+    payload["corporation"] = row_to_dict(corporation)
+    return payload
+
+
+def save_discovered_nara_notice(conn: sqlite3.Connection, item: dict[str, Any]) -> tuple[str, int | None]:
+    if not isinstance(item, dict):
+        return "skipped", None
+    normalized = normalize_nara_notice(item, collect_nara_attachments([item]))
+    if not normalized.get("bid_ntce_no"):
+        return "skipped", None
+    existing = conn.execute(
+        "SELECT id FROM nara_notices WHERE bid_ntce_no=? AND bid_ntce_ord=?",
+        (normalized["bid_ntce_no"], normalized["bid_ntce_ord"]),
+    ).fetchone()
+    if existing:
+        return "skipped", existing["id"]
+    now = now_iso()
+    cur = conn.execute(
+        """
+        INSERT INTO nara_notices (
+          bid_ntce_no, bid_ntce_ord, bid_ntce_nm, ntce_instt_nm, dminstt_nm,
+          bid_ntce_dt, bid_begin_dt, bid_clse_dt, openg_dt, presmpt_prce,
+          bdgt_amt, bssamt, region_text, license_text, source_url, raw_json,
+          detail_json, save_status, download_status, analysis_status,
+          analysis_summary_json, analysis_summary_markdown, error_message,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}',
+          'discovered', 'not_started', 'not_started', '{}', '', '', ?, ?)
+        """,
+        (
+            normalized["bid_ntce_no"],
+            normalized["bid_ntce_ord"],
+            normalized["bid_ntce_nm"],
+            normalized["ntce_instt_nm"],
+            normalized["dminstt_nm"],
+            normalized["bid_ntce_dt"],
+            normalized["bid_begin_dt"],
+            normalized["bid_clse_dt"],
+            normalized["openg_dt"],
+            normalized["presmpt_prce"],
+            normalized["bdgt_amt"],
+            normalized["bssamt"],
+            normalized["region_text"],
+            normalized["license_text"],
+            normalized["source_url"],
+            json.dumps(item, ensure_ascii=False),
+            now,
+            now,
+        ),
+    )
+    return "saved", cur.lastrowid
+
+
+def create_nara_collection_run(
+    conn: sqlite3.Connection,
+    payload: dict[str, Any],
+    retry_of_run_id: int | None = None,
+) -> tuple[dict[str, Any], int]:
+    keyword = clean_text(payload.get("keyword"))
+    end_default = datetime.now(KST).date()
+    start_default = end_default - timedelta(days=3)
+    start_date = clean_text(payload.get("start_date")) or start_default.isoformat()
+    end_date = clean_text(payload.get("end_date")) or end_default.isoformat()
+    dry_run = bool(payload.get("dry_run", False))
+    save_discovered = bool(payload.get("save", not dry_run))
+    injected_notices = payload.get("notices")
+    mode = "injected" if isinstance(injected_notices, list) else "api"
+    items: list[dict[str, Any]] = []
+    error_message = ""
+    status = "completed"
+    http_code = 201
+
+    if isinstance(injected_notices, list):
+        items = [item for item in injected_notices if isinstance(item, dict)]
+    elif not NARA_API_SERVICE_KEY:
+        status = "not_configured"
+        error_message = "NARA_API_SERVICE_KEY is missing"
+    else:
+        params = {
+            "ServiceKey": NARA_API_SERVICE_KEY,
+            "numOfRows": str(min(max(parse_int(payload.get("page_size"), 20), 1), 100)),
+            "pageNo": str(max(parse_int(payload.get("page_no"), 1), 1)),
+            "type": NARA_API_RESPONSE_TYPE,
+            "inqryDiv": "1",
+            "inqryBgnDt": date_to_api_datetime(start_date, "0000"),
+            "inqryEndDt": date_to_api_datetime(end_date, "2359"),
+        }
+        if keyword:
+            params["bidNtceNm"] = keyword
+        try:
+            parsed = request_nara_operation("getBidPblancListInfoCnstwkPPSSrch", params)
+            items = [item for item in parsed.get("items", []) if isinstance(item, dict)]
+        except Exception as exc:
+            status = "failed"
+            error_message = str(exc)
+
+    saved_ids: list[int] = []
+    skipped_count = 0
+    save_failure_count = 0
+    if status == "completed" and save_discovered:
+        for item in items:
+            save_status, notice_id = save_discovered_nara_notice(conn, item)
+            if save_status == "saved" and notice_id:
+                saved_ids.append(notice_id)
+            else:
+                skipped_count += 1
+                normalized_for_skip = normalize_nara_notice(item, collect_nara_attachments([item]))
+                if not clean_text(normalized_for_skip.get("bid_ntce_no")):
+                    save_failure_count += 1
+        if saved_ids and save_failure_count:
+            status = "partial_failed"
+            error_message = error_message or "Some discovered notices could not be saved"
+
+    normalized_items = []
+    for item in items:
+        attachments = collect_nara_attachments([item])
+        normalized_items.append({**normalize_nara_notice(item, attachments), "attachment_count": len(attachments)})
+
+    result = {
+        "items": normalized_items,
+        "saved_notice_ids": saved_ids,
+        "dry_run": dry_run,
+        "counts": {
+            "searched": len(items),
+            "saved": len(saved_ids),
+            "skipped": skipped_count,
+            "save_failures": save_failure_count,
+        },
+        "failure_reason": error_message,
+        "retryable": status in {"failed", "partial_failed", "not_configured"},
+        "policy": "나라장터 자동 수집은 API 기반 모니터링만 수행하며 HTML 크롤링은 사용하지 않습니다.",
+    }
+    criteria = {
+        "keyword": keyword,
+        "start_date": start_date,
+        "end_date": end_date,
+        "dry_run": dry_run,
+        "save": save_discovered,
+        "mode": mode,
+    }
+    now = now_iso()
+    cur = conn.execute(
+        """
+        INSERT INTO nara_collection_runs (
+          status, mode, keyword, start_date, end_date, searched_count,
+          saved_count, skipped_count, error_message, criteria_json,
+          result_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            status,
+            mode,
+            keyword,
+            start_date,
+            end_date,
+            len(items),
+            len(saved_ids),
+            skipped_count,
+            error_message,
+            json.dumps(criteria, ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False),
+            now,
+            now,
+        ),
+    )
+    row = conn.execute("SELECT * FROM nara_collection_runs WHERE id=?", (cur.lastrowid,)).fetchone()
+    run_payload = nara_collection_run_payload(row)
+    record_operation_run(
+        conn,
+        operation_type="nara_collection",
+        target_type="nara_collection_run",
+        target_id=run_payload["id"],
+        status=status,
+        request_payload={**criteria, "page_size": parse_int(payload.get("page_size"), 20), "page_no": parse_int(payload.get("page_no"), 1)},
+        result_payload=result,
+        error_message=error_message,
+        error_code=error_code_for_status(status, error_message),
+        retry_of_run_id=retry_of_run_id,
+        started_at=now,
+        finished_at=now,
+    )
+    return run_payload, http_code
+
+
+def nara_collection_run_payload(row: sqlite3.Row | dict) -> dict[str, Any]:
+    payload = dict(row)
+    payload["criteria"] = parse_json_dict(payload.pop("criteria_json", "{}"))
+    payload["result"] = parse_json_dict(payload.pop("result_json", "{}"))
+    return payload
 
 
 LLM_EVIDENCE_DOCUMENT_TYPES = {
@@ -2387,6 +3936,254 @@ def dashboard_summary():
     return jsonify({"corporation_count": corp, "project_count": proj, "document_count": docs})
 
 
+@app.route("/api/operations/summary", methods=["GET"])
+def operations_summary():
+    provider = AI_PROVIDER_DEFAULT
+    with db_conn() as conn:
+        payload = build_operations_summary(
+            conn,
+            storage_root=STORAGE_ROOT,
+            nara_api_configured=bool(NARA_API_SERVICE_KEY),
+            nara_api_masked_key=mask_secret(NARA_API_SERVICE_KEY),
+            ai_provider=provider,
+            ai_model=default_model_for_provider(provider),
+            ai_configured=bool(api_key_for_provider(provider)),
+        )
+    return jsonify(payload)
+
+
+@app.route("/api/operation-runs", methods=["GET"])
+def list_operation_runs():
+    status = clean_text(request.args.get("status"))
+    operation_type = clean_text(request.args.get("operation_type"))
+    keyword = clean_text(request.args.get("keyword"))
+    with db_conn() as conn:
+        payload = list_operation_runs_payload(
+            conn,
+            status=status,
+            operation_type=operation_type,
+            keyword=keyword,
+        )
+    return jsonify(payload)
+
+
+@app.route("/api/operation-runs/<int:operation_run_id>", methods=["GET"])
+def get_operation_run(operation_run_id: int):
+    with db_conn() as conn:
+        payload = get_operation_run_payload(conn, operation_run_id)
+    if not payload:
+        return jsonify({"detail": "Operation run not found"}), 404
+    return jsonify(payload)
+
+
+@app.route("/api/operation-runs/<int:operation_run_id>/retry", methods=["POST"])
+def retry_operation_run_api(operation_run_id: int):
+    with db_conn() as conn:
+        original = get_operation_run_payload(conn, operation_run_id)
+        if not original:
+            return jsonify({"detail": "Operation run not found"}), 404
+        operation_type = original["operation_type"]
+        request_payload = original.get("request") or {}
+
+        if operation_type == "nara_collection":
+            create_nara_collection_run(conn, request_payload, retry_of_run_id=operation_run_id)
+        elif operation_type == "judgment_run":
+            notice_id = parse_int(request_payload.get("nara_notice_id") or request_payload.get("notice_id"))
+            corporation_id = parse_int(request_payload.get("corporation_id"))
+            top_k = max(1, min(parse_int(request_payload.get("top_k"), 3), 10))
+            result = build_judgment_run(conn, notice_id, corporation_id, top_k=top_k)
+            if not result:
+                return jsonify({"detail": "Saved notice or corporation not found"}), 404
+            record_operation_run(
+                conn,
+                operation_type="judgment_run",
+                target_type="judgment_run",
+                target_id=result["id"],
+                status=result["status"],
+                request_payload={"nara_notice_id": notice_id, "corporation_id": corporation_id, "top_k": top_k},
+                result_payload={"summary": result.get("summary", {})},
+                retry_of_run_id=operation_run_id,
+                started_at=result["created_at"],
+                finished_at=result["updated_at"],
+            )
+        elif operation_type == "basis_document_processing":
+            basis_document_id = parse_int(request_payload.get("basis_document_id") or original.get("target_id"))
+            row = conn.execute("SELECT id FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+            if not row:
+                return jsonify({"detail": "Basis document not found"}), 404
+            result = process_basis_document(conn, basis_document_id)
+            status = "completed" if result.get("processing_status") == "completed" else result.get("processing_status", "failed")
+            record_operation_run(
+                conn,
+                operation_type="basis_document_processing",
+                target_type="basis_document",
+                target_id=basis_document_id,
+                status=status,
+                request_payload={"basis_document_id": basis_document_id, "action": "reprocess"},
+                result_payload={
+                    "processing_status": result.get("processing_status"),
+                    "chunk_count": result.get("chunk_count"),
+                    "vector_count": result.get("vector_count"),
+                },
+                error_message=result.get("error_message", ""),
+                error_code=error_code_for_status(status, result.get("error_message", "")),
+                retry_of_run_id=operation_run_id,
+                started_at=result.get("updated_at"),
+                finished_at=result.get("updated_at"),
+            )
+        elif operation_type == "basis_rule_candidate_extraction":
+            basis_document_id = parse_int(request_payload.get("basis_document_id") or original.get("target_id"))
+            result = extract_basis_rule_candidates(conn, basis_document_id)
+            if not result:
+                return jsonify({"detail": "Basis document not found"}), 404
+            status = "failed" if result.get("status") == "basis_not_ready" else "completed"
+            record_operation_run(
+                conn,
+                operation_type="basis_rule_candidate_extraction",
+                target_type="basis_document",
+                target_id=basis_document_id,
+                status=status,
+                request_payload={"basis_document_id": basis_document_id, "action": "extract_rule_candidates"},
+                result_payload={"candidate_count": result.get("candidate_count", 0), "status": result.get("status", "")},
+                error_message=result.get("detail", "") if status == "failed" else "",
+                error_code="basis_not_ready" if status == "failed" else "",
+                retry_of_run_id=operation_run_id,
+            )
+        else:
+            return jsonify({"detail": "This operation type is not retryable"}), 400
+
+        retried = conn.execute(
+            "SELECT * FROM operation_runs WHERE retry_of_run_id=? ORDER BY id DESC LIMIT 1",
+            (operation_run_id,),
+        ).fetchone()
+        payload = get_operation_run_payload(conn, retried["id"]) if retried else None
+    return jsonify(payload), 201
+
+
+def _resolve_allowed_backup_file_path(raw_path: str) -> Path | None:
+    backup_root = (STORAGE_ROOT / "backups").resolve()
+    candidate = Path(raw_path)
+    if not candidate.is_absolute():
+        candidate = backup_root / candidate.name if len(candidate.parts) == 1 else STORAGE_ROOT / candidate
+    resolved = candidate.resolve()
+    if resolved.suffix.lower() != ".zip":
+        return None
+    if not resolved.is_relative_to(backup_root):
+        return None
+    return resolved
+
+
+def _backup_path_from_payload(conn: sqlite3.Connection, payload: dict[str, Any]) -> Path | None:
+    backup_id = parse_int(payload.get("backup_id"), 0)
+    if backup_id:
+        backup = get_backup_run_payload(conn, backup_id)
+        if not backup:
+            return None
+        raw_backup_path = clean_text(backup.get("file_path"))
+        return _resolve_allowed_backup_file_path(raw_backup_path) if raw_backup_path else None
+    raw_path = clean_text(payload.get("file_path"))
+    return _resolve_allowed_backup_file_path(raw_path) if raw_path else None
+
+
+@app.route("/api/backups", methods=["GET"])
+def list_backups():
+    with db_conn() as conn:
+        payload = list_backup_runs_payload(conn)
+    return jsonify(payload)
+
+
+@app.route("/api/backups", methods=["POST"])
+def create_backup_api():
+    with db_conn() as conn:
+        payload = create_backup_run(conn, sqlite_path=SQLITE_PATH, storage_root=STORAGE_ROOT)
+        record_operation_run(
+            conn,
+            operation_type="backup_create",
+            target_type="backup_run",
+            target_id=payload["id"],
+            status=payload["status"],
+            request_payload={"backup_type": payload["backup_type"]},
+            result_payload={
+                "file_name": payload["file_name"],
+                "file_size_bytes": payload["file_size_bytes"],
+                "validation": payload.get("validation", {}),
+            },
+            error_message=payload.get("error_message", ""),
+            error_code=error_code_for_status(payload["status"], payload.get("error_message", "")),
+            started_at=payload["created_at"],
+            finished_at=payload.get("completed_at") or payload["updated_at"],
+        )
+    return jsonify(payload), 201
+
+
+@app.route("/api/backups/<int:backup_id>", methods=["GET"])
+def get_backup(backup_id: int):
+    with db_conn() as conn:
+        payload = get_backup_run_payload(conn, backup_id)
+    if not payload:
+        return jsonify({"detail": "Backup not found"}), 404
+    return jsonify(payload)
+
+
+@app.route("/api/backups/validate", methods=["POST"])
+def validate_backup_api():
+    payload = get_json_payload()
+    with db_conn() as conn:
+        backup_path = _backup_path_from_payload(conn, payload)
+    if not backup_path:
+        return jsonify({"detail": "backup_id or file_path is required"}), 400
+    return jsonify(validate_backup_file(backup_path))
+
+
+@app.route("/api/backups/restore-plan", methods=["POST"])
+def backup_restore_plan_api():
+    payload = get_json_payload()
+    with db_conn() as conn:
+        backup_path = _backup_path_from_payload(conn, payload)
+        if not backup_path:
+            return jsonify({"detail": "backup_id or file_path is required"}), 400
+        plan = restore_plan_for_backup(backup_path)
+        record_operation_run(
+            conn,
+            operation_type="backup_restore",
+            target_type="backup_file",
+            target_id=parse_int(payload.get("backup_id"), 0) or None,
+            status="completed" if plan["can_restore"] else "failed",
+            request_payload={"backup_id": payload.get("backup_id"), "file_path": str(backup_path), "dry_run": True},
+            result_payload=plan,
+            error_message="; ".join(plan["validation"].get("errors", [])),
+            error_code="" if plan["can_restore"] else "validation_error",
+        )
+    return jsonify(plan)
+
+
+@app.route("/api/backups/<int:backup_id>/restore", methods=["POST"])
+def backup_restore_api(backup_id: int):
+    payload = get_json_payload()
+    if payload.get("dry_run", True) is False:
+        return jsonify({"detail": "Direct restore is not enabled in Phase 4D. Run restore dry-run first."}), 400
+    with db_conn() as conn:
+        backup = get_backup_run_payload(conn, backup_id)
+        if not backup:
+            return jsonify({"detail": "Backup not found"}), 404
+        backup_path = _resolve_allowed_backup_file_path(clean_text(backup.get("file_path")))
+        if not backup_path:
+            return jsonify({"detail": "Backup file path is outside the allowed backup directory"}), 400
+        plan = restore_plan_for_backup(backup_path)
+        record_operation_run(
+            conn,
+            operation_type="backup_restore",
+            target_type="backup_run",
+            target_id=backup_id,
+            status="completed" if plan["can_restore"] else "failed",
+            request_payload={"backup_id": backup_id, "dry_run": True},
+            result_payload=plan,
+            error_message="; ".join(plan["validation"].get("errors", [])),
+            error_code="" if plan["can_restore"] else "validation_error",
+        )
+    return jsonify(plan)
+
+
 @app.route("/api/corporations", methods=["GET"])
 def list_corporations():
     with db_conn() as conn:
@@ -2542,6 +4339,8 @@ def update_corporation(corporation_id: int):
                 409,
             )
         conn.execute(f"UPDATE corporations SET {assignments} WHERE id=?", values)
+        if set(updates) & COMPARISON_AFFECTING_CORPORATION_FIELDS:
+            invalidate_corporation_comparisons(conn, corporation_id)
         conn.commit()
         updated = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
     response_payload = dict(updated)
@@ -2563,6 +4362,7 @@ def delete_corporation(corporation_id: int):
         if project_count:
             return jsonify({"detail": "Cannot delete corporation with linked projects"}), 409
 
+        invalidate_corporation_comparisons(conn, corporation_id)
         clear_corporation_evidence_documents(conn, corporation_id)
         conn.execute("DELETE FROM corporations WHERE id=?", (corporation_id,))
         conn.commit()
@@ -2760,6 +4560,8 @@ def update_corporation_evidence_document(evidence_id: int):
             tuple(update_values.values()) + (evidence_id,),
         )
         if "corporation_id" in update_values:
+            invalidate_corporation_comparisons(conn, evidence["corporation_id"])
+            invalidate_corporation_comparisons(conn, update_values["corporation_id"])
             conn.execute(
                 """
                 UPDATE corporation_profile_update_candidates
@@ -2855,6 +4657,7 @@ def reprocess_corporation_evidence_document(evidence_id: int):
                     now,
                 ),
             )
+        invalidate_corporation_comparisons(conn, evidence["corporation_id"])
         conn.commit()
         updated = evidence_detail(conn, evidence_id)
     return jsonify(updated)
@@ -2933,6 +4736,7 @@ def reanalyze_corporation_evidence_text(evidence_id: int):
                     now,
                 ),
             )
+        invalidate_corporation_comparisons(conn, evidence["corporation_id"])
         conn.commit()
         updated = evidence_detail(conn, evidence_id)
     return jsonify(updated)
@@ -3137,6 +4941,7 @@ def approve_corporation_evidence_document(evidence_id: int):
             """,
             (corporation_id, requested_status, now, evidence_id),
         )
+        invalidate_corporation_comparisons(conn, corporation_id)
         conn.commit()
         corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
         evidence_payload = evidence_detail(conn, evidence_id)
@@ -3160,6 +4965,7 @@ def delete_corporation_evidence_document(evidence_id: int):
             return jsonify({"detail": "Evidence document not found"}), 404
         if evidence["stored_file_path"]:
             safe_unlink(Path(evidence["stored_file_path"]))
+        invalidate_corporation_comparisons(conn, evidence["corporation_id"])
         conn.execute("DELETE FROM corporation_profile_update_candidates WHERE evidence_document_id=?", (evidence_id,))
         conn.execute("DELETE FROM corporation_evidence_documents WHERE id=?", (evidence_id,))
         conn.commit()
@@ -3435,6 +5241,435 @@ def latest_analysis_alias(document_id: int):
     return latest_analysis(document_id)
 
 
+@app.route("/api/basis-documents", methods=["GET"])
+def list_basis_documents():
+    keyword = clean_text(request.args.get("keyword")).lower()
+    category = clean_text(request.args.get("category"))
+    clauses: list[str] = []
+    params: list[Any] = []
+    if keyword:
+        clauses.append("(LOWER(title) LIKE ? OR LOWER(original_file_name) LIKE ? OR LOWER(memo) LIKE ?)")
+        like = f"%{keyword}%"
+        params.extend([like, like, like])
+    if category:
+        clauses.append("category=?")
+        params.append(category)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with db_conn() as conn:
+        rows = conn.execute(
+            f"SELECT * FROM basis_documents {where} ORDER BY id DESC",
+            tuple(params),
+        ).fetchall()
+        payload = [basis_document_payload(conn, row) for row in rows]
+    return jsonify(payload)
+
+
+@app.route("/api/basis-documents", methods=["POST"])
+def upload_basis_document():
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"detail": "file is required"}), 400
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in BASIS_ALLOWED_EXTENSIONS:
+        return jsonify({"detail": "Only PDF basis documents are supported"}), 400
+
+    title = clean_text(request.form.get("title")) or Path(file.filename).stem
+    category = clean_text(request.form.get("category"))
+    document_version = clean_text(request.form.get("document_version"))
+    issuing_agency = clean_text(request.form.get("issuing_agency"))
+    effective_date = clean_text(request.form.get("effective_date"))
+    source_url = clean_text(request.form.get("source_url"))
+    memo = clean_text(request.form.get("memo"))
+
+    target_dir = STORAGE_ROOT / "basis"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    stored_path = target_dir / f"{uuid.uuid4().hex}{ext}"
+    file.save(stored_path)
+    file_size = stored_path.stat().st_size
+    file_hash = file_sha256(stored_path)
+    now = now_iso()
+
+    with db_conn() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO basis_documents (
+              title, category, document_version, issuing_agency, effective_date,
+              source_url, original_file_name, stored_file_path, mime_type,
+              file_size, file_hash, memo, processing_status, parse_status,
+              ocr_status, chunk_status, index_status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending',
+              'pending', 'pending', 'pending', ?, ?)
+            """,
+            (
+                title,
+                category,
+                document_version,
+                issuing_agency,
+                effective_date,
+                source_url,
+                file.filename,
+                str(stored_path),
+                file.mimetype or mimetypes.guess_type(file.filename)[0] or "",
+                file_size,
+                file_hash,
+                memo,
+                now,
+                now,
+            ),
+        )
+        basis_document_id = cur.lastrowid
+        payload = process_basis_document(conn, basis_document_id)
+    return jsonify(payload), 201
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>", methods=["GET"])
+def get_basis_document(basis_document_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis document not found"}), 404
+        payload = basis_document_payload(conn, row, include_chunks=True)
+    return jsonify(payload)
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>", methods=["PATCH"])
+def update_basis_document(basis_document_id: int):
+    payload = get_json_payload()
+    allowed_fields = {
+        "title": clean_text,
+        "category": clean_text,
+        "document_version": clean_text,
+        "issuing_agency": clean_text,
+        "effective_date": clean_text,
+        "source_url": clean_text,
+        "memo": clean_text,
+    }
+    updates = {field: converter(payload[field]) for field, converter in allowed_fields.items() if field in payload}
+    if "title" in updates and not updates["title"]:
+        return jsonify({"detail": "title is required"}), 400
+    if not updates:
+        return jsonify({"detail": "No supported fields to update"}), 400
+
+    updates["updated_at"] = now_iso()
+    assignments = ", ".join(f"{field}=?" for field in updates)
+    values = tuple(updates.values()) + (basis_document_id,)
+
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis document not found"}), 404
+        conn.execute(f"UPDATE basis_documents SET {assignments} WHERE id=?", values)
+        updated = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        payload = basis_document_payload(conn, updated)
+    return jsonify(payload)
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>/reprocess", methods=["POST"])
+def reprocess_basis_document(basis_document_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis document not found"}), 404
+        payload = process_basis_document(conn, basis_document_id)
+        status = "completed" if payload.get("processing_status") == "completed" else payload.get("processing_status", "failed")
+        record_operation_run(
+            conn,
+            operation_type="basis_document_processing",
+            target_type="basis_document",
+            target_id=basis_document_id,
+            status=status,
+            request_payload={"basis_document_id": basis_document_id, "action": "reprocess"},
+            result_payload={
+                "processing_status": payload.get("processing_status"),
+                "chunk_count": payload.get("chunk_count"),
+                "vector_count": payload.get("vector_count"),
+            },
+            error_message=payload.get("error_message", ""),
+            error_code=error_code_for_status(status, payload.get("error_message", "")),
+            started_at=payload.get("updated_at"),
+            finished_at=payload.get("updated_at"),
+        )
+    return jsonify(payload)
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>/chunks", methods=["GET"])
+def list_basis_document_chunks(basis_document_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT id FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis document not found"}), 404
+        chunks = conn.execute(
+            """
+            SELECT * FROM basis_document_chunks
+            WHERE basis_document_id=?
+            ORDER BY chunk_index
+            """,
+            (basis_document_id,),
+        ).fetchall()
+    return jsonify([basis_chunk_payload(chunk) for chunk in chunks])
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>", methods=["DELETE"])
+def delete_basis_document(basis_document_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis document not found"}), 404
+        index_validation = validate_basis_index(conn)
+        if index_validation.get("rebuild_required"):
+            errors = list(index_validation.get("errors") or [])
+            detail = "; ".join(errors) or "Basis index rebuild is required before deleting basis documents."
+            return (
+                jsonify(
+                    {
+                        "detail": detail,
+                        "status": "basis_index_unavailable",
+                        "index_status": index_validation.get("status", "unknown"),
+                        "rebuild_required": True,
+                        "errors": errors,
+                    }
+                ),
+                409,
+            )
+        try:
+            delete_basis_vectors(conn, basis_document_id)
+        except BasisIndexError as exc:
+            return (
+                jsonify(
+                    {
+                        "detail": str(exc),
+                        "status": "basis_index_unavailable",
+                        "rebuild_required": True,
+                    }
+                ),
+                409,
+            )
+        safe_unlink(Path(row["stored_file_path"]))
+        conn.execute("DELETE FROM basis_rule_candidates WHERE basis_document_id=?", (basis_document_id,))
+        conn.execute("DELETE FROM basis_document_chunks WHERE basis_document_id=?", (basis_document_id,))
+        conn.execute("DELETE FROM basis_documents WHERE id=?", (basis_document_id,))
+    return jsonify({"status": "deleted"})
+
+
+@app.route("/api/basis-search", methods=["POST"])
+def search_basis_documents():
+    payload = get_json_payload()
+    query = clean_text(payload.get("query"))
+    if not query:
+        return jsonify({"detail": "query is required"}), 400
+    category = clean_text(payload.get("category"))
+    document_version = clean_text(payload.get("document_version"))
+    top_k = parse_int(payload.get("top_k"), 5)
+    with db_conn() as conn:
+        try:
+            results = basis_search_results(conn, query, category, document_version, top_k)
+        except BasisIndexError as exc:
+            return (
+                jsonify(
+                    {
+                        "detail": str(exc),
+                        "status": "basis_index_unavailable",
+                        "rebuild_required": True,
+                    }
+                ),
+                409,
+            )
+    return jsonify(
+        {
+            "query": query,
+            "top_k": max(1, min(top_k, 20)),
+            "result_count": len(results),
+            "results": results,
+            "index_source": "json_basis_index",
+            "note": "Phase 2 search returns reusable chunk candidates only, not eligibility judgments.",
+        }
+    )
+
+
+@app.route("/api/basis-index/status", methods=["GET"])
+def get_basis_index_status():
+    with db_conn() as conn:
+        payload = basis_index_status_payload(conn)
+    return jsonify(payload)
+
+
+@app.route("/api/basis-index/validate", methods=["POST"])
+def validate_basis_index_api():
+    with db_conn() as conn:
+        payload = basis_index_status_payload(conn)
+    return jsonify(payload)
+
+
+@app.route("/api/basis-index/rebuild", methods=["POST"])
+def rebuild_basis_index_api():
+    with db_conn() as conn:
+        payload = rebuild_basis_index(conn)
+        record_operation_run(
+            conn,
+            operation_type="basis_index_rebuild",
+            target_type="basis_index",
+            status="completed" if payload.get("valid") else "failed",
+            request_payload={"action": "rebuild_basis_index"},
+            result_payload=payload,
+            error_message="; ".join(payload.get("errors", [])),
+            error_code="" if payload.get("valid") else "validation_error",
+        )
+    return jsonify(payload)
+
+
+@app.route("/api/qa/phase2-closeout", methods=["GET"])
+def get_phase2_closeout_summary():
+    return jsonify(phase2_closeout_summary())
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>/rule-candidates", methods=["GET"])
+def get_basis_document_rule_candidates(basis_document_id: int):
+    with db_conn() as conn:
+        basis = conn.execute("SELECT id FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
+        if not basis:
+            return jsonify({"detail": "Basis document not found"}), 404
+        candidates = list_basis_rule_candidates_payload(conn, basis_document_id=basis_document_id)
+    return jsonify(
+        {
+            "basis_document_id": basis_document_id,
+            "candidate_count": len(candidates),
+            "candidates": candidates,
+            "note": "기준문서 규칙 후보이며 관리자 검토 전에는 판단 근거로 확정하지 않습니다.",
+        }
+    )
+
+
+@app.route("/api/basis-documents/<int:basis_document_id>/rule-candidates/extract", methods=["POST"])
+def extract_basis_document_rule_candidates(basis_document_id: int):
+    with db_conn() as conn:
+        payload = extract_basis_rule_candidates(conn, basis_document_id)
+        if payload:
+            operation_status = "failed" if payload.get("status") == "basis_not_ready" else "completed"
+            record_operation_run(
+                conn,
+                operation_type="basis_rule_candidate_extraction",
+                target_type="basis_document",
+                target_id=basis_document_id,
+                status=operation_status,
+                request_payload={"basis_document_id": basis_document_id, "action": "extract_rule_candidates"},
+                result_payload={"candidate_count": payload.get("candidate_count", 0), "status": payload.get("status", "")},
+                error_message=payload.get("detail", "") if operation_status == "failed" else "",
+                error_code="basis_not_ready" if operation_status == "failed" else "",
+            )
+    if not payload:
+        return jsonify({"detail": "Basis document not found"}), 404
+    if payload.get("status") == "basis_not_ready":
+        return jsonify(payload), 409
+    return jsonify(payload)
+
+
+@app.route("/api/basis-rule-candidates", methods=["GET"])
+def list_basis_rule_candidates():
+    status = clean_text(request.args.get("status"))
+    basis_document_id = parse_int(request.args.get("basis_document_id"), 0)
+    rule_type = clean_text(request.args.get("rule_type"))
+    keyword = clean_text(request.args.get("keyword"))
+    with db_conn() as conn:
+        candidates = list_basis_rule_candidates_payload(
+            conn,
+            basis_document_id=basis_document_id or None,
+            status=status,
+            rule_type=rule_type,
+            keyword=keyword,
+        )
+    return jsonify({"candidate_count": len(candidates), "candidates": candidates})
+
+
+@app.route("/api/basis-rule-candidates/<int:candidate_id>", methods=["GET"])
+def get_basis_rule_candidate(candidate_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_rule_candidates WHERE id=?", (candidate_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Basis rule candidate not found"}), 404
+        payload = basis_rule_candidate_detail_payload(conn, row)
+    return jsonify(payload)
+
+
+@app.route("/api/basis-rule-candidates/<int:candidate_id>", methods=["PATCH"])
+def patch_basis_rule_candidate(candidate_id: int):
+    payload = get_json_payload()
+    with db_conn() as conn:
+        updated, error = update_basis_rule_candidate(conn, candidate_id, payload)
+    if error == "not_found":
+        return jsonify({"detail": "Basis rule candidate not found"}), 404
+    if error:
+        return jsonify({"detail": error}), 400
+    return jsonify(updated)
+
+
+@app.route("/api/basis-rule-candidates/<int:candidate_id>/approve", methods=["POST"])
+def approve_basis_rule_candidate(candidate_id: int):
+    payload = get_json_payload()
+    with db_conn() as conn:
+        updated, error = update_basis_rule_candidate(conn, candidate_id, payload, forced_status="approved")
+    if error == "not_found":
+        return jsonify({"detail": "Basis rule candidate not found"}), 404
+    if error:
+        return jsonify({"detail": error}), 400
+    return jsonify(updated)
+
+
+@app.route("/api/basis-rule-candidates/<int:candidate_id>/reject", methods=["POST"])
+def reject_basis_rule_candidate(candidate_id: int):
+    payload = get_json_payload()
+    with db_conn() as conn:
+        updated, error = update_basis_rule_candidate(conn, candidate_id, payload, forced_status="rejected")
+    if error == "not_found":
+        return jsonify({"detail": "Basis rule candidate not found"}), 404
+    if error:
+        return jsonify({"detail": error}), 400
+    return jsonify(updated)
+
+
+@app.route("/api/basis-retrieval-evaluations", methods=["GET"])
+def list_basis_retrieval_evaluations():
+    with db_conn() as conn:
+        rows = conn.execute("SELECT * FROM basis_retrieval_evaluations ORDER BY id DESC").fetchall()
+    return jsonify([basis_retrieval_evaluation_payload(row) for row in rows])
+
+
+@app.route("/api/basis-retrieval-evaluations", methods=["POST"])
+def create_basis_retrieval_evaluation_api():
+    payload = get_json_payload()
+    if not normalize_evaluation_queries(payload.get("queries")):
+        return jsonify({"detail": "queries must include at least one query"}), 400
+    with db_conn() as conn:
+        try:
+            result = create_basis_retrieval_evaluation(conn, payload)
+        except BasisIndexError as exc:
+            return (
+                jsonify(
+                    {
+                        "detail": str(exc),
+                        "status": "basis_index_unavailable",
+                        "rebuild_required": True,
+                    }
+                ),
+                409,
+            )
+    return jsonify(result), 201
+
+
+@app.route("/api/basis-retrieval-evaluations/<int:evaluation_id>", methods=["GET"])
+def get_basis_retrieval_evaluation(evaluation_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM basis_retrieval_evaluations WHERE id=?", (evaluation_id,)).fetchone()
+    if not row:
+        return jsonify({"detail": "Retrieval evaluation not found"}), 404
+    return jsonify(basis_retrieval_evaluation_payload(row))
+
+
+@app.route("/api/judgment-contract", methods=["GET"])
+def get_judgment_contract():
+    return jsonify(judgment_contract_payload())
+
+
 @app.route("/api/nara/notices/search", methods=["GET"])
 def search_nara_notices():
     if not NARA_API_SERVICE_KEY:
@@ -3560,7 +5795,6 @@ def create_nara_notice_processing_placeholder(base_item: dict) -> tuple[dict, in
             "SELECT * FROM nara_notices WHERE bid_ntce_no=? AND bid_ntce_ord=?",
             (normalized["bid_ntce_no"], normalized["bid_ntce_ord"]),
         ).fetchone()
-
         values = (
             normalized["bid_ntce_nm"],
             normalized["ntce_instt_nm"],
@@ -3588,20 +5822,6 @@ def create_nara_notice_processing_placeholder(base_item: dict) -> tuple[dict, in
 
         if existing:
             notice_id = existing["id"]
-            clear_nara_notice_attachments(conn, notice_id)
-            conn.execute(
-                """
-                UPDATE nara_notices SET
-                  bid_ntce_nm=?, ntce_instt_nm=?, dminstt_nm=?, bid_ntce_dt=?,
-                  bid_begin_dt=?, bid_clse_dt=?, openg_dt=?, presmpt_prce=?,
-                  bdgt_amt=?, bssamt=?, region_text=?, license_text=?, source_url=?,
-                  raw_json=?, detail_json=?, save_status=?, download_status=?,
-                  analysis_status=?, analysis_summary_json=?, analysis_summary_markdown=?,
-                  error_message=?, updated_at=?
-                WHERE id=?
-                """,
-                values + (notice_id,),
-            )
         else:
             cur = conn.execute(
                 """
@@ -3692,6 +5912,22 @@ def save_and_analyze_nara_notice_item(
             "SELECT * FROM nara_notices WHERE bid_ntce_no=? AND bid_ntce_ord=?",
             (normalized["bid_ntce_no"], normalized["bid_ntce_ord"]),
         ).fetchone()
+        previous_has_results = False
+        if existing:
+            previous_attachment_count = conn.execute(
+                "SELECT COUNT(*) FROM nara_notice_attachments WHERE nara_notice_id=?",
+                (existing["id"],),
+            ).fetchone()[0]
+            previous_requirement_count = conn.execute(
+                "SELECT COUNT(*) FROM notice_requirement_candidates WHERE nara_notice_id=?",
+                (existing["id"],),
+            ).fetchone()[0]
+            previous_has_results = bool(
+                previous_attachment_count
+                or previous_requirement_count
+                or clean_text(existing["analysis_summary_markdown"])
+                or clean_text(existing["analysis_summary_json"]) not in {"", "{}"}
+            )
 
         values = (
             normalized["bid_ntce_nm"],
@@ -3718,7 +5954,6 @@ def save_and_analyze_nara_notice_item(
 
         if existing:
             notice_id = existing["id"]
-            clear_nara_notice_attachments(conn, notice_id)
             conn.execute(
                 """
                 UPDATE nara_notices SET
@@ -3756,6 +5991,7 @@ def save_and_analyze_nara_notice_item(
         notice_dir = STORAGE_ROOT / "nara-notices" / str(notice_id)
         notice_dir.mkdir(parents=True, exist_ok=True)
         attachment_texts: list[str] = []
+        attachment_records: list[tuple[Any, ...]] = []
         supported_count = 0
         failed_count = 0
 
@@ -3806,15 +6042,7 @@ def save_and_analyze_nara_notice_item(
                     parse_status = "failed"
                     error_message = str(exc)
 
-            conn.execute(
-                """
-                INSERT INTO nara_notice_attachments (
-                  nara_notice_id, file_name, source_url, source_field, file_extension,
-                  support_status, download_status, stored_file_path, file_size,
-                  parse_status, analysis_status, extracted_text_preview, error_message,
-                  created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+            attachment_records.append(
                 (
                     notice_id,
                     attachment["file_name"],
@@ -3831,7 +6059,7 @@ def save_and_analyze_nara_notice_item(
                     error_message,
                     now_iso(),
                     now_iso(),
-                ),
+                )
             )
 
         notice_text = build_nara_summary_text(normalized, attachment_texts)
@@ -3848,7 +6076,6 @@ def save_and_analyze_nara_notice_item(
             _usage["fallback_reason"] = str(exc)
         summary_json["notice_requirements"] = notice_requirements
         summary_markdown = f"{summary_markdown}\n{render_notice_requirements_markdown(notice_requirements)}"
-        store_notice_requirement_candidates(conn, notice_id, notice_requirements)
 
         if supported_count == 0:
             download_status = "no_supported_attachments"
@@ -3857,24 +6084,70 @@ def save_and_analyze_nara_notice_item(
         else:
             download_status = "completed"
 
-        analysis_status = "completed" if failed_count == 0 else "partial_failed"
-        conn.execute(
-            """
-            UPDATE nara_notices SET
-              save_status=?, download_status=?, analysis_status=?,
-              analysis_summary_json=?, analysis_summary_markdown=?, updated_at=?
-            WHERE id=?
-            """,
-            (
-                "saved",
-                download_status,
-                analysis_status,
-                json.dumps(summary_json, ensure_ascii=False),
-                summary_markdown,
-                now_iso(),
-                notice_id,
-            ),
-        )
+        preserve_existing_reason = ""
+        if previous_has_results and supported_count == 0:
+            analysis_status = "partial_failed"
+            preserve_existing_reason = "재분석에서 지원 가능한 첨부가 없어 기존 분석 결과를 유지했습니다."
+        elif failed_count:
+            analysis_status = "partial_failed"
+            preserve_existing_reason = "재분석이 부분 실패하여 기존 분석 결과를 유지했습니다." if previous_has_results else ""
+        else:
+            analysis_status = "completed"
+
+        replace_existing_results = not previous_has_results or not preserve_existing_reason
+        if replace_existing_results:
+            clear_nara_notice_attachments(conn, notice_id)
+            conn.execute("DELETE FROM notice_requirement_candidates WHERE nara_notice_id=?", (notice_id,))
+            conn.execute("DELETE FROM notice_corporation_comparisons WHERE nara_notice_id=?", (notice_id,))
+            conn.execute("DELETE FROM judgment_runs WHERE nara_notice_id=?", (notice_id,))
+            conn.executemany(
+                """
+                INSERT INTO nara_notice_attachments (
+                  nara_notice_id, file_name, source_url, source_field, file_extension,
+                  support_status, download_status, stored_file_path, file_size,
+                  parse_status, analysis_status, extracted_text_preview, error_message,
+                  created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                attachment_records,
+            )
+            store_notice_requirement_candidates(conn, notice_id, notice_requirements)
+            conn.execute(
+                """
+                UPDATE nara_notices SET
+                  save_status=?, download_status=?, analysis_status=?,
+                  analysis_summary_json=?, analysis_summary_markdown=?, error_message='', updated_at=?
+                WHERE id=?
+                """,
+                (
+                    "saved",
+                    download_status,
+                    analysis_status,
+                    json.dumps(summary_json, ensure_ascii=False),
+                    summary_markdown,
+                    now_iso(),
+                    notice_id,
+                ),
+            )
+        else:
+            for attachment_record in attachment_records:
+                stored_file_path = clean_text(attachment_record[7])
+                if stored_file_path:
+                    safe_unlink(Path(stored_file_path))
+            conn.execute(
+                """
+                UPDATE nara_notices SET
+                  download_status=?, analysis_status=?, error_message=?, updated_at=?
+                WHERE id=?
+                """,
+                (
+                    download_status,
+                    analysis_status,
+                    preserve_existing_reason,
+                    now_iso(),
+                    notice_id,
+                ),
+            )
         conn.commit()
 
         result = get_nara_notice_with_attachments(conn, notice_id)
@@ -3946,6 +6219,16 @@ def extract_saved_nara_notice_requirements(notice_id: int):
     return jsonify(payload)
 
 
+@app.route("/api/nara/saved-notices/<int:notice_id>/requirements/structured", methods=["GET"])
+def get_saved_nara_notice_structured_requirements(notice_id: int):
+    force = clean_text(request.args.get("force")).lower() in {"1", "true", "yes"}
+    with db_conn() as conn:
+        payload = phase3_notice_requirement_payload(conn, notice_id, force=force)
+    if not payload:
+        return jsonify({"detail": "Saved notice not found"}), 404
+    return jsonify(payload)
+
+
 @app.route("/api/nara/saved-notices/<int:notice_id>/reanalyze", methods=["POST"])
 def reanalyze_saved_nara_notice(notice_id: int):
     payload = get_json_payload()
@@ -3969,6 +6252,7 @@ def delete_saved_nara_notice(notice_id: int):
         if not row:
             return jsonify({"detail": "Saved notice not found"}), 404
         conn.execute("DELETE FROM notice_corporation_comparisons WHERE nara_notice_id=?", (notice_id,))
+        conn.execute("DELETE FROM judgment_runs WHERE nara_notice_id=?", (notice_id,))
         conn.execute("DELETE FROM notice_requirement_candidates WHERE nara_notice_id=?", (notice_id,))
         clear_nara_notice_attachments(conn, notice_id)
         conn.execute("DELETE FROM nara_notices WHERE id=?", (notice_id,))
@@ -4031,6 +6315,116 @@ def list_notice_comparisons_by_notice(notice_id: int):
         ).fetchall()
         payload = [comparison_row_payload(conn, row) for row in rows]
     return jsonify(payload)
+
+
+@app.route("/api/judgment-runs", methods=["GET"])
+def list_judgment_runs():
+    with db_conn() as conn:
+        rows = conn.execute("SELECT * FROM judgment_runs ORDER BY id DESC").fetchall()
+        payload = [judgment_run_payload(conn, row) for row in rows]
+    return jsonify(payload)
+
+
+@app.route("/api/judgment-runs", methods=["POST"])
+def create_judgment_run():
+    payload = get_json_payload()
+    notice_id = parse_int(payload.get("nara_notice_id") or payload.get("notice_id"))
+    corporation_id = parse_int(payload.get("corporation_id"))
+    top_k = max(1, min(parse_int(payload.get("top_k"), 3), 10))
+    if not notice_id or not corporation_id:
+        return jsonify({"detail": "nara_notice_id and corporation_id are required"}), 400
+    with db_conn() as conn:
+        result = build_judgment_run(conn, notice_id, corporation_id, top_k=top_k)
+        if result:
+            record_operation_run(
+                conn,
+                operation_type="judgment_run",
+                target_type="judgment_run",
+                target_id=result["id"],
+                status=result["status"],
+                request_payload={"nara_notice_id": notice_id, "corporation_id": corporation_id, "top_k": top_k},
+                result_payload={"summary": result.get("summary", {})},
+                error_message="",
+                error_code="",
+                started_at=result["created_at"],
+                finished_at=result["updated_at"],
+            )
+    if not result:
+        return jsonify({"detail": "Saved notice or corporation not found"}), 404
+    return jsonify(result), 201
+
+
+@app.route("/api/judgment-runs/<int:judgment_run_id>", methods=["GET"])
+def get_judgment_run(judgment_run_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM judgment_runs WHERE id=?", (judgment_run_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Judgment run not found"}), 404
+        payload = judgment_run_payload(conn, row)
+    return jsonify(payload)
+
+
+@app.route("/api/judgment-runs/<int:judgment_run_id>/review", methods=["PATCH"])
+def update_judgment_run_review(judgment_run_id: int):
+    payload = get_json_payload()
+    review_status = clean_text(payload.get("review_status"), "pending")
+    reviewer_note = clean_text(payload.get("reviewer_note"))
+    if review_status not in {"pending", "reviewed", "needs_followup", "archived"}:
+        return jsonify({"detail": "Unsupported review_status"}), 400
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM judgment_runs WHERE id=?", (judgment_run_id,)).fetchone()
+        if not row:
+            return jsonify({"detail": "Judgment run not found"}), 404
+        conn.execute(
+            """
+            UPDATE judgment_runs
+            SET review_status=?, reviewer_note=?, updated_at=?
+            WHERE id=?
+            """,
+            (review_status, reviewer_note, now_iso(), judgment_run_id),
+        )
+        updated = conn.execute("SELECT * FROM judgment_runs WHERE id=?", (judgment_run_id,)).fetchone()
+        payload = judgment_run_payload(conn, updated)
+    return jsonify(payload)
+
+
+@app.route("/api/nara/collection-runs", methods=["GET"])
+def list_nara_collection_runs():
+    status = clean_text(request.args.get("status"))
+    keyword = clean_text(request.args.get("keyword"))
+    clauses: list[str] = []
+    params: list[Any] = []
+    if status:
+        clauses.append("status=?")
+        params.append(status)
+    if keyword:
+        clauses.append("(keyword LIKE ? OR error_message LIKE ? OR criteria_json LIKE ? OR result_json LIKE ?)")
+        like_value = f"%{keyword}%"
+        params.extend([like_value, like_value, like_value, like_value])
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with db_conn() as conn:
+        rows = conn.execute(
+            f"SELECT * FROM nara_collection_runs {where} ORDER BY id DESC",
+            tuple(params),
+        ).fetchall()
+    return jsonify([nara_collection_run_payload(row) for row in rows])
+
+
+@app.route("/api/nara/collection-runs", methods=["POST"])
+def create_nara_collection_run_api():
+    payload = get_json_payload()
+    with db_conn() as conn:
+        result, code = create_nara_collection_run(conn, payload)
+    return jsonify(result), code
+
+
+@app.route("/api/nara/collection-runs/<int:collection_run_id>", methods=["GET"])
+def get_nara_collection_run(collection_run_id: int):
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM nara_collection_runs WHERE id=?", (collection_run_id,)).fetchone()
+    if not row:
+        return jsonify({"detail": "Nara collection run not found"}), 404
+    return jsonify(nara_collection_run_payload(row))
 
 
 @app.route("/api/nara/attachments/preview", methods=["GET"])

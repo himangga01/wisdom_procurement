@@ -3483,3 +3483,1330 @@ Per user request, it must be updated whenever new work is performed in this thre
   - completion criteria
   - product-owner questions
 - Added the Phase 1.7 stabilization plan link to README.
+
+## 추가 업데이트 (2026-05-22) - Phase 1.7 안정화 진행
+- 작업 범위:
+  - 저장 공고 요구조건 후보 추출 안정화
+  - 법인 비교 프로필 정규화 보강
+  - 공고-법인 부족조건 미리보기 비교 엔진 오탐 방지
+  - 비교 이력 무효화 조건 정리
+  - 포탈 `부족조건 미리보기` UX 문구와 결과 우선순위 개선
+- 백엔드 수정:
+  - 지역 별칭 그룹을 추가해 `전남`, `전라남도`, `해남군` 같은 공고 지역 표현을 함께 인식하도록 보강
+  - 면허/업종, 기업유형, 제출서류 토큰 그룹을 중앙 상수로 분리
+  - `조경식재공사업`과 `조경식재`처럼 같은 의미의 면허는 매칭하되, `전기공사업`과 `전기/소방/통신자재`처럼 성격이 다른 텍스트는 매칭하지 않도록 보수적 비교 로직 적용
+  - `중소기업`이 `소기업`으로 잘못 추출되는 문제를 방지
+  - `국세 납세증명서`와 `지방세 납세증명서`가 서로 섞일 수 있는 넓은 별칭을 제거
+  - 법인 프로필/승인 증빙/공고 요구조건 재추출 시 오래된 비교 결과가 남지 않도록 비교 이력을 무효화
+- 프론트엔드 수정:
+  - `부족조건 미리보기` 화면에서 최종 자격 판정이 아니라는 안내를 더 명확히 표시
+  - 결과 카드 우선순위를 `부족 가능성`, `확인 필요`, `법인 정보 없음`, `준비된 항목` 순서로 변경
+  - 법인 증빙자료 보강, 저장 공고 재확인, 요구조건 다시 추출 액션을 바로 찾을 수 있도록 CTA 영역 추가
+  - 요구조건 재추출 시 기존 비교 결과가 정리된다는 설명을 화면에 추가
+- 테스트 추가/보강:
+  - 공고 요구조건 추출에서 지역 별칭, 붙어 있는 제출서류명, 기업유형 오탐 방지 테스트 추가
+  - 면허/업종 보수적 매칭 테스트 추가
+  - 국세/지방세 납세증명서 혼동 방지 테스트 추가
+  - 법인 프로필 변경, 증빙 승인/재분석/삭제, 공고 요구조건 재추출 시 비교 이력 무효화 테스트 보강
+- 검증 결과:
+  - `py -3.13 -m unittest discover -s tests -v`: 53개 테스트 통과, 선택 OCR 실엔진 테스트 1개 skip
+  - `npm run build`: 통과
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - 인앱 브라우저 확인: `http://127.0.0.1:5199/notice-comparison` 라우트, 최종 판정 아님 안내, CTA 렌더링, 콘솔 에러 없음 확인
+- 코드리뷰 결과:
+  - 초기 안정화 후 자체 리뷰에서 `납세증명서` 일반 별칭이 국세/지방세를 섞을 수 있는 위험을 발견하고 수정
+  - Phase 1.7은 여전히 최종 지원 가능/불가능 판정이 아니라 부족조건 미리보기 범위로 제한됨을 확인
+
+## Additional Update (2026-05-22) - Phase 1.7 Stabilization Execution
+- Scope:
+  - hardened saved-notice requirement candidate extraction
+  - improved corporation comparison-profile normalization
+  - reduced false-positive matches in the notice-vs-corporation gap preview engine
+  - clarified comparison invalidation rules
+  - improved the portal UX copy and result priority for the `Gap Preview` page
+- Backend changes:
+  - added region alias groups for expressions such as `전남`, `전라남도`, and `해남군`
+  - centralized license, company-type, and required-document token groups
+  - allowed equivalent license matches such as `조경식재공사업` vs `조경식재`, while avoiding unrelated text matches such as `전기공사업` vs `전기/소방/통신자재`
+  - prevented `중소기업` from being extracted as an explicit `소기업` condition
+  - removed the broad `납세증명서` alias that could mix up national-tax and local-tax certificates
+  - invalidated stale comparison history when corporation profile/evidence data or notice requirement candidates change
+- Frontend changes:
+  - made it clearer that the gap preview is not a final eligibility verdict
+  - reordered result panels to prioritize `possibly missing`, `needs review`, `not found`, and then `prepared`
+  - added CTAs for corporation evidence upload, saved-notice review, and requirement re-extraction
+  - explained that re-extracting requirements clears stale comparison results
+- Tests:
+  - added tests for region aliases, no-space document names, and company-type false-positive prevention
+  - added conservative license-matching tests
+  - added national-tax vs local-tax certificate mismatch coverage
+  - strengthened stale comparison invalidation coverage for corporation/profile/evidence/requirement changes
+- Verification:
+  - `py -3.13 -m unittest discover -s tests -v`: 53 tests passed, 1 optional real OCR test skipped
+  - `npm run build`: passed
+  - `git diff --check`: no whitespace errors, Windows CRLF warnings only
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - in-app browser check: confirmed the `http://127.0.0.1:5199/notice-comparison` route, non-final-verdict notice, CTA rendering, and no console errors
+- Review result:
+  - during self-review, found and fixed the broad `납세증명서` alias risk
+  - confirmed Phase 1.7 remains a gap-preview feature, not a final eligibility decision engine
+
+## 추가 업데이트 (2026-05-22) - Phase 2 / 2.5 구현계획 작성
+- Phase 2 기준문서/RAG 준비 개발을 실제 작업 가능한 세부 단계로 나눈 실행계획 문서를 추가했다.
+- 신규 문서:
+  - `docs/phase-2-implementation-plan.md`
+- 주요 내용:
+  - Phase 2A: 기준문서 도메인/DB 골격
+  - Phase 2B: 기준문서 CRUD/API
+  - Phase 2C: 기준 PDF 파싱/OCR/정규화 파이프라인
+  - Phase 2D: 자동 청킹
+  - Phase 2E: 로컬 벡터 인덱싱
+  - Phase 2F: 기준문서 검색 API
+  - Phase 2G: 기준문서 관리 UX
+  - Phase 2H: 안정화/회귀 테스트
+  - Phase 2.5A~D: 기준문서 규칙 추출 실험, 공고 요구조건 구조화 고도화, 검색/citation 품질 평가, Phase 3 입력 계약 확정
+- README 문서 링크에 Phase 2 / 2.5 구현계획을 추가했다.
+- 검증 결과:
+  - 문서 생성 및 README 링크 업데이트 확인
+  - 코드 실행 변경 없음
+
+## Additional Update (2026-05-22) - Phase 2 / 2.5 Implementation Plan
+- Added an execution-focused implementation plan for Phase 2 basis-document/RAG preparation.
+- New document:
+  - `docs/phase-2-implementation-plan.md`
+- Covered:
+  - Phase 2A: basis domain and DB skeleton
+  - Phase 2B: basis CRUD/API
+  - Phase 2C: basis PDF parsing/OCR/normalization pipeline
+  - Phase 2D: automatic chunking
+  - Phase 2E: local vector indexing
+  - Phase 2F: basis search API
+  - Phase 2G: basis management UX
+  - Phase 2H: stabilization/regression tests
+  - Phase 2.5A-D: basis rule extraction experiments, notice requirement structuring, retrieval/citation quality evaluation, and Phase 3 input contract
+- Added the Phase 2 / 2.5 plan link to README.
+- Verification:
+  - confirmed document creation and README link update
+  - no runtime code changes
+
+## 추가 업데이트 (2026-05-22) - Phase 1.7 실제 공고 PDF 종료 QA
+- 사용자 요청에 따라 Phase 1.7 종료 QA를 실제 나라장터 API와 공고문 PDF 샘플 기반으로 수행하도록 설계/구현했다.
+- 코드/스크립트:
+  - `.gitignore`: `backend/tests/nara-pdf-samples/` 제외 경로 추가
+  - `scripts/fetch-nara-phase17-samples.py`: 나라장터 API 검색 -> PDF 다운로드 -> PyMuPDF 텍스트 추출 -> Phase 1.7 요구조건 후보 추출 -> 최종 판정 문구 금지 검사 -> manifest/요약 생성
+  - `backend/tests/test_nara_phase17_live_samples.py`: `RUN_NARA_PHASE17_QA=1`일 때만 로컬 PDF 샘플을 검증하는 opt-in 테스트 추가
+- 실제 다운로드 샘플:
+  - `R26BK01526927-000`: 남면보건지소 그린리모델링 건축(설비) 공사, 후보 49개
+  - `R26BK01526928-000`: 원북보건지소 그린리모델링 건축(설비) 공사, 후보 49개
+  - `R26BK01526931-000`: 문내 충무 마을안길 정비공사, 후보 50개
+  - `R26BK01526932-000`: 화산 석전 마을안길 정비공사, 후보 50개
+  - `R26BK01526933-000`: 화원 평리 마을안길 정비공사, 후보 50개
+- 로컬 산출물:
+  - `backend/tests/nara-pdf-samples/01-R26BK01526927-000.pdf`
+  - `backend/tests/nara-pdf-samples/02-R26BK01526928-000.pdf`
+  - `backend/tests/nara-pdf-samples/03-R26BK01526931-000.pdf`
+  - `backend/tests/nara-pdf-samples/04-R26BK01526932-000.pdf`
+  - `backend/tests/nara-pdf-samples/05-R26BK01526933-000.pdf`
+  - `backend/tests/nara-pdf-samples/manifest.json`
+  - `backend/tests/nara-pdf-samples/qa-summary.md`
+- 검증 결과:
+  - `py -3.13 -m py_compile scripts\fetch-nara-phase17-samples.py backend\tests\test_nara_phase17_live_samples.py`: 통과
+  - `py -3.13 -m unittest discover -s tests -v`: 54개 테스트 통과, 2개 opt-in 테스트 skip
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - `py -3.13 scripts\fetch-nara-phase17-samples.py --date-from 20260501 --date-to 20260522 --target-count 5 --num-of-rows 80 --max-pages-per-window 4`: 샘플 5개 수집 성공
+  - `RUN_NARA_PHASE17_QA=1 py -3.13 -m unittest tests.test_nara_phase17_live_samples -v`: 3개 테스트 통과
+
+## Additional Update (2026-05-22) - Phase 1.7 Real Notice PDF Closeout QA
+- Implemented and ran Phase 1.7 closeout QA against real Nara API notice PDF samples.
+- Code/scripts:
+  - `.gitignore`: ignored `backend/tests/nara-pdf-samples/`
+  - `scripts/fetch-nara-phase17-samples.py`: searches Nara notices, downloads PDFs, extracts text with PyMuPDF, extracts Phase 1.7 requirement candidates, checks final-verdict wording is absent, and writes a manifest/summary
+  - `backend/tests/test_nara_phase17_live_samples.py`: added opt-in local sample QA under `RUN_NARA_PHASE17_QA=1`
+- Downloaded samples:
+  - `R26BK01526927-000`: 49 candidates
+  - `R26BK01526928-000`: 49 candidates
+  - `R26BK01526931-000`: 50 candidates
+  - `R26BK01526932-000`: 50 candidates
+  - `R26BK01526933-000`: 50 candidates
+- Local artifacts:
+  - `backend/tests/nara-pdf-samples/*.pdf`
+  - `backend/tests/nara-pdf-samples/manifest.json`
+  - `backend/tests/nara-pdf-samples/qa-summary.md`
+- Verification:
+  - `py -3.13 -m py_compile scripts\fetch-nara-phase17-samples.py backend\tests\test_nara_phase17_live_samples.py`: passed
+  - `py -3.13 -m unittest discover -s tests -v`: 54 passed, 2 opt-in tests skipped
+  - `npm run build`: passed
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: no whitespace errors, Windows CRLF warnings only
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+  - sample collection command downloaded five unique QA-passing notice PDFs
+  - `RUN_NARA_PHASE17_QA=1 py -3.13 -m unittest tests.test_nara_phase17_live_samples -v`: 3 passed
+
+## 추가 업데이트 (2026-05-22) - Phase 2A-H 기준문서 MVP 구현
+- 사용자 요청에 따라 Phase 2A부터 Phase 2H까지 기준문서 업로드/청킹/인덱싱/검색 MVP를 구현했다.
+- 백엔드:
+  - `basis_documents`, `basis_document_chunks` 테이블 추가
+  - `storage/basis/`, `storage/basis-index/` 분리 저장소 추가
+  - `GET/POST/PATCH/DELETE /api/basis-documents`, 재처리, 청크 조회 API 추가
+  - 기준 PDF 처리 흐름을 `텍스트 추출 -> OCR 확인 -> 정규화 -> 청킹 -> local-token-v1 인덱싱`으로 연결
+  - OCR 미설치/텍스트 없는 PDF는 `needs_ocr_setup`으로 degrade
+  - `POST /api/basis-search` 추가, 결과는 최종 판단이 아닌 citation 후보 청크로만 반환
+- 프론트엔드:
+  - `기준문서 관리` 메뉴 활성화
+  - 기준 PDF 업로드, 목록, 상세, 메타데이터 편집, 재처리, 청크 미리보기, 검색 UI 추가
+  - 기준문서 타입/API 클라이언트 추가
+- 테스트:
+  - Phase 2A-B: 기준문서 CRUD/PDF 포맷 가드 테스트
+  - Phase 2C-D: 파싱/정규화/청킹/재처리 테스트, OCR 미설치 degrade 테스트
+  - Phase 2E-F: 로컬 인덱스/검색 후보 테스트
+- 검증 결과:
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_phase2a_2b_basis_document_crud_and_pdf_guard -v`: 통과
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_phase2c_2d_basis_processing_extracts_normalizes_and_chunks tests.test_api_flows.ApiFlowTests.test_phase2c_basis_blank_pdf_degrades_when_ocr_is_unavailable -v`: 통과
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_phase2e_2f_basis_index_and_search_returns_candidates_only -v`: 통과
+  - `py -3.13 -m unittest discover -s tests -v`: 58개 테스트 중 56개 통과, 2개 opt-in 테스트 skip
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: 공백 오류 없음, Windows CRLF 경고만 확인
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+- 코드 리뷰 결과:
+  - Phase 2C-D 리뷰 중 한글 테스트 PDF 생성 방식이 PyMuPDF 기본 폰트에서 깨지는 문제를 발견해 테스트 본문을 안정적인 ASCII PDF로 조정했다.
+  - OCR 엔진 미설치 degrade 테스트를 추가했다.
+  - Phase 2G 리뷰 중 검색 필터 상태에서 업로드/삭제 후 선택 문서 갱신이 꼬일 수 있는 문제를 수정했다.
+- 남은 운영 QA:
+  - 실제 기준 PDF 3~5개 수동 QA는 제품 오너가 우선 샘플을 선정한 뒤 수행한다.
+  - 이미지 기반 한글 기준 PDF는 OCR 엔진 설치 후 품질을 재확인한다.
+
+## Additional Update (2026-05-22) - Phase 2A-H Basis Document MVP
+- Implemented the Phase 2 basis-document upload/chunk/index/search MVP from Phase 2A through Phase 2H.
+- Backend:
+  - added `basis_documents` and `basis_document_chunks`
+  - added separate `storage/basis/` and `storage/basis-index/`
+  - added basis document CRUD, reprocess, and chunk APIs
+  - wired processing as `extract -> OCR check -> normalize -> chunk -> local-token-v1 index`
+  - missing OCR or textless PDFs degrade to `needs_ocr_setup`
+  - added `POST /api/basis-search`, returning citation candidate chunks only
+- Frontend:
+  - enabled the `Basis Documents` menu
+  - added upload, list, detail, metadata edit, reprocess, chunk preview, and search UX
+  - added basis document types and API client methods
+- Tests:
+  - Phase 2A-B CRUD/PDF guard coverage
+  - Phase 2C-D parsing/normalization/chunk/reprocess and OCR-degrade coverage
+  - Phase 2E-F local index/search candidate coverage
+- Verification:
+  - Phase-focused tests: passed
+  - `py -3.13 -m unittest discover -s tests -v`: 56 passed, 2 opt-in skipped
+  - `npm run build`: passed
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: no whitespace errors, Windows CRLF warnings only
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `ENCODING_CHECK_OK`, `SMOKE_OK`
+- Review result:
+  - fixed test PDF content after finding PyMuPDF default font does not embed Korean text reliably in generated unit-test PDFs
+  - added explicit OCR-unavailable degradation coverage
+  - fixed basis-page selection refresh after upload/delete under active search filters
+- Remaining operational QA:
+  - manual QA with 3-5 real basis PDFs still needs product-owner sample selection
+  - image-only Korean basis PDFs should be rechecked after OCR engine setup
+
+## 추가 업데이트 (2026-05-22) - Phase 2 운영 QA: 나라장터 랜덤 PDF 10개
+- 사용자 요청에 따라 나라장터 API에서 공고문 PDF 10개를 랜덤 순서로 다운로드하고 Phase 2 기준문서 파이프라인 운영 QA를 수행했다.
+- 코드/스크립트:
+  - `.gitignore`: `backend/tests/nara-phase2-basis-qa-samples/` 제외 경로 추가
+  - `scripts/fetch-nara-phase2-basis-qa-samples.py`: 나라장터 API 검색 -> 랜덤 순서 후보 선택 -> PDF 다운로드 -> 기준문서 API 업로드 -> 추출/OCR/정규화/청킹/인덱싱/검색 검증 -> manifest/요약 생성
+  - `backend/tests/test_nara_phase2_basis_qa_samples.py`: `RUN_NARA_PHASE2_QA=1`일 때만 로컬 PDF 샘플을 기준문서 파이프라인으로 재검증하는 opt-in 테스트 추가
+- 실행 조건:
+  - 기간: `20260501` ~ `20260522`
+  - 랜덤 시드: `20260522203720`
+  - 목표 샘플: 10개
+  - 최소 텍스트 길이: 300자
+- 실제 다운로드 샘플:
+  - `R26BK01501003-000`: 2026년도 사방댐설치사업(상주 남장 산88-4), 13,840자, 10청크, 10벡터
+  - `R26BK01501098-001`: 비인면 구복리 개거수로 정비공사, 7,342자, 6청크, 6벡터
+  - `R26BK01501018-000`: 2026년도 계류보전사업(성주 초전 용봉), 13,841자, 10청크, 10벡터
+  - `R26BK01501129-000`: 지방하천 만덕천 재해복구사업, 7,948자, 6청크, 6벡터
+  - `R26BK01501000-000`: 2026년도 계류보전사업(상주 공성 도곡), 13,969자, 10청크, 10벡터
+  - `R26BK01501008-000`: 2026년도 사방댐설치사업(상주 외서 백전), 13,967자, 10청크, 10벡터
+  - `R26BK01501131-000`: 마산면 마명리 배수로 공사, 7,336자, 6청크, 6벡터
+  - `R26BK01501012-000`: 2026년도 계류보전사업(고령 덕곡 예), 13,839자, 10청크, 10벡터
+  - `R26BK01501088-000`: 문곡지구 소규모 배수개선사업(2차), 7,344자, 6청크, 6벡터
+  - `R26BK01500999-001`: 2026년도 계류보전사업(김천 지례 울곡), 13,970자, 10청크, 10벡터
+- 검증 결과:
+  - `py -3.13 -m py_compile scripts\fetch-nara-phase2-basis-qa-samples.py backend\tests\test_nara_phase2_basis_qa_samples.py`: 통과
+  - `py -3.13 scripts\fetch-nara-phase2-basis-qa-samples.py --date-from 20260501 --date-to 20260522 --target-count 10 --num-of-rows 100 --max-pages-per-window 6 --window-days 7 --min-text-chars 300`: 샘플 10개 수집 및 Phase 2 QA 통과
+  - `RUN_NARA_PHASE2_QA=1 py -3.13 -m unittest discover -s tests -p test_nara_phase2_basis_qa_samples.py -v`: 2개 테스트 통과
+- 로컬 산출물:
+  - `backend/tests/nara-phase2-basis-qa-samples/*.pdf`
+  - `backend/tests/nara-phase2-basis-qa-samples/manifest.json`
+  - `backend/tests/nara-phase2-basis-qa-samples/qa-summary.md`
+- QA 메모:
+  - 이번 QA는 실제 나라장터 공고문 PDF를 사용해 Phase 2 파이프라인 안정성을 검증한 것이다.
+  - 법령/예규 같은 진짜 기준문서 PDF의 검색 품질 평가는 별도 샘플 선정 후 추가 수행할 수 있다.
+
+## Additional Update (2026-05-22) - Phase 2 Operational QA: 10 Random Nara PDFs
+- Downloaded 10 random Nara notice PDFs through the Nara API and ran Phase 2 basis-pipeline operational QA.
+- Code/scripts:
+  - `.gitignore`: ignored `backend/tests/nara-phase2-basis-qa-samples/`
+  - `scripts/fetch-nara-phase2-basis-qa-samples.py`: searches Nara notices, randomly chooses PDF candidates, downloads PDFs, uploads them through the basis API, validates extract/OCR/normalize/chunk/index/search, and writes a manifest/summary
+  - `backend/tests/test_nara_phase2_basis_qa_samples.py`: opt-in local sample QA under `RUN_NARA_PHASE2_QA=1`
+- Run settings:
+  - date range: `20260501` to `20260522`
+  - random seed: `20260522203720`
+  - target samples: 10
+  - minimum text length: 300
+- Verification:
+  - py_compile for the new script and test: passed
+  - sample collection command downloaded 10 Phase 2 QA-passing PDFs
+  - `RUN_NARA_PHASE2_QA=1` opt-in tests: 2 passed
+- Local artifacts:
+  - `backend/tests/nara-phase2-basis-qa-samples/*.pdf`
+  - `backend/tests/nara-phase2-basis-qa-samples/manifest.json`
+  - `backend/tests/nara-phase2-basis-qa-samples/qa-summary.md`
+- QA note:
+  - This validates Phase 2 pipeline stability with real Nara notice PDFs.
+  - Retrieval quality against official law/regulation basis PDFs can still be evaluated after sample selection.
+
+## 추가 업데이트 (2026-05-22) - 공고문 PDF 테스트 공용 캐시와 랜덤 샘플 30개
+- 사용자 요청에 따라 앞으로 공고문 PDF 관련 테스트가 매번 나라장터 API를 호출하지 않고, 이미 다운로드한 로컬 PDF 샘플을 우선 사용하도록 수정했다.
+- 코드/스크립트:
+  - `.gitignore`: `backend/tests/nara-notice-pdf-samples/` 제외 경로 추가
+  - `backend/tests/nara_pdf_sample_cache.py`: 공용 공고문 PDF manifest 탐색/로딩 유틸 추가
+  - `backend/tests/test_nara_phase17_live_samples.py`: 기본 샘플 경로를 공용 캐시 우선으로 변경하고 기존 `nara-pdf-samples/`는 fallback으로 유지
+  - `backend/tests/test_nara_phase2_basis_qa_samples.py`: 기본 샘플 경로를 공용 캐시 우선으로 변경하고 기존 `nara-phase2-basis-qa-samples/`는 fallback으로 유지
+  - `scripts/fetch-nara-notice-pdf-samples.py`: 공용 테스트용 나라장터 공고문 PDF 랜덤 수집 스크립트 추가
+- 공용 캐시 정책:
+  - 기본 경로: `backend/tests/nara-notice-pdf-samples/`
+  - 기본 manifest: `backend/tests/nara-notice-pdf-samples/manifest.json`
+  - 테스트에서 `NARA_NOTICE_PDF_SAMPLE_MANIFEST`를 지정하면 해당 manifest를 우선 사용
+  - Phase별 env override(`NARA_PHASE17_SAMPLE_MANIFEST`, `NARA_PHASE2_SAMPLE_MANIFEST`)도 유지
+  - opt-in 테스트만 로컬 PDF 샘플을 사용하며, 일반 테스트 실행에서는 네트워크 없이 skip
+- 다운로드 결과:
+  - 실행 명령: `py -3.13 scripts\fetch-nara-notice-pdf-samples.py --date-from 20260401 --date-to 20260522 --target-count 30 --num-of-rows 100 --max-pages-per-window 10 --window-days 7 --min-text-chars 300 --min-candidates 3`
+  - 기간: `20260401` ~ `20260522`
+  - 랜덤 시드: `20260522204523`
+  - 샘플 수: 30개 / 30개
+  - skip: 10개
+  - 샘플별 텍스트 길이: 최소 3,886자, 최대 62,828자
+  - 샘플별 요구조건 후보 수: 최소 31개, 최대 86개
+- 검증 결과:
+  - `py -3.13 -m py_compile scripts\fetch-nara-notice-pdf-samples.py backend\tests\nara_pdf_sample_cache.py backend\tests\test_nara_phase17_live_samples.py backend\tests\test_nara_phase2_basis_qa_samples.py`: 통과
+  - `RUN_NARA_PHASE17_QA=1`, `RUN_NARA_PHASE2_QA=1`로 공용 30개 PDF 샘플 재사용 테스트: 5개 테스트 통과
+  - `py -3.13 -m unittest discover -s tests -v`: 59개 테스트 중 56개 통과, 3개 opt-in 테스트 skip
+- QA 메모:
+  - 일부 PDF에서 PyMuPDF가 내부 PDF 문법 경고를 출력했지만, 샘플 검증과 opt-in 테스트는 모두 통과했다.
+  - 로컬 산출물은 `backend/tests/nara-notice-pdf-samples/` 아래에 저장되며 Git에는 포함하지 않는다.
+
+## Additional Update (2026-05-22) - Shared Notice PDF Test Cache And 30 Random Samples
+- Updated notice-PDF-related tests to prefer already downloaded local PDF samples instead of calling the Nara API every time.
+- Code/scripts:
+  - `.gitignore`: ignored `backend/tests/nara-notice-pdf-samples/`
+  - `backend/tests/nara_pdf_sample_cache.py`: shared sample manifest loading helper
+  - Phase 1.7 and Phase 2 opt-in PDF tests now prefer the shared cache and keep their legacy folders as fallback
+  - `scripts/fetch-nara-notice-pdf-samples.py`: reusable random Nara notice PDF sample downloader
+- Shared cache policy:
+  - default path: `backend/tests/nara-notice-pdf-samples/`
+  - default manifest: `backend/tests/nara-notice-pdf-samples/manifest.json`
+  - `NARA_NOTICE_PDF_SAMPLE_MANIFEST` can override the shared manifest
+  - phase-specific manifest env vars are still supported
+- Download result:
+  - date range: `20260401` to `20260522`
+  - random seed: `20260522204523`
+  - sample count: 30/30
+  - skipped candidates: 10
+  - text length range: 3,886 to 62,828 chars
+  - requirement candidate range: 31 to 86 candidates
+- Verification:
+  - py_compile for the new script/helper/tests: passed
+  - shared-cache opt-in tests under `RUN_NARA_PHASE17_QA=1` and `RUN_NARA_PHASE2_QA=1`: 5 passed
+  - default backend test discovery: 56 passed, 3 opt-in skipped
+- QA note:
+  - PyMuPDF emitted internal PDF syntax warnings for a few real-world PDFs, but parsing and tests passed.
+  - Local artifacts are stored under `backend/tests/nara-notice-pdf-samples/` and ignored by Git.
+
+## 추가 업데이트 (2026-05-22) - 남은 개발 단계 재정리
+- 사용자 요청에 따라 Phase 2A-H 구현과 운영 QA 이후 남은 개발 단계를 재정리했다.
+- 신규 문서:
+  - `docs/remaining-development-roadmap.md`: 현재 완료 기준선, Phase 2 종료 보강, Phase 2.5A-D, Phase 3A-G, Phase 4 운영 제품화 후보를 정리
+- README 문서 링크에 남은 개발 단계 로드맵을 추가했다.
+- 핵심 결론:
+  - Phase 2A-H는 MVP와 실제 공고문 PDF 기반 운영 QA까지 완료된 상태로 본다.
+  - 다음 개발은 Phase 2 기능 추가가 아니라 Phase 2.5의 기준문서 규칙 후보 추출, 공고 요구조건 구조화, 검색/citation 평가, Phase 3 계약 확정이다.
+  - Phase 3 판단 엔진 구현 전에는 citation 없는 조건을 확정 판단 근거로 쓰지 않는다.
+  - 권장 다음 작업은 `Phase 2 종료 보강 -> 실제 기준문서 PDF 샘플 선정 -> Phase 2.5A/2.5C` 순서다.
+
+## Additional Update (2026-05-22) - Remaining Development Roadmap
+- Reorganized the remaining development roadmap after Phase 2A-H implementation and operational QA.
+- New document:
+  - `docs/remaining-development-roadmap.md`: current baseline, Phase 2 closeout hardening, Phase 2.5A-D, Phase 3A-G, and Phase 4 operations candidates
+- Added the roadmap link to README.
+- Key conclusion:
+  - Phase 2A-H is treated as MVP-complete with real notice PDF operational QA.
+  - The next work is not more Phase 2 feature work, but Phase 2.5 basis rule extraction, notice requirement structuring, retrieval/citation evaluation, and Phase 3 contract definition.
+  - Uncited conditions must not become final judgment evidence before Phase 3.
+  - Recommended next sequence is `Phase 2 closeout hardening -> official basis PDF sample selection -> Phase 2.5A/2.5C`.
+
+## 추가 업데이트 (2026-05-22) - Phase 2 종료 보강, Phase 2.5A-D, Phase 3A-G 구현
+- 사용자 요청에 따라 각 단계별 세부 실행계획을 먼저 작성하고, 해당 계획을 기준으로 MVP 구현과 테스트를 진행했다.
+- 신규 문서:
+  - `docs/phase-2-closeout-to-phase-3-execution-plan.md`: Phase 2 종료 보강, Phase 2.5A-D, Phase 3A-G 단계별 작업/테스트 계획
+- 백엔드 구현:
+  - Phase 2 종료 보강: `/api/qa/phase2-closeout`
+  - Phase 2.5A: `basis_rule_candidates` 테이블, 기준문서 청크 기반 규칙 후보 추출/조회 API
+  - Phase 2.5B: 저장 공고 요구조건을 Phase 3 입력 스키마로 변환하는 structured requirements API
+  - Phase 2.5C: `basis_retrieval_evaluations` 테이블과 검색/citation 품질 평가 API
+  - Phase 2.5D: `/api/judgment-contract`
+  - Phase 3A-G: `judgment_runs`, `nara_collection_runs`, 부족조건 중심 판단 실행/조회/검토 API, citation 후보 연결, 준비 가이드, API 기반 나라장터 수집 run
+- 프론트엔드 구현:
+  - `/judgment-runs` 판단 검토 화면 추가
+  - 판단 실행, 실행 이력, 부족/확인 필요/citation coverage 확인, 검토 상태/메모 저장 연결
+- 테스트:
+  - Phase 2 종료 보강 테스트 추가
+  - Phase 2.5A-D 테스트 추가
+  - Phase 3A-G 테스트 추가
+  - 전체 backend 테스트: 67개 중 64개 통과, 3개 opt-in skip
+  - frontend `npm run build`: 통과
+- 코드 리뷰 중 수정:
+  - 합성 PDF에서 한글 기본 폰트 추출이 불안정한 테스트 fixture를 ASCII 기반으로 보정
+  - `공고일시`, `입찰개시`, `개찰일시`가 지역 후보로 오인되는 정규식 후처리 버그 수정
+  - 새 판단 결과 payload에서 `지원 가능` 표현이 남지 않도록 문구 수정
+
+## Additional Update (2026-05-22) - Phase 2 Closeout, Phase 2.5A-D, Phase 3A-G
+- Wrote the detailed execution plan first, then implemented and tested the planned MVP slices.
+- New document:
+  - `docs/phase-2-closeout-to-phase-3-execution-plan.md`
+- Backend:
+  - Phase 2 closeout summary API
+  - basis rule candidate extraction APIs and table
+  - structured notice requirement API for Phase 3 input
+  - retrieval/citation evaluation APIs and table
+  - judgment contract API
+  - judgment run APIs/table with gap-first matching, citation candidates, preparation guide, and review workflow
+  - API-based Nara collection run APIs/table
+- Frontend:
+  - added `/judgment-runs` review page for running and reviewing judgment runs
+- Verification:
+  - backend test discovery: 67 tests, 64 passed, 3 opt-in skipped
+  - frontend `npm run build`: passed
+- Review fixes:
+  - adjusted synthetic PDF fixtures away from unreliable Korean default-font extraction
+  - fixed false region extraction for `공고일시`, `입찰개시`, and `개찰일시`
+  - removed remaining `지원 가능` wording from new judgment payloads
+
+## 작업 기록 (2026-05-24) - P2 운영 보강 구현
+- 기준문서 규칙 후보 관리:
+  - `basis_rule_candidates`에 `review_note`, `reviewed_at`, `reviewer_name`을 추가했다.
+  - 후보 상세 조회, 수정, 승인, 반려 API를 추가했다.
+  - 승인 시 `condition_text`, `citation_candidate_id`, 기준문서/chunk 존재 여부를 검증한다.
+  - `/basis-rule-candidates` 운영 화면을 추가해 필터, 추출, 수정 저장, 승인, 반려를 수행할 수 있게 했다.
+- 나라장터 자동 수집 관리:
+  - 수집 이력 API에 `status`, `keyword` 필터를 추가했다.
+  - `/nara-collection-runs` 운영 화면을 추가해 수집 실행, 이력, 저장 결과, 스킵 수, 실패 사유를 확인할 수 있게 했다.
+- 운영 안정성:
+  - 규칙 후보, 판단 이력, 수집 이력, 검색 평가 이력 조회용 인덱스를 추가했다.
+  - Phase 2 closeout known issue 목록은 하드코딩 대신 로컬 `qa-known-issues.json` 또는 manifest의 known issue 필드를 동적으로 읽게 했다.
+- 문서:
+  - `README.md`, `docs/remaining-development-roadmap.md`, `docs/phase-2-closeout-to-phase-3-execution-plan.md`에 P2 운영 보강 완료 상태를 반영했다.
+
+## Additional Update (2026-05-24) - P2 Operations Hardening
+- Basis rule candidate management:
+  - added review metadata columns to `basis_rule_candidates`
+  - added detail, edit, approve, and reject APIs
+  - approval now requires condition text, citation id, and valid basis document/chunk references
+  - added `/basis-rule-candidates` admin UX
+- Nara collection management:
+  - added status/keyword filters to collection run history
+  - added `/nara-collection-runs` admin UX for execution, history, saved results, skipped counts, and failure messages
+- Operations hardening:
+  - added indexes for rule candidates, judgment runs, collection runs, and retrieval evaluations
+  - moved Phase 2 closeout known issues from hardcoded code to dynamic local QA JSON/manifest loading
+
+## 작업 기록 (2026-05-24) - P1/P2/문서 보강 착수
+- 신규 계획서:
+  - `docs/p1-p2-doc-remediation-plan.md`에 P1, P2, 문서 보강 수정계획을 작성하고 README 문서 링크에 추가했다.
+- P1 보강:
+  - 기준문서 citation ID를 `basis:{basis_document_id}:chunk:{basis_chunk_id}` 형식으로 검증한다.
+  - 기준 규칙 후보 승인 시 citation이 실제 후보의 기준문서/chunk와 일치해야만 승인된다.
+  - 승인된 기준 규칙 후보를 judgment 실행 시 일반 기준문서 검색보다 먼저 사용하고, fallback 검색 여부와 승인 후보 ID를 결과에 남긴다.
+  - 나라장터 수집 실행은 API 키 미설정 같은 업무 실패도 저장된 run payload로 반환해 관리자가 실패 이력을 바로 볼 수 있게 했다.
+- P2 보강:
+  - 기준 규칙 후보 화면에서 기준문서 ID 직접 입력 대신 기준문서 선택 목록을 사용하도록 개선했다.
+  - citation 후보는 자유 입력 대신 백엔드가 제공한 citation option 선택 방식으로 바꿨다.
+  - `approved/rejected -> needs_review` 전환 시 리뷰 시각과 리뷰어를 초기화하는 상태 정책을 반영했다.
+  - 나라장터 수집 이력 필터에 `partial_failed`를 추가하고, 실패 사유/결과 JSON까지 keyword 검색 범위를 넓혔다.
+  - `/basis-retrieval-evaluations` 화면을 추가해 검색 coverage와 누락 citation을 운영자가 확인할 수 있게 했다.
+- 문서/문구 보강:
+  - 공고 상세 화면의 오래된 Phase 1.6 문구를 기능 중심 문구로 수정했다.
+  - 핵심 설계 문서에서 `eligible/not_eligible` 중심 예시를 부족조건 중심 상태로 교체했다.
+  - `remaining-development-roadmap.md`의 Product Owner 질문을 `open/decided/deferred` 상태로 정리했다.
+- 테스트:
+  - citation 검증, 리뷰 상태 재개방, 승인 후보 judgment 연결, 나라장터 수집 실패/부분 실패 테스트를 추가했다.
+  - 관련 backend 테스트와 frontend build를 1차 통과했다.
+
+## Additional Update (2026-05-24) - P1/P2/Documentation Remediation Started
+- New plan:
+  - added `docs/p1-p2-doc-remediation-plan.md` and linked it from README.
+- P1 remediation:
+  - standardized basis citation IDs as `basis:{basis_document_id}:chunk:{basis_chunk_id}`
+  - approval now validates that the citation belongs to the candidate's actual basis document and chunk
+  - judgment runs prefer approved rule candidates before generic basis search and store fallback/provenance metadata
+  - Nara collection business failures such as missing API keys now return saved run payloads for admin visibility
+- P2 remediation:
+  - basis rule candidate extraction now uses a basis document selector in the admin page
+  - citation editing uses backend-provided citation options instead of free text
+  - reopening reviewed candidates clears reviewer timestamp/name metadata
+  - collection run filters include `partial_failed`, and keyword search includes failure/result JSON
+  - added `/basis-retrieval-evaluations` for retrieval coverage and missed-citation review
+- Documentation/copy:
+  - replaced stale Phase 1.6 user-facing copy in saved notice detail
+  - replaced final-verdict-centric examples with gap-first item states in core planning docs
+  - consolidated Product Owner questions with `open/decided/deferred` states in the roadmap
+- Verification:
+  - added tests for citation validation, reopen metadata, approved-rule judgment wiring, and Nara failed/partial collection runs
+  - targeted backend tests and frontend build passed
+
+## 작업 기록 (2026-05-24) - 문서 보강 재확인
+- 전체 Markdown 문서를 다시 스캔해 한국어 우선 작성, `AI / Engineering Version (English)` 섹션, Product Owner 질문 섹션, 최종 판정 중심 표현 잔존 여부를 확인했다.
+- 정리한 문서:
+  - `README.md`: RAG 계획 링크명을 `부족조건 판단 및 로컬 RAG 상세 구현계획`으로 변경
+  - `docs/narajangteo-board-design.md`: `지원 가능 첨부` 표현을 `처리 가능 첨부`로 변경
+  - `docs/narajangteo-api-test-result-20260505.md`: PDF/DOCX 첨부 처리 가능 여부와 자격 판단 표현이 섞이지 않도록 수정
+  - `docs/narajangteo-api-analysis.md`: `eligible regions`를 `participation regions`로 변경
+  - `docs/eligibility-rag-implementation-plan.md`: 문서 목적과 상태 예시를 `부족조건/준비 상태 판단` 중심으로 정리
+  - `docs/corporation-evidence-auto-extraction-plan.md`, `docs/technical-design.md`, `docs/ux-design.md`, `docs/phase-1.6-stabilization-plan.md`, `docs/phase-1.7-stabilization-plan.md`, `docs/phase-2-closeout-to-phase-3-execution-plan.md`, `docs/technology-summary.md`, `docs/remaining-development-roadmap.md`: 최종 자격 판정/준비 상태 중심 표현으로 보정
+- 재확인 결과:
+  - 모든 MD 파일에 `AI / Engineering Version (English)` 섹션이 존재한다.
+  - 현재 설계/UX 문서의 상태 예시는 `matched`, `missing`, `uncertain`, `needs_review`, `not_applicable`, `citation_missing` 중심으로 정리됐다.
+  - 남은 `지원 가능`/`eligible` 검색 결과는 AGENTS 가드레일, 금지 문자열 테스트 설명, 보강 계획서의 문제 설명, work-log 역사 기록에 한정된다.
+  - `py -3.13 scripts\check-encoding.py`: 통과
+  - `git diff --check -- README.md AGENTS.md docs`: 공백 오류 없음, Windows LF/CRLF 경고만 확인
+
+## Additional Update (2026-05-24) - Documentation Hardening Recheck
+- Re-scanned all Markdown documents for Korean-first content, `AI / Engineering Version (English)` sections, Product Owner question sections, and stale final-verdict wording.
+- Cleaned up current design/planning docs so supported-file wording no longer looks like eligibility judgment wording.
+- Reframed the RAG/judgment plan around gap-first readiness states.
+- Remaining `지원 가능` / `eligible` hits are limited to AGENTS guardrails, forbidden-string test descriptions, the remediation plan's problem statement, and historical work-log entries.
+- Verification:
+  - every MD file has an English engineering section
+  - encoding check passed
+  - diff whitespace check has no errors, only Windows LF/CRLF warnings
+
+## 작업 기록 (2026-05-24) - D-4 코드 구조 분리 착수
+- D-4 코드 구조 분리를 큰 리팩터링 대신 안전한 1차 절단면으로 시작했다.
+- 신규 모듈:
+  - `backend/app/core/text.py`: `clean_text`, `parse_int`, 기준문서 검색 token/vector helper
+  - `backend/app/core/json_utils.py`: JSON dict/list 파싱 helper
+  - `backend/app/core/citations.py`: 기준문서 citation ID 표준 생성/파싱 helper
+  - `backend/app/services/basis_rule_candidates.py`: 기준 규칙 후보 승인 검증, 리뷰 상태 전환 정책, 판단 매칭 점수, citation 결과 merge helper
+  - `backend/app/services/nara_api.py`: 나라장터 응답 파싱, 첨부 정규화, 안전 URL 검사, 첨부 다운로드 helper
+  - `backend/app/pipelines/basis_document.py`: 기준문서 정규화, 청킹, 로컬 인덱싱, 재처리, 검색 후보 생성 파이프라인
+- `backend/app/main.py`에서는 위 helper의 중복 정의를 제거하고 import로 대체했다.
+- 검증:
+  - 관련 기준 규칙 후보/판단 테스트 4개 통과
+  - 나라장터 디코딩/저장/표준공고문 첨부/수집 실행 targeted 테스트 4개 통과
+  - Phase 2 기준문서 처리/검색 targeted 테스트 5개 통과
+  - Phase 3 citation targeted 테스트 3개 통과
+  - 전체 백엔드 unittest 통과: 73 tests OK, 3 skipped
+  - 신규 모듈과 `main.py` py_compile 통과
+
+## Additional Update (2026-05-24) - D-4 Code Structure Split Started
+- Started D-4 with a low-risk first slice rather than a broad rewrite.
+- New modules:
+  - `backend/app/core/text.py`
+  - `backend/app/core/json_utils.py`
+  - `backend/app/core/citations.py`
+  - `backend/app/services/basis_rule_candidates.py`
+  - `backend/app/services/nara_api.py`
+  - `backend/app/pipelines/basis_document.py`
+- Removed duplicate helper definitions from `backend/app/main.py` and imported them from the new modules.
+- Verification:
+  - four targeted basis-rule/judgment tests passed
+  - four targeted Nara decoding/save/attachment/collection tests passed
+  - five targeted Phase 2 basis processing/search tests passed
+  - three targeted Phase 3 citation tests passed
+  - full backend unittest discovery passed: 73 OK, 3 skipped
+  - py_compile passed for `main.py` and the new modules
+
+## 작업 기록 (2026-05-24) - Phase 4A 운영 대시보드 시작
+- Phase 4 운영 제품화 작업을 시작했고, 1차 범위는 운영 대시보드로 제한했다.
+- 추가/수정한 항목:
+  - `backend/app/services/operations.py`: 운영 요약 집계 서비스
+  - `GET /api/operations/summary`: DB, storage, OCR, 나라장터 API, AI provider 상태와 실패/검토대기 집계 API
+  - `frontend/src/pages/OperationsPage.tsx`: `/operations` 운영 대시보드 UX
+  - `frontend/src/app/types.ts`, `frontend/src/app/api.ts`, `frontend/src/app/App.tsx`: 타입/API/라우트/메뉴 연결
+- 테스트:
+  - 빈 DB 운영 요약 응답 테스트
+  - 실패 작업과 검토 대기 큐 집계 테스트
+  - API 키 원문 비노출 테스트
+  - 프론트엔드 빌드 통과
+  - 브라우저에서 `/operations` 주요 섹션 렌더 확인
+- 남은 Phase 4 작업:
+  - Phase 4B `operation_runs` 작업 이력 테이블과 서비스
+  - Phase 4C 실패 상세/재시도 API와 UX
+  - Phase 4D 백업/복원
+
+## Additional Update (2026-05-24) - Phase 4A Operations Dashboard Started
+- Started Phase 4 operational productization with a focused Phase 4A dashboard slice.
+- Added/updated:
+  - `backend/app/services/operations.py`
+  - `GET /api/operations/summary`
+  - `frontend/src/pages/OperationsPage.tsx`
+  - frontend type/API/route/navigation wiring
+- Tests:
+  - empty-database operations summary
+  - failure and review-queue aggregation
+  - raw API key non-exposure
+  - frontend build
+  - browser render check for `/operations`
+- Remaining Phase 4 work:
+  - Phase 4B shared `operation_runs`
+  - Phase 4C failure detail and retry API/UX
+  - Phase 4D backup and restore
+
+## 작업 기록 (2026-05-24) - Phase 4B/4C 작업 이력과 Phase 4D 백업 dry-run
+- Phase 4B/4C 작업/실패 관리 구현을 진행했다.
+- 추가/수정한 항목:
+  - `operation_runs` 테이블과 인덱스
+  - `backend/app/services/operations.py`에 작업 이력 payload/list/record helper 추가
+  - `GET /api/operation-runs`
+  - `GET /api/operation-runs/:id`
+  - `POST /api/operation-runs/:id/retry`
+  - 나라장터 수집, 판단 실행, 기준문서 재처리, 기준 규칙 후보 추출 이력 기록
+  - `/operation-runs` 작업/실패 관리 UX
+- Phase 4D 백업/복원 1차 구현을 진행했다.
+- 추가/수정한 항목:
+  - `backup_runs` 테이블과 인덱스
+  - `backend/app/services/backups.py`: 백업 ZIP 생성, manifest/checksum 검증, 복원 dry-run 계획 생성
+  - `GET /api/backups`
+  - `POST /api/backups`
+  - `GET /api/backups/:id`
+  - `POST /api/backups/validate`
+  - `POST /api/backups/restore-plan`
+  - `POST /api/backups/:id/restore`: direct restore는 차단하고 dry-run만 허용
+  - `/backups` 백업/복원 UX
+- 테스트:
+  - 나라장터 수집 작업 이력 기록 테스트 통과
+  - 작업 재시도 새 이력 생성 테스트 통과
+  - 백업 생성/검증/`.env` 제외 테스트 통과
+  - 복원 dry-run 및 직접 복원 차단 테스트 통과
+  - 전체 백엔드 unittest 통과: 80 OK, 3 skipped
+  - 프론트엔드 빌드 통과
+- 남은 항목:
+  - 일반 문서 분석/증빙자료 분석까지 작업 이력 기록 확장
+  - 실제 파일 교체 복원은 사용자 승인 후 별도 단계에서 구현
+  - 백업 저장 위치 선택과 자동 백업 주기 설정은 별도 확장
+
+## Additional Update (2026-05-24) - Phase 4B/4C Operation Runs And Phase 4D Backup Dry-Run
+- Implemented Phase 4B/4C operation/failure management.
+- Added/updated:
+  - `operation_runs` table and indexes
+  - operation run helper functions in `backend/app/services/operations.py`
+  - `GET /api/operation-runs`
+  - `GET /api/operation-runs/:id`
+  - `POST /api/operation-runs/:id/retry`
+  - run recording for Nara collection, judgment runs, basis document reprocessing, and basis rule extraction
+  - `/operation-runs` UX
+- Implemented the first Phase 4D backup/restore slice.
+- Added/updated:
+  - `backup_runs` table and indexes
+  - `backend/app/services/backups.py`
+  - `GET /api/backups`
+  - `POST /api/backups`
+  - `GET /api/backups/:id`
+  - `POST /api/backups/validate`
+  - `POST /api/backups/restore-plan`
+  - `POST /api/backups/:id/restore` with direct restore blocked and dry-run allowed
+  - `/backups` UX
+- Tests:
+  - operation run recording for Nara collection
+  - retry creates a linked new run
+  - backup creation/validation/`.env` exclusion
+  - restore dry-run and direct restore blocking
+  - full backend unittest discovery passed: 80 OK, 3 skipped
+  - frontend build passed
+
+## 작업 기록 (2026-05-31) - P1/P2 코드리뷰 보강 및 회귀 수정
+- 코드리뷰에서 확인된 P1/P2 안정성 항목을 계획 순서대로 보강했다.
+- 수정한 주요 항목:
+  - P1-3: 백업 ZIP 생성 시 실행 중인 SQLite DB 파일을 직접 압축하지 않고 `sqlite3.Connection.backup()` 기반 스냅샷 DB를 생성해 압축하도록 수정
+  - P1-2: 나라장터 첨부 다운로드 경로에도 외부 URL 검증을 적용하고 localhost/사설망/redirect 차단을 공통화
+  - P1-1: 기준문서 재처리 실패 시 기존 청크와 승인된 기준 규칙 후보가 유지되도록 1차 보강
+  - P2-2: 백업 검증/복원계획 API의 `file_path`를 `storage/backups` 하위 ZIP으로 제한
+  - P2-1: 나라장터 재분석이 부분 실패할 경우 기존 첨부/요구조건/비교/판단 결과를 유지하도록 수정
+- 추가 코드리뷰 후 즉시 수정계획 2개를 별도 문서에 정리했다.
+  - `docs/코드리뷰 후 수정필요.md`
+  - 즉시 수정계획: 기준문서 재처리 swap 원자성 보강, 나라장터 재분석 첨부 없음/지원 첨부 없음 보존
+  - 기록만 한 항목: 첨부 URL DNS rebinding/shared address 보강, 백업 dry-run restore 경로 제한 일관화
+- 즉시 수정계획 2개 구현:
+  - `backend/app/pipelines/basis_document.py`
+    - 기준문서 재처리를 SQLite savepoint와 JSON 인덱스 스냅샷 복구 방식으로 보강
+    - 재처리 중간 실패 시 기존 DB 청크, 기존 JSON 인덱스, 기존 승인 후보 상태가 유지되도록 수정
+  - `backend/app/main.py`
+    - 기존 결과가 있는 나라장터 공고 재분석에서 지원 가능한 첨부가 0개이면 결과를 교체하지 않고 기존 분석 결과를 보존
+    - 보존 사유를 `error_message`에 명확히 기록
+  - `docs/코드리뷰 후 수정필요.md`
+    - 두 즉시 수정계획에 완료 체크 추가
+- 추가/보강 테스트:
+  - 기준문서 인덱싱 실패 시 기존 청크/후보 보존 테스트
+  - 기준문서 swap 단계 실패 시 기존 청크/인덱스/후보 상태 보존 테스트
+  - 나라장터 재분석 부분 실패 시 기존 첨부/요구조건 보존 테스트
+  - 나라장터 재분석 첨부 없음/지원 제외 첨부만 있는 경우 기존 결과 보존 테스트
+  - 백업 스냅샷 DB 생성 및 임시 파일 제거 테스트
+  - 백업 `file_path` 제한 테스트
+  - 내부망 첨부 URL 차단 테스트
+- 검증:
+  - 전체 백엔드 unittest 통과: 91 OK, 3 skipped
+  - 프론트엔드 `npm run build` 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - 관련 파일 `git diff --check` 통과
+
+## Additional Update (2026-05-31) - P1/P2 Review Hardening And Regression Fixes
+- Hardened P1/P2 stability findings in the requested order.
+- Main fixes:
+  - P1-3: backup creation now uses a consistent SQLite snapshot via `sqlite3.Connection.backup()` instead of zipping the live DB file directly
+  - P1-2: Nara attachment downloads now share external URL validation and block localhost/private-network/unsafe redirect targets
+  - P1-1: basis document reprocessing was first hardened to preserve existing chunks and approved rule candidates on failure
+  - P2-2: backup validation and restore-plan APIs now restrict raw `file_path` inputs to ZIP files under `storage/backups`
+  - P2-1: Nara notice reanalysis preserves previous attachments, requirements, comparisons, and judgment runs when the new run partially fails
+- Added `docs/코드리뷰 후 수정필요.md` with immediate remediation plans and backlog-only review findings.
+- Implemented the two immediate remediation plans:
+  - `backend/app/pipelines/basis_document.py`
+    - wraps basis reprocessing in a SQLite savepoint
+    - snapshots and restores the JSON basis index on failure
+    - preserves old DB chunks, old JSON index entries, and reviewed rule candidates unless the new run completes successfully
+  - `backend/app/main.py`
+    - treats reanalysis of an existing Nara notice with zero supported attachments as preserved partial failure
+    - keeps existing analysis artifacts and records a clear preservation reason
+  - `docs/코드리뷰 후 수정필요.md`
+    - marked the two immediate plans as completed
+- Tests added or expanded:
+  - basis indexing failure preserves existing chunks and candidates
+  - basis swap-stage failure preserves existing chunks, index, and candidate status
+  - Nara partial reanalysis failure preserves prior attachments and requirements
+  - Nara reanalysis with no supported attachments preserves prior results
+  - SQLite backup snapshot creation and temp cleanup
+  - backup path restriction
+  - private-network attachment URL rejection
+- Verification:
+  - full backend unittest discovery passed: 91 OK, 3 skipped
+  - frontend build passed
+  - encoding check passed: `ENCODING_CHECK_OK`
+  - related `git diff --check` passed
+
+## 작업 기록 (2026-05-31) - work-log 기록 누락 보정
+- 사용자가 모든 작업 활동을 `docs/work-log.md`에 기록해야 함을 재확인했다.
+- 직전 P1/P2 코드리뷰 보강 작업은 `docs/코드리뷰 후 수정필요.md`에는 먼저 반영되었지만, `docs/work-log.md` 기록이 완료 보고 이후에 보정되었다.
+- 앞으로 코드 수정, 문서 수정, 테스트 실행, 코드리뷰 결과, 검증 결과는 완료 응답 전에 `docs/work-log.md`에 먼저 기록한다.
+- 문서 규칙은 한국어 기록을 먼저 작성하고, 이어서 AI/Engineering용 English 기록을 작성하는 방식으로 유지한다.
+
+## Additional Update (2026-05-31) - Work-Log Discipline Correction
+- The user reconfirmed that every work activity must be recorded in `docs/work-log.md`.
+- The prior P1/P2 review-hardening work was first checked in `docs/코드리뷰 후 수정필요.md`, and the `docs/work-log.md` entry was corrected after the completion response.
+- Going forward, code changes, documentation changes, test runs, review findings, and verification results must be recorded in `docs/work-log.md` before the final completion response.
+- Documentation remains Korean-first, followed by an AI/Engineering English section.
+
+## 작업 기록 (2026-05-31) - 전체 코드리뷰, 테스트 보강, UX 몽키테스트 제안
+- 사용자 요청에 따라 전체 코드리뷰 관점으로 백엔드 안정성, 프론트 라우팅/UX 계약, 테스트 체계를 재확인했다.
+- 코드리뷰에서 확인하고 수정한 항목:
+  - `/api/backups/<id>/restore` dry-run 경로가 백업 경로 제한 helper를 우회하던 문제를 수정했다.
+  - DB에 오염된 `file_path`가 들어가도 `storage/backups` 밖 ZIP을 dry-run restore 검증 대상으로 쓰지 못하도록 제한했다.
+  - 프론트 사이드바 메뉴의 `/basis-rule-candidates`, `/nara-collection-runs` 경로가 실제 화면은 열리지만 상단 hero metadata는 대시보드 fallback을 쓰던 UX 회귀를 수정했다.
+- 추가한 테스트 코드:
+  - `backend/tests/test_api_flows.py`
+    - `test_phase4d_restore_dry_run_rejects_backup_path_outside_backup_directory`
+  - `backend/tests/test_frontend_contracts.py`
+    - 사이드바 nav 경로가 React `<Route>`에 등록되어 있는지 검증
+    - 사이드바 nav 경로가 page metadata를 가지고 있는지 검증
+- UX 몽키테스트 제안 및 구현:
+  - 완전 랜덤 클릭보다 `시드 고정 안전 몽키테스트`를 추천했다.
+  - 기본 모드는 삭제/승인/반려/복원/저장/생성/실행/재시도 같은 파괴적 클릭을 피하도록 설계했다.
+  - `scripts/ux-monkey-test.mjs` 추가
+  - `frontend/package.json`에 `ux:monkey` script 추가
+  - `docs/ux-monkey-testing-plan.md` 작성
+- 보강 문서:
+  - `docs/ux-monkey-testing-plan.md`
+  - `docs/코드리뷰 후 수정필요.md`의 백업 dry-run restore 경로 제한 항목 완료 체크 업데이트
+- 검증:
+  - `py -3.13 -m unittest discover -s tests -v`: 94 OK, 3 skipped
+  - `npm run build`: 통과
+  - `npm run ux:monkey -- --help`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - 관련 파일 `git diff --check`: 통과
+- 남은 리뷰 리스크:
+  - 첨부 URL 검증의 DNS rebinding/shared address hardening은 아직 backlog로 남아 있다.
+  - 파괴적 몽키테스트는 전용 임시 DB/storage 실행 표준이 정해진 뒤 활성화하는 편이 안전하다.
+
+## Additional Update (2026-05-31) - Full Code Review, Test Hardening, UX Monkey Proposal
+- Re-reviewed backend stability, frontend routing/UX contracts, and the current test strategy.
+- Findings fixed:
+  - `/api/backups/<id>/restore` dry-run bypassed the restricted backup path helper.
+  - Corrupted DB `file_path` values can no longer make dry-run restore validate ZIP files outside `storage/backups`.
+  - Frontend routes `/basis-rule-candidates` and `/nara-collection-runs` rendered but fell back to dashboard hero metadata; dedicated page metadata was added.
+- Tests added:
+  - `backend/tests/test_api_flows.py`
+    - `test_phase4d_restore_dry_run_rejects_backup_path_outside_backup_directory`
+  - `backend/tests/test_frontend_contracts.py`
+    - verifies sidebar nav paths are registered as React routes
+    - verifies sidebar nav paths have page metadata
+- UX monkey testing:
+  - recommended seeded safe monkey testing rather than fully random destructive clicking
+  - default mode avoids destructive controls such as delete, approve, reject, restore, save, create, run, and retry
+  - added `scripts/ux-monkey-test.mjs`
+  - added `frontend/package.json` script `ux:monkey`
+  - documented the strategy in `docs/ux-monkey-testing-plan.md`
+- Documentation updates:
+  - added `docs/ux-monkey-testing-plan.md`
+  - marked the backup dry-run restore path restriction item complete in `docs/코드리뷰 후 수정필요.md`
+- Verification:
+  - full backend unittest discovery passed: 94 OK, 3 skipped
+  - frontend build passed
+  - `npm run ux:monkey -- --help` passed
+  - encoding check passed: `ENCODING_CHECK_OK`
+  - related `git diff --check` passed
+- Remaining review risks:
+  - attachment URL DNS rebinding/shared address hardening remains in backlog
+  - destructive monkey testing should wait until a standard temporary DB/storage launcher exists
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 코드리뷰
+- 사용자 요청에 따라 코드 수정 없이 기준문서 RAG 관련 코드만 정적 리뷰했다.
+- 검토 범위:
+  - `backend/app/pipelines/basis_document.py`
+  - `backend/app/services/basis_rule_candidates.py`
+  - `backend/app/core/citations.py`
+  - `backend/app/core/text.py`
+  - `backend/app/main.py`의 기준문서 검색, 규칙 후보, citation, judgment 연결부
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+  - `frontend/src/pages/BasisRuleCandidatesPage.tsx`
+  - `frontend/src/pages/BasisRetrievalEvaluationsPage.tsx`
+  - 관련 테스트 코드 일부
+- 확인한 주요 문제:
+  - 규칙 후보 재추출이 기존 후보를 먼저 삭제하고, 새 후보가 0건이어도 완료로 커밋될 수 있어 승인/반려된 기준문구 후보가 사라질 수 있다.
+  - 기준문서 검색과 승인 후보 judgment 연결이 `processing_status`, `index_status`, `vector_status`를 필터하지 않아 실패/미인덱스/보존 청크가 citation 후보로 쓰일 수 있다.
+  - 로컬 JSON 인덱스를 생성하지만 검색은 DB 청크에서 토큰 벡터를 즉석 재계산하므로 인덱스 파일 손상이나 상태 불일치가 검색 품질 평가에 드러나지 않는다.
+  - 규칙 후보 승인 검증은 citation 형식과 chunk 존재만 확인하고, 해당 chunk가 현재 검색 가능한 정상 인덱스인지 확인하지 않는다.
+  - 검색 평가 화면은 이력 조회 중심이고 프론트 API client에는 평가 생성 호출이 없어 운영자가 화면에서 기준문서 검색 평가를 실행할 수 없다.
+- 이번 요청은 "파악만"이므로 테스트 추가나 코드 수정은 진행하지 않았다.
+
+## Additional Update (2026-05-31) - Basis RAG Code Review
+- Per the user's request, reviewed only the basis-document RAG code path without changing implementation code.
+- Review scope:
+  - `backend/app/pipelines/basis_document.py`
+  - `backend/app/services/basis_rule_candidates.py`
+  - `backend/app/core/citations.py`
+  - `backend/app/core/text.py`
+  - basis search, rule-candidate, citation, and judgment wiring inside `backend/app/main.py`
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+  - `frontend/src/pages/BasisRuleCandidatesPage.tsx`
+  - `frontend/src/pages/BasisRetrievalEvaluationsPage.tsx`
+  - selected related tests
+- Main findings:
+  - rule-candidate extraction deletes existing candidates first and can commit zero new candidates, which can erase reviewed/approved basis-rule work.
+  - basis search and approved-rule judgment retrieval do not filter by `processing_status`, `index_status`, or `vector_status`, so failed/unindexed/preserved chunks may still become citation candidates.
+  - the local JSON index is written, but search recomputes token vectors from DB chunks, hiding index-file corruption or index/status mismatches from retrieval evaluation.
+  - rule-candidate approval validates citation shape and chunk existence only, not whether the chunk is current, indexed, or from a healthy basis document.
+  - the retrieval-evaluation UI is history-only, and the frontend API client has no create-evaluation call, so operators cannot run retrieval evaluation from the screen.
+- No tests or code fixes were added because the request was review-only.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 수정계획 확인
+- 사용자 요청에 따라 직전 기준문서 RAG 코드리뷰에서 파악한 문제점의 수정계획을 정리했다.
+- 계획 범위:
+  - 규칙 후보 재추출의 기존 승인/반려 후보 보존
+  - 기준문서 검색과 judgment citation의 active/indexed 상태 필터 보강
+  - JSON 인덱스와 DB 검색 상태 불일치 정리
+  - 규칙 후보 승인 시 정상 청크/정상 문서 검증 강화
+  - 검색/citation 평가 실행 UX/API client 연결
+- 이번 단계에서는 코드 수정과 테스트 추가는 진행하지 않고, 사용자 확인용 계획만 제시한다.
+
+## Additional Update (2026-05-31) - Basis RAG Remediation Plan Confirmation
+- Per the user's request, prepared a remediation plan for the basis-document RAG findings identified in the previous review.
+- Plan scope:
+  - preserve existing reviewed/approved/rejected rule candidates during re-extraction
+  - add active/indexed-state filtering to basis search and judgment citations
+  - clarify and enforce JSON-index vs DB-search consistency
+  - strengthen rule-candidate approval validation against healthy/current indexed chunks
+  - connect retrieval/citation evaluation creation through frontend API and UX
+- No implementation or test changes were made in this step; this is a plan-confirmation response only.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 보강 구현, 테스트, 재리뷰
+- 사용자 요청에 따라 기준문서 RAG 코드리뷰에서 파악한 문제를 계획 순서대로 수정했다.
+- 구현한 항목:
+  - 규칙 후보 재추출이 기존 후보를 먼저 삭제하지 않도록 변경했다.
+  - 새 규칙 후보가 0건이면 기존 후보를 보존하고 `no_candidates_extracted_existing_preserved` 상태로 응답한다.
+  - 동일 규칙 후보는 `rule_type + condition_text 정규화 key + target_scope` 기준으로 기존 후보를 갱신하며, 승인/반려 상태와 리뷰 메타데이터를 유지한다.
+  - 더 이상 추출되지 않는 승인/반려 후보는 citation을 비우고 `needs_review`로 내려 재검토 대상으로 표시한다.
+  - 기준문서 검색은 `processing_status='completed'`, `index_status='completed'`, `vector_status='indexed'`, `vector_id<>''` 청크만 반환하도록 제한했다.
+  - judgment의 승인 규칙 후보 citation 조회도 동일하게 completed/indexed 기준문서와 indexed chunk만 사용하도록 제한했다.
+  - 규칙 후보 승인 검증이 문서 완료/인덱싱 상태와 chunk 인덱싱 상태를 확인하도록 강화했다.
+  - 검색 응답과 검색 평가 결과에 `index_source: db_chunks_completed_indexed`를 추가해 현재 검색 기준을 명시했다.
+  - 프론트 API client에 검색 평가 생성 호출을 추가하고, 검색/citation 평가 화면에서 질의셋을 입력해 평가를 실행할 수 있게 했다.
+- 추가/보강한 테스트:
+  - failed/unindexed 기준문서 청크가 기준문서 검색에서 제외되는 테스트
+  - 규칙 후보 재추출 시 승인/반려 후보가 보존되는 테스트
+  - 새 규칙 후보 0건 재추출 시 기존 후보가 삭제되지 않는 테스트
+  - unindexed chunk citation 후보는 승인할 수 없는 테스트
+  - unhealthy approved rule candidate가 judgment citation에 사용되지 않는 테스트
+  - 프론트에서 검색 평가 생성 API와 화면 연결이 존재하는지 확인하는 계약 테스트
+- 검증 결과:
+  - RAG targeted 테스트 14개 통과
+  - 전체 백엔드 unittest 통과: 100 tests OK, 3 skipped
+  - 프론트엔드 `npm run build` 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - 관련 파일 `git diff --check`: 통과
+- 수정 후 RAG 재리뷰 결과:
+  - 직전 P1 문제였던 기존 후보 선삭제, failed/unindexed chunk 검색 노출, 승인 검증 부족은 재현 방지 테스트가 추가된 상태로 해소됐다.
+  - 남은 리스크는 구조/품질 개선 성격이다.
+  - 수동으로 수정한 `condition_text`를 재추출 매칭 key로 쓰기 때문에, 사용자가 승인 후보 문구를 많이 고친 뒤 재추출하면 같은 원문 후보도 다른 후보로 판단되어 `needs_review`가 될 수 있다.
+  - JSON 인덱스는 여전히 생성/삭제되지만 실제 검색 source는 DB 청크이므로, JSON 인덱스가 캐시인지 복구용 산출물인지 문서화 또는 reconciliation 작업이 필요하다.
+  - 새 후보가 0건일 때 기존 후보를 보존하는 정책은 데이터 손실은 막지만, 실제로 기준문서에서 규칙이 사라진 경우 stale 후보가 남을 수 있어 관리자 안내/일괄 재검토 UX가 있으면 좋다.
+
+## Additional Update (2026-05-31) - Basis RAG Hardening, Tests, And Re-Review
+- Implemented the requested basis-document RAG fixes in the planned order.
+- Implemented:
+  - rule-candidate re-extraction no longer deletes existing candidates up front
+  - zero-candidate extraction preserves existing candidates and returns `no_candidates_extracted_existing_preserved`
+  - matching candidates are updated by `rule_type + normalized condition_text key + target_scope`, while preserving approved/rejected status and review metadata
+  - reviewed candidates that no longer match generated candidates are moved back to `needs_review` with citation cleared
+  - basis search now returns only completed/indexed basis documents and indexed chunks
+  - judgment approved-rule citations use the same completed/indexed filters
+  - rule-candidate approval now requires a completed/indexed basis document and indexed chunk
+  - basis search and retrieval evaluation now expose `index_source: db_chunks_completed_indexed`
+  - frontend API and UX can now create retrieval/citation evaluations
+- Tests added or expanded:
+  - failed/unindexed chunks are excluded from basis search
+  - re-extraction preserves reviewed candidates
+  - zero-candidate re-extraction preserves existing candidates
+  - unindexed citation chunks cannot be approved
+  - unhealthy approved rule candidates are not used by judgment citations
+  - frontend contract verifies retrieval evaluation creation is wired
+- Verification:
+  - 14 targeted RAG tests passed
+  - full backend unittest discovery passed: 100 tests OK, 3 skipped
+  - frontend build passed
+  - encoding check passed: `ENCODING_CHECK_OK`
+  - related `git diff --check` passed
+- Post-fix RAG review:
+  - the previous P1 findings around destructive candidate extraction, failed/unindexed chunk exposure, and weak approval validation are covered by regression tests now
+  - remaining risks are structural/quality improvements
+  - because manual edits to `condition_text` are part of the re-extraction match key, heavily edited approved candidates can be moved back to `needs_review` on re-extraction
+  - the JSON index is still generated and deleted, but DB chunks are now the explicit search source; this needs documentation or reconciliation if the JSON index remains operationally important
+  - preserving candidates when extraction returns zero prevents data loss, but can leave stale candidates if the basis document truly no longer contains rule text
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG P2 수정계획 문서화
+- 사용자 요청에 따라 남은 P2 리스크 2개에 대한 수정계획을 문서화했다.
+- 신규 문서:
+  - `docs/basis-rag-json-index-management-plan.md`
+- 주요 결정:
+  - JSON 인덱스는 제거하지 않고 운영 산출물로 유지한다.
+  - SQLite DB는 기준문서/청크/후보/리뷰 상태의 원본 저장소로 두고, JSON 인덱스는 로컬 RAG 검색 인덱스 산출물로 관리한다.
+- 계획 내용:
+  - 수동 수정 가능한 `condition_text`와 재추출 매칭용 안정 key를 분리한다.
+  - `source_condition_text`, `source_condition_hash`, `extraction_key` 필드를 추가한다.
+  - JSON 인덱스 schema v2, checksum, status/validate/rebuild API, 백업/복원 검증 연동 계획을 정리했다.
+  - 검색을 중기적으로 JSON 인덱스 우선으로 전환하는 순서를 정리했다.
+- 이번 단계는 계획 문서 작성만 진행했으며 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-05-31) - Basis RAG P2 Remediation Plan Documented
+- Documented the remediation plan for the two remaining P2 RAG risks.
+- New document:
+  - `docs/basis-rag-json-index-management-plan.md`
+- Key decision:
+  - keep the JSON index as an operational artifact
+  - keep SQLite as the source of truth for basis documents/chunks/candidates/review state, and manage JSON as the local RAG retrieval index artifact
+- Covered:
+  - separate editable `condition_text` from stable re-extraction matching keys
+  - add `source_condition_text`, `source_condition_hash`, and `extraction_key`
+  - introduce JSON index schema v2, checksum, status/validate/rebuild APIs, and backup/restore validation integration
+  - plan a staged migration to JSON-index-first retrieval
+- This step only added the plan document; implementation code was not changed.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 추가 코드리뷰
+- 사용자 요청에 따라 기준문서 RAG 관련 코드를 추가로 정적 리뷰했다.
+- 이번 단계에서는 코드 수정 없이 문제점 파악만 진행했다.
+- 추가 확인 범위:
+  - 기준 규칙 후보 재추출/갱신 로직
+  - 기준문서 검색 필터
+  - 승인 규칙 후보 judgment 연결
+  - JSON 인덱스 로드/저장/삭제 흐름
+  - 검색 평가 UX/API 연결부
+- 추가로 파악한 문제:
+  - 승인/반려 후보가 재추출과 매칭되면 `condition_text`, `required_evidence_types_json`, `related_profile_fields_json`, `citation_candidate_id`, `confidence`가 자동 추출값으로 갱신되지만 승인/반려 상태와 리뷰 메타데이터는 유지된다. 이 경우 관리자가 승인한 후보의 의미가 자동으로 바뀔 수 있다.
+  - 규칙 후보 추출 API는 기준문서가 `completed/indexed` 상태인지 확인하지 않고 모든 청크를 대상으로 후보를 만든다. failed/unindexed 문서에서도 후보 추출은 completed operation으로 기록될 수 있다.
+  - JSON 인덱스 로드는 파일 손상/JSON decode 실패를 빈 인덱스로 처리하고, 이후 저장 작업이 손상 파일을 조용히 덮어쓸 수 있다. JSON 인덱스를 운영 산출물로 유지하려면 손상 상태를 보존/보고해야 한다.
+- 테스트는 실행하지 않았고 정적 코드리뷰만 수행했다.
+
+## Additional Update (2026-05-31) - Additional Basis RAG Code Review
+- Per the user's request, performed an additional static review of the basis-document RAG code path.
+- No implementation code was changed in this step.
+- Additional review scope:
+  - basis rule-candidate re-extraction/update logic
+  - basis search filters
+  - approved-rule candidate judgment wiring
+  - JSON index load/save/delete flow
+  - retrieval evaluation UX/API wiring
+- Additional findings:
+  - when an approved/rejected candidate matches re-extraction, `condition_text`, `required_evidence_types_json`, `related_profile_fields_json`, `citation_candidate_id`, and `confidence` are overwritten from automatic extraction while the approved/rejected status and review metadata remain; this can silently change reviewed evidence semantics
+  - rule-candidate extraction does not require the basis document to be completed/indexed and can create candidates for failed/unindexed documents while recording the operation as completed
+  - JSON index loading treats corrupt/unreadable JSON as an empty index; a subsequent save can silently overwrite the corrupt artifact, which is unsafe if JSON is retained as an operational index artifact
+- No tests were run; this was static review only.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 추가 문제점 수정계획 작성
+- 사용자 요청에 따라 추가 코드리뷰에서 찾은 문제점 전체에 대한 수정계획서를 작성했다.
+- 신규 문서:
+  - `docs/basis-rag-additional-remediation-plan.md`
+- 포함한 문제:
+  - 승인/반려 후보가 자동 재추출로 조용히 덮어써지는 문제
+  - failed/unindexed 기준문서에서도 규칙 후보 추출이 실행되는 문제
+  - JSON 인덱스 손상이 빈 인덱스로 처리되고 덮어써질 수 있는 문제
+  - 수동 수정 가능한 `condition_text`가 재추출 매칭 key에 들어가는 문제
+  - JSON 인덱스를 운영 산출물로 유지하기 위한 검색/검증/복구 계획
+- 이번 단계는 수정계획 문서 작성만 진행했으며 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-05-31) - Additional Basis RAG Remediation Plan
+- Per the user's request, documented the remediation plan for all additional basis RAG findings.
+- New document:
+  - `docs/basis-rag-additional-remediation-plan.md`
+- Covered issues:
+  - approved/rejected candidates can be silently overwritten by automatic re-extraction
+  - rule-candidate extraction can run for failed/unindexed basis documents
+  - corrupt JSON indexes can be treated as empty and overwritten
+  - editable `condition_text` is part of the re-extraction matching key
+  - JSON index operational management for search, validation, and recovery
+- This step only added the plan document; implementation code was not changed.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG 수정계획 구현 및 재테스트
+- 사용자 요청에 따라 `docs/basis-rag-additional-remediation-plan.md`와 `docs/basis-rag-json-index-management-plan.md`의 계획대로 구현을 진행했다.
+- 구현 범위:
+  - `basis_rule_candidates`에 `source_condition_text`, `source_required_evidence_types_json`, `source_related_profile_fields_json`, `source_confidence`, `source_condition_hash`, `extraction_key` 필드 추가
+  - 규칙 후보 재추출 시 `extraction_key`를 우선 사용하고, 승인/반려 후보의 수동 수정 필드를 자동 추출값으로 덮어쓰지 않도록 변경
+  - failed/unindexed 기준문서의 규칙 후보 추출을 409 `basis_not_ready`로 차단하고 operation run에 실패 사유 기록
+  - JSON 인덱스 schema v2, checksum, 손상/불일치 검증, 명시적 rebuild 흐름 추가
+  - 검색 API를 JSON 인덱스 source로 전환하고 인덱스 손상/불일치 시 DB fallback 없이 409 반환
+  - `GET /api/basis-index/status`, `POST /api/basis-index/validate`, `POST /api/basis-index/rebuild` 추가
+  - 백업 manifest/검증에 `basis-index.json` checksum 포함
+  - 운영 대시보드 health 응답과 프론트 타입에 기준문서 인덱스 상태 추가
+- 문서 보강:
+  - `docs/basis-rag-additional-remediation-plan.md` 구현 상태 체크 완료
+  - `docs/basis-rag-json-index-management-plan.md` 구현 상태 체크 완료
+- 추가/수정 테스트:
+  - 승인 후보 수동 수정값 보존 재추출 테스트
+  - 기준문서 미준비 상태 후보 추출 차단 테스트
+  - JSON 인덱스 손상 감지, 검색 차단, rebuild 복구 테스트
+  - JSON 인덱스 검색 source 및 백업 manifest checksum 검증 테스트
+- 검증 결과:
+  - Python 3.13 환경에 `pytest`가 없어 `py -3.13 -m pip install -r backend/requirements.txt pytest`로 테스트 의존성을 맞춘 뒤 검증
+  - `py -3.13 -m compileall backend/app` 통과
+  - `py -3.13 -m pytest backend/tests -q` 결과: 99 passed, 3 skipped
+  - `npm run build` 통과
+  - `py -3.13 scripts/check-encoding.py` 결과: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-05-31) - Implemented Basis RAG Remediation And Retested
+- Implemented the remediation plan from `docs/basis-rag-additional-remediation-plan.md` and `docs/basis-rag-json-index-management-plan.md`.
+- Implementation scope:
+  - added source/stable-key columns to `basis_rule_candidates`
+  - changed rule-candidate re-extraction to prefer `extraction_key` and preserve manually reviewed approved/rejected fields
+  - blocked rule-candidate extraction for failed/unindexed basis documents with HTTP 409 `basis_not_ready` and operation-run failure metadata
+  - added JSON index schema v2, checksum validation, corruption/inconsistency detection, and explicit rebuild flow
+  - switched basis search to the JSON index source and return HTTP 409 on corrupt/inconsistent indexes without DB fallback
+  - added `GET /api/basis-index/status`, `POST /api/basis-index/validate`, and `POST /api/basis-index/rebuild`
+  - included `basis-index.json` checksum in backup manifests and validation
+  - exposed basis-index health in operations summary and frontend types
+- Documentation updates:
+  - checked off implementation status in the additional remediation plan
+  - checked off implementation status in the JSON index management plan
+- Tests added/updated:
+  - approved candidate manual-field preservation during re-extraction
+  - not-ready basis document extraction block
+  - corrupt JSON index detection, search block, and rebuild recovery
+  - JSON search source and backup manifest checksum coverage
+- Verification:
+  - installed missing Python 3.13 test dependencies with `py -3.13 -m pip install -r backend/requirements.txt pytest` before verification
+  - `py -3.13 -m compileall backend/app` passed
+  - `py -3.13 -m pytest backend/tests -q`: 99 passed, 3 skipped
+  - `npm run build` passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-05-31) - 오늘 수정 코드 재검토
+- 사용자 요청에 따라 오늘 수정된 기준문서 RAG/JSON 인덱스/백업/운영/프론트 연결 코드를 MD 계획 기준으로 재검토했다.
+- 참고 문서:
+  - `docs/basis-rag-additional-remediation-plan.md`
+  - `docs/basis-rag-json-index-management-plan.md`
+  - `docs/work-log.md`
+- 재검토 범위:
+  - `backend/app/pipelines/basis_document.py`
+  - `backend/app/main.py`
+  - `backend/app/services/backups.py`
+  - `backend/app/services/operations.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/pages/OperationsPage.tsx`
+- 확인 결과:
+  - 핵심 구현 흐름은 계획과 대체로 일치한다.
+  - 검색 API는 JSON 인덱스를 사용하고 손상/불일치 시 409로 막는다.
+  - 규칙 후보 재추출은 승인/반려 수동 수정값을 보존한다.
+  - 백업 manifest에는 `basis-index.json` checksum이 포함된다.
+- 추가 발견사항:
+  - 검색 평가 저장 payload의 `result.index_source`와 policy 문구가 아직 `db_chunks_completed_indexed`를 가리켜 JSON 인덱스 전환 상태와 불일치한다.
+  - 기준문서 삭제 API는 손상된 JSON 인덱스에서 `BasisIndexError`를 409로 변환하지 않아 500으로 노출될 수 있다.
+- 재검증:
+  - `py -3.13 -m pytest backend/tests -q` 결과: 99 passed, 3 skipped
+  - `npm run build` 통과
+  - `py -3.13 scripts/check-encoding.py` 결과: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-05-31) - Re-reviewed Today's Modified Code
+- Re-reviewed today's basis RAG / JSON index / backup / operations / frontend wiring changes against the MD plans.
+- Reference documents:
+  - `docs/basis-rag-additional-remediation-plan.md`
+  - `docs/basis-rag-json-index-management-plan.md`
+  - `docs/work-log.md`
+- Review scope:
+  - `backend/app/pipelines/basis_document.py`
+  - `backend/app/main.py`
+  - `backend/app/services/backups.py`
+  - `backend/app/services/operations.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/pages/OperationsPage.tsx`
+- Result:
+  - the core implementation mostly matches the plan
+  - search uses the JSON index and returns 409 on corrupt/inconsistent indexes
+  - rule-candidate re-extraction preserves manually reviewed approved/rejected fields
+  - backup manifests include the `basis-index.json` checksum
+- Additional findings:
+  - retrieval evaluation stored metadata still reports `result.index_source` and policy as DB-chunk based, which is inconsistent with JSON-index-first search
+  - basis document deletion does not translate `BasisIndexError` from a corrupt JSON index into HTTP 409, so it can surface as a generic 500
+- Verification:
+  - `py -3.13 -m pytest backend/tests -q`: 99 passed, 3 skipped
+  - `npm run build` passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG P2 후속 수정계획 작성
+- 사용자 요청에 따라 오늘 재검토에서 발견된 P2 후속 이슈 2건에 대한 수정계획서를 작성했다.
+- 신규 문서:
+  - `docs/basis-rag-p2-followup-fix-plan.md`
+- 계획 대상:
+  - 검색 평가 저장 payload의 `result.index_source`와 policy 문구가 JSON 인덱스 전환 상태와 불일치하는 문제
+  - 기준문서 삭제 API가 손상된 JSON 인덱스에서 `BasisIndexError`를 409로 변환하지 않아 500으로 노출될 수 있는 문제
+- 문서에는 다음 항목을 포함했다.
+  - 왜 이슈가 계속 나오는지에 대한 원인 설명
+  - 수정 원칙
+  - 파일별 수정 방향
+  - 테스트 계획
+  - 완료 기준
+  - 구현 순서
+- 이번 단계는 계획 문서 작성만 진행했으며 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-05-31) - Basis RAG P2 Follow-up Fix Plan
+- Per the user's request, documented the fix plan for the two follow-up P2 issues found in today's review.
+- New document:
+  - `docs/basis-rag-p2-followup-fix-plan.md`
+- Planned fixes:
+  - align retrieval evaluation `result.index_source` and policy copy with JSON-index-first retrieval
+  - map `BasisIndexError` in basis document deletion to HTTP 409 instead of surfacing a generic 500
+- The document includes:
+  - why these follow-up issues appeared
+  - fix principles
+  - file-level implementation plan
+  - test plan
+  - completion criteria
+  - implementation order
+- This step only added the plan document; implementation code was not changed.
+
+## 작업 기록 (2026-05-31) - 기준문서 RAG P2 후속 수정 구현 및 재리뷰
+- 사용자 요청에 따라 `docs/basis-rag-p2-followup-fix-plan.md`의 계획대로 P2 후속 이슈 2건을 수정했다.
+- 구현한 수정:
+  - 검색 평가 저장 결과의 `result.index_source`를 `json_basis_index`로 변경했다.
+  - 검색 평가 policy 문구를 JSON 기준문서 인덱스 기준 citation 후보 설명으로 변경했다.
+  - 기준문서 삭제 API에서 `delete_basis_vectors()`가 `BasisIndexError`를 발생시키면 HTTP 409와 `basis_index_unavailable`, `rebuild_required: true`를 반환하도록 변경했다.
+- 추가/수정한 테스트:
+  - `test_phase25c_retrieval_evaluation_tracks_citation_coverage`에 검색 평가 source/policy assertion을 추가했다.
+  - `test_basis_document_delete_returns_409_when_basis_index_is_corrupt`를 추가해 손상 인덱스에서 삭제가 중단되고, rebuild 후 삭제가 정상 동작하는지 검증했다.
+- 실행한 검증:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "basis_document_delete_returns_409 or retrieval_evaluation_tracks_citation_coverage"` 결과: 2 passed, 76 deselected
+  - `py -3.13 -m compileall backend/app` 통과
+  - `py -3.13 -m pytest backend/tests -q` 결과: 100 passed, 3 skipped
+  - `npm run build` 통과
+  - `py -3.13 scripts/check-encoding.py` 결과: `ENCODING_CHECK_OK`
+  - 관련 파일 `git diff --check` 통과
+- 문서 보강:
+  - `docs/basis-rag-p2-followup-fix-plan.md`의 깨진 한국어 섹션을 읽을 수 있는 한국어/영어 구조로 다시 정리했다.
+  - 수정 완료 항목을 체크하고, 후속 코드리뷰 결과를 계획서에 반영했다.
+- 수정 후 코드리뷰 결과:
+  - 이번 계획의 2개 이슈는 구현과 테스트로 해소됐다.
+  - 추가 리스크 1건을 확인했다. `delete_basis_vectors()`가 `load_basis_index()`만 사용해 파일 손상은 막지만, JSON 인덱스가 파일 없음 또는 DB와 불일치한 상태인지는 삭제 전에 충분히 검증하지 않는다.
+  - 여러 기준문서가 있는 상태에서 `basis-index.json`이 없으면 삭제 API가 빈 인덱스를 새로 저장한 뒤 대상 문서를 삭제할 수 있고, 남은 기준문서 chunk가 DB에는 있지만 JSON 인덱스에는 없는 상태가 될 수 있다.
+  - 권장 후속 조치는 삭제 전에 `validate_basis_index(conn)`로 missing/inconsistent/corrupt 상태를 확인하고, DB에 indexed chunk가 있으면 409 rebuild 필요 응답으로 막는 것이다.
+
+## Additional Update (2026-05-31) - Implemented Basis RAG P2 Follow-up Fixes And Re-reviewed
+- Per the user's request, implemented the two follow-up P2 fixes from `docs/basis-rag-p2-followup-fix-plan.md`.
+- Implemented:
+  - changed retrieval evaluation `result.index_source` to `json_basis_index`
+  - updated retrieval evaluation policy copy to describe JSON basis-index citation candidates
+  - changed basis document deletion to map `BasisIndexError` from `delete_basis_vectors()` to HTTP 409 with `basis_index_unavailable` and `rebuild_required: true`
+- Tests added/updated:
+  - added source/policy assertions to `test_phase25c_retrieval_evaluation_tracks_citation_coverage`
+  - added `test_basis_document_delete_returns_409_when_basis_index_is_corrupt`
+- Verification:
+  - targeted pytest: 2 passed, 76 deselected
+  - `py -3.13 -m compileall backend/app` passed
+  - `py -3.13 -m pytest backend/tests -q`: 100 passed, 3 skipped
+  - `npm run build` passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - related `git diff --check` passed
+- Documentation:
+  - rewrote `docs/basis-rag-p2-followup-fix-plan.md` so the Korean section is readable and the English engineering section remains present
+  - checked off completed implementation items and added the post-fix review result
+- Post-fix review:
+  - the planned two issues are fixed and covered by tests
+  - one additional follow-up risk remains: `delete_basis_vectors()` uses `load_basis_index()` and does not validate DB/index consistency before deletion
+  - if `basis-index.json` is missing while multiple basis documents still have indexed chunks, deletion can save an empty JSON index and leave remaining DB chunks missing from the JSON index
+  - recommended follow-up: call `validate_basis_index(conn)` before deletion and return a 409 rebuild-required response for missing/inconsistent/corrupt index states when DB indexed chunks exist
+
+## 작업 기록 (2026-05-31) - 기준문서 삭제 전 JSON 인덱스 정합성 검증 보강
+- 사용자 요청에 따라 기준문서 삭제 경로의 남은 P2 리스크를 계획서에 P2-3으로 추가하고, 계획대로 수정했다.
+- 계획 문서:
+  - `docs/basis-rag-p2-followup-fix-plan.md`
+- 구현한 수정:
+  - `delete_basis_document()`에서 `delete_basis_vectors()` 호출 전에 `validate_basis_index(conn)`를 먼저 실행하도록 변경했다.
+  - `rebuild_required` 상태이면 삭제를 진행하지 않고 HTTP 409, `basis_index_unavailable`, `index_status`, `rebuild_required: true`, `errors`를 반환하도록 변경했다.
+  - `validate_basis_index()`가 `basis-index.json` 파일 없음과 DB indexed chunk 존재 상태를 `inconsistent`가 아니라 `missing`으로 분류하도록 순서를 보정했다.
+- 추가한 테스트:
+  - `test_basis_document_delete_returns_409_when_basis_index_is_missing`
+  - `test_basis_document_delete_returns_409_when_basis_index_is_inconsistent`
+- 검증 결과:
+  - 최초 targeted 테스트에서 missing 상태가 `inconsistent`로 분류되는 문제를 발견했고, `validate_basis_index()` 상태 분류 순서를 수정했다.
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "basis_document_delete_returns_409_when_basis_index"` 결과: 3 passed, 77 deselected
+  - `py -3.13 -m compileall backend/app` 통과
+  - `py -3.13 -m pytest backend/tests -q` 결과: 102 passed, 3 skipped
+  - `npm run build` 통과
+  - `py -3.13 scripts/check-encoding.py` 결과: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-05-31) - Validate Basis Index Consistency Before Basis Document Deletion
+- Per the user's request, added the remaining P2 deletion risk as P2-3 in the follow-up plan and implemented it.
+- Plan document:
+  - `docs/basis-rag-p2-followup-fix-plan.md`
+- Implemented:
+  - `delete_basis_document()` now calls `validate_basis_index(conn)` before `delete_basis_vectors()`
+  - when `rebuild_required` is true, deletion aborts with HTTP 409, `basis_index_unavailable`, `index_status`, `rebuild_required: true`, and `errors`
+  - `validate_basis_index()` now classifies a missing `basis-index.json` with indexed DB chunks as `missing` rather than `inconsistent`
+- Tests added:
+  - `test_basis_document_delete_returns_409_when_basis_index_is_missing`
+  - `test_basis_document_delete_returns_409_when_basis_index_is_inconsistent`
+- Verification:
+  - the first targeted test run caught the missing-state classification issue, which was fixed in `validate_basis_index()`
+  - targeted pytest: 3 passed, 77 deselected
+  - `py -3.13 -m compileall backend/app` passed
+  - `py -3.13 -m pytest backend/tests -q`: 102 passed, 3 skipped
+  - `npm run build` passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-05-31) - 현재 서비스 전체 테스트, 빌드, API, UX 검증
+- 사용자 요청에 따라 현재 서비스 코드 상태에서 전체 테스트, 빌드, API smoke, UX 테스트를 진행했다.
+- 실행한 기본 검증:
+  - `py -3.13 -m pytest backend/tests -q`: 102 passed, 3 skipped, 5 warnings
+  - `npm run build`: 통과
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+- 실행한 API smoke:
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `SMOKE_OK`
+  - 실제 서버에서 법인 생성, 프로젝트 생성, PDF 업로드, 문서 분석, 최신 분석 조회, 나라장터 공고 저장/분석 smoke 흐름이 통과했다.
+- 발견한 테스트 인프라 문제:
+  - `scripts/ux-monkey-test.mjs`는 Playwright를 요구하지만 `frontend/package.json`에 `playwright` devDependency가 없었다.
+  - Playwright 추가 후 `npm audit`에서 Vite/esbuild/PostCSS 계열 moderate 취약점이 보고되었다.
+- 수정계획 문서:
+  - `docs/current-service-verification-remediation-plan.md`
+- 자동 수정:
+  - `frontend`에 `playwright` devDependency를 추가했다.
+  - `npx playwright install chromium`으로 Chromium 런타임을 설치했다.
+  - `npm audit fix`로 PostCSS 취약점을 정리했다.
+  - `npm audit fix --force` 후 Vite가 8.0.14로 올라갔고, peer dependency 정합성을 위해 `@vitejs/plugin-react`를 6.0.2로 업데이트했다.
+  - 최종 `npm audit --audit-level=moderate`: 0 vulnerabilities
+- UX 검증:
+  - `powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start -BackendPort 18111 -FrontendPort 5199`로 서버 기동 확인
+  - `npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 80 --seed 20260531 --screenshot-dir ..\temp\ux-monkey-20260531`: `status: ok`
+  - UX monkey 방문 라우트 16개: `/`, `/operations`, `/operation-runs`, `/backups`, `/nara-board`, `/nara-saved-notices`, `/notice-comparison`, `/judgment-runs`, `/nara-collection-runs`, `/documents`, `/basis-documents`, `/basis-rule-candidates`, `/basis-retrieval-evaluations`, `/corporations`, `/projects`, `/settings/integrations/nara`
+  - UX monkey 스크린샷 저장 위치: `temp/ux-monkey-20260531`
+  - in-app 브라우저로 주요 6개 라우트 DOM/콘솔 점검: blank page 없음, `main` landmark 1개씩 존재, console error 0건
+  - in-app 브라우저 full-page screenshot은 CDP screenshot timeout이 있었지만, UX monkey Playwright screenshot은 정상 생성되어 시각 검증 산출물로 사용했다.
+- 수정 후 최종 재검증:
+  - `py -3.13 -m pytest backend/tests -q`: 102 passed, 3 skipped, 5 warnings
+  - `npm run build`: 통과
+  - `npm audit --audit-level=moderate`: 0 vulnerabilities
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - 관련 파일 `git diff --check`: 통과
+
+## Additional Update (2026-05-31) - Full Current-Service Verification, API Smoke, And UX Tests
+- Per the user's request, ran full current-service verification across tests, build, live API smoke, and UX tests.
+- Baseline verification:
+  - `py -3.13 -m pytest backend/tests -q`: 102 passed, 3 skipped, 5 warnings
+  - `npm run build`: passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+- Live API smoke:
+  - `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`: `SMOKE_OK`
+  - Verified live server flows for corporation creation, project creation, PDF upload, document analysis, latest analysis lookup, and Nara notice save/analyze smoke flow.
+- Test-infrastructure findings:
+  - `scripts/ux-monkey-test.mjs` required Playwright, but `frontend/package.json` did not declare `playwright`.
+  - After adding Playwright, `npm audit` reported moderate Vite/esbuild/PostCSS advisories.
+- Remediation plan:
+  - `docs/current-service-verification-remediation-plan.md`
+- Automatic fixes:
+  - added `playwright` as a frontend devDependency
+  - installed the Playwright Chromium runtime
+  - ran `npm audit fix` for PostCSS
+  - ran `npm audit fix --force`, which upgraded Vite to 8.0.14, then upgraded `@vitejs/plugin-react` to 6.0.2 for peer compatibility
+  - final `npm audit --audit-level=moderate`: 0 vulnerabilities
+- UX verification:
+  - started local servers on backend `18111` and frontend `5199`
+  - `npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 80 --seed 20260531 --screenshot-dir ..\temp\ux-monkey-20260531`: `status: ok`
+  - UX monkey visited 16 routes including operations, backups, Nara, basis documents, rule candidates, retrieval evaluations, corporations, projects, and settings
+  - screenshots saved under `temp/ux-monkey-20260531`
+  - in-app browser DOM/console check covered 6 key routes with no blank pages, one `main` landmark per route, and zero console errors
+  - in-app browser full-page screenshot hit a CDP screenshot timeout, but the Playwright UX monkey screenshots were generated successfully and used as the visual artifact
+- Final verification after fixes:
+  - `py -3.13 -m pytest backend/tests -q`: 102 passed, 3 skipped, 5 warnings
+  - `npm run build`: passed
+  - `npm audit --audit-level=moderate`: 0 vulnerabilities
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - related `git diff --check`: passed
+
+## 작업 기록 (2026-05-31) - README 신규 PC 세팅 가이드 보강
+- 사용자 요청에 따라 다른 PC에서 새 사용자가 쉽게 세팅하고 테스트할 수 있도록 `README.md`를 업데이트했다.
+- 한국어 섹션에 `로컬 세팅과 테스트 빠른 가이드`를 추가/정리했다.
+- 포함한 내용:
+  - 사전 설치 버전: Python 3.13.13, Node.js 20.19.0 이상 또는 22.12.0 이상, npm, Git, PowerShell
+  - 저장소 clone/pull 절차
+  - 백엔드 의존성 설치
+  - 프론트엔드 의존성 설치와 Playwright Chromium 설치
+  - `.env.example` 기반 환경 파일 준비
+  - `scripts/manage-servers.ps1` 기반 서버 실행/상태확인/중지
+  - 전체 백엔드 테스트, 프론트 빌드, 인코딩 검사, npm audit
+  - API smoke 테스트
+  - UX monkey 테스트
+  - 나라장터 API 테스트
+  - 수동 서버 실행 방법
+  - 자주 나는 문제와 해결 방향
+- 영어 `AI / Engineering Version` 섹션에도 `Quick Setup And Verification`을 추가해 AI/엔지니어가 같은 절차를 이해할 수 있게 했다.
+- 검증:
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-05-31) - README Setup Guide For New PCs
+- Updated `README.md` so another person can set up and test the project easily on a different PC.
+- Added/refined the Korean `로컬 세팅과 테스트 빠른 가이드` section.
+- Covered:
+  - required versions: Python 3.13.13, Node.js 20.19.0+ or 22.12.0+, npm, Git, PowerShell
+  - clone/pull flow
+  - backend dependency installation
+  - frontend dependency installation and Playwright Chromium installation
+  - `.env.example` based environment file setup
+  - server start/status/stop via `scripts/manage-servers.ps1`
+  - backend tests, frontend build, encoding check, and npm audit
+  - API smoke testing
+  - UX monkey testing
+  - Nara API testing
+  - manual server execution
+  - common troubleshooting notes
+- Added an English `Quick Setup And Verification` section under `AI / Engineering Version`.
+- Verification:
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`

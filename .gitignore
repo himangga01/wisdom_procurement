@@ -24,6 +24,9 @@ frontend/.env
 backend/storage/uploads/
 backend/storage/cache/
 backend/storage/ocr-samples/
+backend/tests/nara-notice-pdf-samples/
+backend/tests/nara-pdf-samples/
+backend/tests/nara-phase2-basis-qa-samples/
 temp/
 
 # OS

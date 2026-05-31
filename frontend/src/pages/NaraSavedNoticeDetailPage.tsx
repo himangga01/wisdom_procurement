@@ -319,7 +319,7 @@ export function NaraSavedNoticeDetailPage() {
               <p className="eyebrow">Requirement Candidates</p>
               <h3>요구조건 구조화 후보</h3>
               <p className="section-copy">
-                Phase 1.6에서는 지원 가능 여부를 판정하지 않고, 향후 비교에 필요한 요구조건 후보만 정리합니다.
+                최종 자격 판단이 아니라 향후 비교에 필요한 요구조건 후보만 정리합니다.
               </p>
             </div>
           </div>

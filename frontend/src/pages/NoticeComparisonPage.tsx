@@ -5,11 +5,14 @@ import { api } from "../app/api";
 import type {
   Corporation,
   CorporationComparisonProfile,
+  NoticeComparisonItem,
   NoticeCorporationComparison,
   NoticeRequirementPayload,
   SavedNaraNotice,
 } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
+
+const comparisonStatusOrder = ["possibly_missing", "needs_review", "not_found", "prepared"];
 
 function statusTone(status: string) {
   if (status === "prepared") return "active";
@@ -27,6 +30,16 @@ function statusLabel(status: string) {
   return labels[status] ?? status;
 }
 
+function statusDescription(status: string) {
+  const descriptions: Record<string, string> = {
+    possibly_missing: "법인 정보와 승인 증빙에서 바로 확인되지 않은 조건입니다.",
+    needs_review: "자동 비교만으로는 판단하기 어려워 원문 확인이 필요합니다.",
+    not_found: "비교할 법인 프로필 또는 승인 증빙이 아직 부족합니다.",
+    prepared: "법인 프로필 또는 승인 증빙에서 확인된 준비 항목입니다.",
+  };
+  return descriptions[status] ?? "";
+}
+
 function compactDate(value: string) {
   if (!value) return "-";
   return new Date(value).toLocaleString("ko-KR", {
@@ -39,6 +52,15 @@ function compactDate(value: string) {
 
 function joinValues(values?: string[]) {
   return values?.length ? values.join(", ") : "아직 확인된 값 없음";
+}
+
+function groupComparisonItems(items: NoticeComparisonItem[]) {
+  return {
+    possibly_missing: items.filter((item) => item.status === "possibly_missing"),
+    needs_review: items.filter((item) => item.status === "needs_review"),
+    not_found: items.filter((item) => item.status === "not_found"),
+    prepared: items.filter((item) => item.status === "prepared"),
+  };
 }
 
 export function NoticeComparisonPage() {
@@ -66,12 +88,8 @@ export function NoticeComparisonPage() {
     setNotices(noticeList);
     setCorporations(corporationList);
     setHistory(comparisonList);
-    if (!selectedNoticeId && noticeList.length) {
-      setSelectedNoticeId(String(noticeList[0].id));
-    }
-    if (!selectedCorporationId && corporationList.length) {
-      setSelectedCorporationId(String(corporationList[0].id));
-    }
+    if (!selectedNoticeId && noticeList.length) setSelectedNoticeId(String(noticeList[0].id));
+    if (!selectedCorporationId && corporationList.length) setSelectedCorporationId(String(corporationList[0].id));
   };
 
   useEffect(() => {
@@ -108,17 +126,15 @@ export function NoticeComparisonPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "법인 비교 프로필을 불러오지 못했습니다."));
   }, [selectedCorporationId]);
 
-  const refreshHistory = async () => {
-    const comparisonList = await api.listNoticeComparisons();
-    setHistory(comparisonList);
-  };
+  const refreshHistory = async () => setHistory(await api.listNoticeComparisons());
 
   const onExtractRequirements = async () => {
     if (!selectedNoticeId) return;
     await runWithOverlay(
       {
         title: "공고 요구조건을 다시 추출하는 중",
-        description: "저장된 공고 분석 결과를 기준으로 비교 후보를 재생성합니다.",
+        description:
+          "저장 공고 분석 결과를 기준으로 비교 후보를 재생성합니다. 기존 비교 이력은 오래된 결과가 되지 않도록 정리됩니다.",
         steps: ["저장 공고 확인", "요구조건 후보 재생성", "기존 비교 결과 무효화"],
         successMessage: "공고 요구조건 후보를 다시 추출했습니다.",
         failureMessage: "공고 요구조건 재추출에 실패했습니다.",
@@ -137,7 +153,7 @@ export function NoticeComparisonPage() {
     await runWithOverlay(
       {
         title: "공고와 법인 준비상태를 비교하는 중",
-        description: "최종 판정이 아니라 부족 가능성이 있는 조건을 먼저 정리합니다.",
+        description: "최종 자격 판정이 아니라 부족 가능성이 있는 조건을 먼저 정리합니다.",
         steps: ["공고 요구조건 후보 확인", "법인 프로필 정규화", "부족 가능성 미리보기 저장"],
         successMessage: "부족조건 미리보기를 생성했습니다.",
         failureMessage: "부족조건 미리보기 생성에 실패했습니다.",
@@ -150,12 +166,7 @@ export function NoticeComparisonPage() {
     );
   };
 
-  const groupedItems = {
-    prepared: comparison?.items.filter((item) => item.status === "prepared") ?? [],
-    possibly_missing: comparison?.items.filter((item) => item.status === "possibly_missing") ?? [],
-    needs_review: comparison?.items.filter((item) => item.status === "needs_review") ?? [],
-    not_found: comparison?.items.filter((item) => item.status === "not_found") ?? [],
-  };
+  const groupedItems = groupComparisonItems(comparison?.items ?? []);
 
   return (
     <section className="content-stack">
@@ -164,7 +175,8 @@ export function NoticeComparisonPage() {
           <p className="eyebrow">Phase 1.7 Preview</p>
           <h3>부족조건 미리보기</h3>
           <p className="analysis-copy">
-            저장한 나라장터 공고의 요구조건 후보와 법인 프로필을 비교해, 지금 무엇이 준비되어 있고 무엇을 더 확인해야 하는지 보여줍니다.
+            저장한 나라장터 공고의 요구조건 후보와 법인 프로필/승인 증빙을 비교해, 먼저 보완해야 할 가능성이
+            있는 항목을 보여줍니다.
           </p>
         </div>
         <div className="row">
@@ -172,6 +184,14 @@ export function NoticeComparisonPage() {
             부족조건 미리보기 실행
           </button>
         </div>
+      </div>
+
+      <div className="empty-state empty-state--info">
+        <strong>이 화면은 최종 자격 판정이 아닙니다.</strong>
+        <p>
+          결과는 준비 상태를 빠르게 점검하기 위한 미리보기입니다. 애매하거나 근거가 부족한 항목은 반드시 공고
+          원문과 증빙자료로 다시 확인해야 합니다.
+        </p>
       </div>
 
       {error ? (
@@ -187,7 +207,9 @@ export function NoticeComparisonPage() {
             <div>
               <p className="eyebrow">Select Notice</p>
               <h3>1. 공고 선택</h3>
-              <p className="section-copy">저장한 공고만 비교할 수 있습니다. 공고 검색 화면에서 먼저 공고 상세 저장을 실행하세요.</p>
+              <p className="section-copy">
+                저장한 공고만 비교할 수 있습니다. 공고 검색 화면에서 먼저 공고 상세 저장을 실행하세요.
+              </p>
             </div>
             <Link to="/nara-board" className="link-button link-button--soft">
               공고 검색
@@ -249,12 +271,15 @@ export function NoticeComparisonPage() {
             <div>
               <p className="eyebrow">Requirement Candidates</p>
               <h3>공고 요구조건 후보</h3>
-              <p className="section-copy">후보 수 {requirements?.summary.total_count ?? 0}개. 최종 판정이 아니라 비교 재료입니다.</p>
+              <p className="section-copy">
+                후보 수 {requirements?.summary.total_count ?? 0}개. 비교 재료이며 최종 판정 근거가 아닙니다.
+              </p>
             </div>
             <button type="button" className="button-secondary" onClick={onExtractRequirements} disabled={!selectedNoticeId}>
               다시 추출
             </button>
           </div>
+          <p className="section-copy">요구조건을 다시 추출하면 기존 비교 결과는 오래된 결과가 되지 않도록 정리됩니다.</p>
           {requirements?.requirements.length ? (
             <div className="comparison-chip-list">
               {requirements.requirements.slice(0, 18).map((item) => (
@@ -295,6 +320,20 @@ export function NoticeComparisonPage() {
         </div>
       </div>
 
+      <div className="quick-action-grid">
+        <Link to="/corporations" className="quick-action">
+          <strong>법인 증빙자료 보강</strong>
+          <span>부족한 서류가 보이면 증빙자료를 업로드하고 승인하세요.</span>
+        </Link>
+        <Link to={selectedNotice ? `/nara-saved-notices/${selectedNotice.id}` : "/nara-saved-notices"} className="quick-action">
+          <strong>저장 공고 재확인</strong>
+          <span>첨부 분석 상태와 공고 요약을 다시 확인하세요.</span>
+        </Link>
+        <button type="button" className="button-secondary" onClick={onExtractRequirements} disabled={!selectedNoticeId}>
+          요구조건 다시 추출
+        </button>
+      </div>
+
       {comparison ? (
         <div className="surface-card comparison-result-card">
           <div className="section-heading">
@@ -304,34 +343,41 @@ export function NoticeComparisonPage() {
               <p className="section-copy">{comparison.summary.note}</p>
             </div>
             <div className="comparison-metrics">
-              <span>준비 {comparison.prepared_count}</span>
               <span>부족 가능성 {comparison.possibly_missing_count}</span>
               <span>확인 필요 {comparison.needs_review_count}</span>
+              <span>법인 정보 없음 {comparison.not_found_count}</span>
+              <span>준비 {comparison.prepared_count}</span>
             </div>
           </div>
 
           <div className="comparison-status-grid">
-            {Object.entries(groupedItems).map(([status, items]) => (
-              <article key={status} className={`comparison-status-panel comparison-status-panel--${status}`}>
-                <div className="comparison-status-heading">
-                  <span className={`status-badge status-badge--${statusTone(status)}`}>{statusLabel(status)}</span>
-                  <strong>{items.length}개</strong>
-                </div>
-                {items.length ? (
-                  <ul className="comparison-item-list">
-                    {items.map((item, index) => (
-                      <li key={`${item.requirement_candidate_id}-${index}`}>
-                        <strong>{item.label}: {item.required_value}</strong>
-                        <span>{item.reason}</span>
-                        {item.matched_value ? <small>확인값: {item.matched_value}</small> : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="section-copy">해당 항목이 없습니다.</p>
-                )}
-              </article>
-            ))}
+            {comparisonStatusOrder.map((status) => {
+              const items = groupedItems[status as keyof typeof groupedItems];
+              return (
+                <article key={status} className={`comparison-status-panel comparison-status-panel--${status}`}>
+                  <div className="comparison-status-heading">
+                    <span className={`status-badge status-badge--${statusTone(status)}`}>{statusLabel(status)}</span>
+                    <strong>{items.length}개</strong>
+                  </div>
+                  <p className="section-copy">{statusDescription(status)}</p>
+                  {items.length ? (
+                    <ul className="comparison-item-list">
+                      {items.map((item, index) => (
+                        <li key={`${item.requirement_candidate_id}-${index}`}>
+                          <strong>
+                            {item.label}: {item.required_value}
+                          </strong>
+                          <span>{item.reason}</span>
+                          {item.matched_value ? <small>확인값: {item.matched_value}</small> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="section-copy">해당 항목이 없습니다.</p>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </div>
       ) : (

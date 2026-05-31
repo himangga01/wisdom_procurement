@@ -2,6 +2,15 @@ import type {
   AiModelSelection,
   AiModelSettings,
   AnalysisRecord,
+  BackupRestorePlan,
+  BackupRun,
+  BackupValidation,
+  BasisDocument,
+  BasisIndexStatus,
+  BasisRuleCandidate,
+  BasisRuleCandidateList,
+  BasisRetrievalEvaluation,
+  BasisSearchResponse,
   Corporation,
   CorporationEvidenceApplyResult,
   CorporationEvidenceDocument,
@@ -14,9 +23,13 @@ import type {
   NoticeRequirementPayload,
   NaraIntegrationStatus,
   NaraIntegrationTestResult,
+  OperationRun,
+  OperationsSummary,
   Project,
   SavedNaraNotice,
   CorporationComparisonProfile,
+  JudgmentRun,
+  NaraCollectionRun,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:18000";
@@ -39,6 +52,44 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getDashboard: () => request<DashboardSummary>("/api/dashboard/summary"),
+  getOperationsSummary: () => request<OperationsSummary>("/api/operations/summary"),
+  listOperationRuns: (params: Record<string, string | undefined> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) query.set(key, value);
+    });
+    return request<OperationRun[]>(`/api/operation-runs?${query.toString()}`);
+  },
+  getOperationRun: (id: number) => request<OperationRun>(`/api/operation-runs/${id}`),
+  retryOperationRun: (id: number) =>
+    request<OperationRun>(`/api/operation-runs/${id}/retry`, {
+      method: "POST",
+    }),
+  listBackups: () => request<BackupRun[]>("/api/backups"),
+  createBackup: () =>
+    request<BackupRun>("/api/backups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  validateBackup: (backupId: number) =>
+    request<BackupValidation>("/api/backups/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ backup_id: backupId }),
+    }),
+  createBackupRestorePlan: (backupId: number) =>
+    request<BackupRestorePlan>("/api/backups/restore-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ backup_id: backupId }),
+    }),
+  dryRunBackupRestore: (backupId: number) =>
+    request<BackupRestorePlan>(`/api/backups/${backupId}/restore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dry_run: true }),
+    }),
   getAiModelSettings: () => request<AiModelSettings>("/api/settings/ai-models"),
   listCorporations: () => request<Corporation[]>("/api/corporations"),
   createCorporation: (body: Record<string, unknown>) =>
@@ -146,6 +197,87 @@ export const api = {
     }),
   getLatestAnalysisByDocument: (documentId: number) =>
     request<AnalysisRecord>(`/api/analyses/latest/by-document/${documentId}`),
+  listBasisDocuments: (params: Record<string, string | undefined> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) query.set(key, value);
+    });
+    return request<BasisDocument[]>(`/api/basis-documents?${query.toString()}`);
+  },
+  uploadBasisDocument: (formData: FormData) =>
+    request<BasisDocument>("/api/basis-documents", {
+      method: "POST",
+      body: formData,
+    }),
+  getBasisDocument: (id: number) => request<BasisDocument>(`/api/basis-documents/${id}`),
+  updateBasisDocument: (id: number, body: Record<string, unknown>) =>
+    request<BasisDocument>(`/api/basis-documents/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  reprocessBasisDocument: (id: number) =>
+    request<BasisDocument>(`/api/basis-documents/${id}/reprocess`, {
+      method: "POST",
+    }),
+  deleteBasisDocument: (id: number) =>
+    request<{ status: string }>(`/api/basis-documents/${id}`, {
+      method: "DELETE",
+    }),
+  searchBasisDocuments: (body: Record<string, unknown>) =>
+    request<BasisSearchResponse>("/api/basis-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  getBasisIndexStatus: () => request<BasisIndexStatus>("/api/basis-index/status"),
+  validateBasisIndex: () =>
+    request<BasisIndexStatus>("/api/basis-index/validate", {
+      method: "POST",
+    }),
+  rebuildBasisIndex: () =>
+    request<BasisIndexStatus>("/api/basis-index/rebuild", {
+      method: "POST",
+    }),
+  listBasisRuleCandidates: (params: Record<string, string | number | undefined> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") query.set(key, String(value));
+    });
+    return request<BasisRuleCandidateList>(`/api/basis-rule-candidates?${query.toString()}`);
+  },
+  getBasisRuleCandidate: (id: number) => request<BasisRuleCandidate>(`/api/basis-rule-candidates/${id}`),
+  updateBasisRuleCandidate: (id: number, body: Record<string, unknown>) =>
+    request<BasisRuleCandidate>(`/api/basis-rule-candidates/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  approveBasisRuleCandidate: (id: number, body: Record<string, unknown> = {}) =>
+    request<BasisRuleCandidate>(`/api/basis-rule-candidates/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  rejectBasisRuleCandidate: (id: number, body: Record<string, unknown> = {}) =>
+    request<BasisRuleCandidate>(`/api/basis-rule-candidates/${id}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  extractBasisRuleCandidates: (basisDocumentId: number) =>
+    request<BasisRuleCandidateList & { basis_document_id: number; status: string; note: string }>(
+      `/api/basis-documents/${basisDocumentId}/rule-candidates/extract`,
+      { method: "POST" },
+    ),
+  listBasisRetrievalEvaluations: () => request<BasisRetrievalEvaluation[]>("/api/basis-retrieval-evaluations"),
+  createBasisRetrievalEvaluation: (body: Record<string, unknown>) =>
+    request<BasisRetrievalEvaluation>("/api/basis-retrieval-evaluations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  getBasisRetrievalEvaluation: (id: number) => request<BasisRetrievalEvaluation>(`/api/basis-retrieval-evaluations/${id}`),
   getNaraIntegrationStatus: () =>
     request<NaraIntegrationStatus>("/api/settings/integrations/nara/status"),
   testNaraIntegration: () =>
@@ -189,6 +321,33 @@ export const api = {
       body: JSON.stringify({ nara_notice_id: noticeId, corporation_id: corporationId }),
     }),
   getNoticeComparison: (id: number) => request<NoticeCorporationComparison>(`/api/notice-comparisons/${id}`),
+  listJudgmentRuns: () => request<JudgmentRun[]>("/api/judgment-runs"),
+  createJudgmentRun: (noticeId: number, corporationId: number, topK = 3) =>
+    request<JudgmentRun>("/api/judgment-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nara_notice_id: noticeId, corporation_id: corporationId, top_k: topK }),
+    }),
+  updateJudgmentRunReview: (id: number, body: Record<string, unknown>) =>
+    request<JudgmentRun>(`/api/judgment-runs/${id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  listNaraCollectionRuns: (params: Record<string, string | undefined> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) query.set(key, value);
+    });
+    return request<NaraCollectionRun[]>(`/api/nara/collection-runs?${query.toString()}`);
+  },
+  createNaraCollectionRun: (body: Record<string, unknown>) =>
+    request<NaraCollectionRun>("/api/nara/collection-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  getNaraCollectionRun: (id: number) => request<NaraCollectionRun>(`/api/nara/collection-runs/${id}`),
   reanalyzeSavedNaraNotice: (id: number, selection?: AiModelSelection) =>
     request<{ status: string; notice: SavedNaraNotice }>(`/api/nara/saved-notices/${id}/reanalyze`, {
       method: "POST",

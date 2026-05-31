@@ -8,7 +8,8 @@
 - Phase 1.5: 나라장터 게시판, 공고 API 조회, 첨부 다운로드, 공고 자동 분석
 - Phase 1.6: 법인 증빙자료 자동 추출과 법인 프로필 보강
 - Phase 2: 기준 PDF 관리와 로컬 RAG 준비
-- Phase 3: 판단 엔진과 조달 공고 자동 수집
+- Phase 2 운영 보강: 기준문서 규칙 후보 승인/반려/수정, 나라장터 자동 수집 운영 화면
+- Phase 3: 부족조건 중심 판단 엔진과 조달 공고 자동 수집
 
 ## 현재 단계 계획
 
@@ -66,6 +67,15 @@ Phase 1.6은 한 번에 모든 증빙자료를 완전 자동화하지 않고, `1
 - 로컬 벡터 인덱싱
 - 처리 상태 조회
 - 재처리 버튼
+- 기준문서 규칙 후보 추출
+- 규칙 후보 승인/반려/수정 관리
+- 검색/citation 평가 지표 관리
+
+### Phase 2 운영 보강
+- `기준문서 규칙 후보 관리` 화면에서 자동 추출 후보를 검토한다.
+- 승인된 규칙 후보만 향후 판단 근거 후보로 우선 사용한다.
+- `나라장터 자동 수집 관리` 화면에서 API 수집 실행, 이력, 저장 결과, 실패 사유를 확인한다.
+- MuPDF known issue 목록은 로컬 QA 산출물 JSON이 있을 때 동적으로 읽는다.
 
 ### Phase 3
 - 조달 공고 자동 수집
@@ -148,90 +158,224 @@ wisdom_procurement/
 - 요약은 JSON 구조화 출력 + 사용자용 마크다운 병행 저장
 - 재분석은 프롬프트 버전/입력 해시 기반으로 캐시 제어
 
-## 로컬 개발 가이드
+## 로컬 세팅과 테스트 빠른 가이드
 
-### 사전 요구사항
-- Python 3.13.13
-- Node.js 20+
-- npm 또는 pnpm
+이 절은 다른 PC에서 처음 받는 사람이 가장 짧은 경로로 서비스를 실행하고 테스트해 보기 위한 순서입니다. Windows PowerShell 기준으로 작성했습니다.
 
-### 환경 변수 예시
-백엔드 `.env`
-```env
-APP_ENV=local
-APP_HOST=127.0.0.1
-APP_PORT=8000
-SQLITE_PATH=./app.db
-STORAGE_ROOT=./storage
-AI_PROVIDER_DEFAULT=gemini
-AI_MODEL_DEFAULT=gemini-2.5-flash
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL_PRIMARY=gpt-5.4-mini
-OPENAI_MODEL_SECONDARY=gpt-5.4
-GEMINI_API_KEY=your_gemini_key_here
-GEMINI_MODEL_PRIMARY=gemini-2.5-flash
-OCR_ENGINE=paddle
-OCR_LANG=kor+eng
-OCR_DEVICE=cpu
-OCR_MIN_TEXT_LENGTH=80
-OCR_RENDER_DPI=220
-NARA_API_SERVICE_KEY=your_nara_api_key_here
-NARA_BID_PUBLIC_API_BASE_URL=https://apis.data.go.kr/1230000/ad/BidPublicInfoService
-NARA_PUBDATA_API_BASE_URL=https://apis.data.go.kr/1230000/ao/PubDataOpnStdService
-NARA_API_RESPONSE_TYPE=json
+### 1. 사전 설치
+- Python `3.13.13`
+  - 확인: `py -3.13 --version`
+  - `py -3.13`이 안 되면 Python 3.13 설치 후 Windows Python Launcher가 잡혔는지 확인합니다.
+- Node.js `20.19.0 이상` 또는 `22.12.0 이상`
+  - 현재 검증 환경: Node `24.14.1`, npm `11.11.0`
+  - 확인: `node -v`, `npm -v`
+- Git
+- Windows PowerShell
+
+OCR 엔진은 기본 테스트에 필수는 아닙니다. OCR 의존성이 없어도 업로드/분석 흐름은 `needs_ocr_setup` 또는 fallback 상태로 동작해야 합니다.
+
+### 2. 저장소 받기
+```powershell
+git clone <repository-url>
+cd wisdom_procurement
 ```
 
-프론트엔드 `.env`
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
+이미 저장소를 받은 경우에는 최신 상태로 맞춥니다.
+
+```powershell
+git pull
 ```
 
-### 실행 예시
-백엔드
-```bash
+### 3. 백엔드 의존성 설치
+```powershell
 cd backend
+py -3.13 -m pip install --upgrade pip
 py -3.13 -m pip install -r requirements.txt
-py -3.13 -m pip install -r requirements-ocr.txt
-$env:APP_PORT="8000"
-py -3.13 -m app.main
+cd ..
 ```
 
-프론트엔드
-```bash
+OCR까지 로컬에서 직접 검증하려면 별도로 설치합니다.
+
+```powershell
+cd backend
+py -3.13 -m pip install -r requirements-ocr.txt
+cd ..
+```
+
+### 4. 프론트엔드 의존성 설치
+```powershell
 cd frontend
 npm install
-npm run dev
+npx playwright install chromium
+cd ..
 ```
 
-### 스모크 테스트 실행
-```bash
+`playwright`는 UX monkey 테스트에 사용됩니다. 화면 테스트까지 돌릴 PC라면 Chromium 설치까지 해두는 편이 좋습니다.
+
+### 5. 환경 파일 준비
+서버 관리 스크립트는 `backend/.env`, `frontend/.env`가 없으면 `.env.example`을 복사해 줍니다. 직접 만들고 싶으면 아래처럼 복사합니다.
+
+```powershell
+Copy-Item backend\.env.example backend\.env -ErrorAction SilentlyContinue
+Copy-Item frontend\.env.example frontend\.env -ErrorAction SilentlyContinue
+```
+
+기본 테스트만 할 때는 API 키가 없어도 됩니다. 실제 AI 요약, Gemini 비교, 나라장터 API 조회를 테스트하려면 `backend/.env`에 키를 넣습니다.
+
+```env
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+NARA_API_SERVICE_KEY=
+```
+
+주의:
+- API 키는 Git에 커밋하지 않습니다.
+- 프론트엔드에는 전체 API 키를 노출하지 않습니다.
+- `scripts/manage-servers.ps1`로 실행하면 기본 백엔드 주소는 `http://127.0.0.1:18111`, 프론트 주소는 `http://127.0.0.1:5199`입니다.
+
+### 6. 서버 실행
+가장 쉬운 방법은 서버 관리 스크립트를 쓰는 것입니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
+```
+
+상태 확인:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action status
+```
+
+브라우저에서 접속:
+
+```text
+http://127.0.0.1:5199
+```
+
+서버 중지:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
+```
+
+포트를 바꾸고 싶으면:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start -BackendPort 18112 -FrontendPort 5200
+```
+
+### 7. 전체 테스트와 빌드
+백엔드 전체 테스트:
+
+```powershell
+py -3.13 -m pytest backend/tests -q
+```
+
+프론트엔드 빌드:
+
+```powershell
+cd frontend
+npm run build
+cd ..
+```
+
+인코딩 검사:
+
+```powershell
+py -3.13 scripts/check-encoding.py
+```
+
+프론트 의존성 보안 검사:
+
+```powershell
+cd frontend
+npm audit --audit-level=moderate
+cd ..
+```
+
+### 8. API smoke 테스트
+실제 백엔드/프론트 서버를 띄운 뒤 핵심 API 흐름을 자동으로 검증합니다.
+
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
 ```
-스모크 스크립트는 백엔드 서버를 기동하고 `법인 생성 -> 프로젝트 생성 -> 문서 업로드 -> 분석 -> 결과 조회`를 자동 검증합니다.
 
-### 나라장터 API 테스트 실행
-```bash
-cd D:\project\wisdom_procurement
+스모크 테스트가 검증하는 흐름:
+- 서버 기동
+- 법인 생성
+- 프로젝트 생성
+- PDF 업로드
+- 문서 분석
+- 최신 분석 조회
+- 나라장터 저장 공고 smoke 생성/분석
+- 서버 정리
+
+성공하면 `SMOKE_OK`가 출력됩니다.
+
+### 9. UX monkey 테스트
+먼저 서버를 실행합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
+```
+
+그 다음 UX 테스트를 실행합니다.
+
+```powershell
+cd frontend
+npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 80 --seed 20260531 --screenshot-dir ..\temp\ux-monkey
+cd ..
+```
+
+이 테스트는 destructive 버튼을 기본적으로 피하면서 주요 라우트를 방문하고, blank page 여부와 기본 UI 사용 가능성을 확인합니다.
+
+끝나면 서버를 중지합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
+```
+
+### 10. 나라장터 API 테스트
+나라장터 API 인증키가 있을 때만 실행합니다.
+
+```powershell
 $env:NARA_API_SERVICE_KEY="your_key_here"
 py -3.13 scripts\test-nara-api.py --date 20260505 --num-of-rows 10
 ```
-실제 인증키는 Git에 커밋하지 말고 환경변수 또는 `backend/.env`로만 관리합니다.
 
-### 백엔드 단위 테스트 실행
-```bash
+공고 PDF 샘플 수집/QA 스크립트도 실제 키가 있어야 안정적으로 동작합니다.
+
+### 11. 수동 실행이 필요할 때
+서버 관리 스크립트 대신 직접 실행하려면 아래처럼 실행합니다.
+
+백엔드:
+
+```powershell
 cd backend
-py -3.13 -m unittest discover -s tests -v
+$env:APP_PORT="18111"
+$env:PYTHONUTF8="1"
+py -3.13 -m app.main
 ```
-현재 단위 테스트는 `PyMuPDF` 기반 PDF 추출, OCR 후보 판정, DOCX 추출 경로를 검증합니다.
 
-### 서버 관리 스크립트
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
-powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action status
-powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action restart
-powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
+프론트엔드:
+
+```powershell
+cd frontend
+$env:VITE_API_BASE_URL="http://127.0.0.1:18111"
+npm run dev -- --host 127.0.0.1 --port 5199
 ```
-기본 포트는 `BE=18111`, `FE=5199`입니다. 필요하면 `-BackendPort`, `-FrontendPort` 옵션으로 바꿀 수 있습니다.
+
+### 12. 자주 나는 문제
+- `py -3.13`을 찾지 못함
+  - Python 3.13.13 설치와 Windows Python Launcher 설정을 확인합니다.
+- `npm run build`가 Node 버전을 요구함
+  - Node.js `20.19.0 이상` 또는 `22.12.0 이상`으로 올립니다.
+- 포트가 이미 사용 중
+  - `scripts/manage-servers.ps1 -Action stop`을 먼저 실행하거나 `-BackendPort`, `-FrontendPort`를 바꿉니다.
+- 나라장터 API가 실패함
+  - `NARA_API_SERVICE_KEY` 설정 여부, 키 인코딩, 공공데이터포털 승인 상태를 확인합니다.
+- OCR 관련 경고가 나옴
+  - 기본 테스트에는 치명적이지 않습니다. OCR을 실제로 검증할 때만 `backend/requirements-ocr.txt`를 설치합니다.
 
 ## 문서 링크
 - [기술 설계서](/D:/project/wisdom_procurement/docs/technical-design.md)
@@ -242,7 +386,11 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - [법인 증빙자료 자동 추출 설계](/D:/project/wisdom_procurement/docs/corporation-evidence-auto-extraction-plan.md)
 - [Phase 1.6 안정화 계획](/D:/project/wisdom_procurement/docs/phase-1.6-stabilization-plan.md)
 - [Phase 1.7 안정화 계획](/D:/project/wisdom_procurement/docs/phase-1.7-stabilization-plan.md)
-- [지원 가능성 판단 및 로컬 RAG 상세 구현계획](/D:/project/wisdom_procurement/docs/eligibility-rag-implementation-plan.md)
+- [Phase 2 / 2.5 구현계획](/D:/project/wisdom_procurement/docs/phase-2-implementation-plan.md)
+- [P1/P2/문서 보강 수정계획서](/D:/project/wisdom_procurement/docs/p1-p2-doc-remediation-plan.md)
+- [남은 개발 단계 로드맵](/D:/project/wisdom_procurement/docs/remaining-development-roadmap.md)
+- [Phase 2 종료 보강 ~ Phase 3 실행계획](/D:/project/wisdom_procurement/docs/phase-2-closeout-to-phase-3-execution-plan.md)
+- [부족조건 판단 및 로컬 RAG 상세 구현계획](/D:/project/wisdom_procurement/docs/eligibility-rag-implementation-plan.md)
 - [나라장터 API 분석](/D:/project/wisdom_procurement/docs/narajangteo-api-analysis.md)
 - [나라장터 API 테스트 결과](/D:/project/wisdom_procurement/docs/narajangteo-api-test-result-20260505.md)
 - [나라장터 게시판 설계](/D:/project/wisdom_procurement/docs/narajangteo-board-design.md)
@@ -284,7 +432,8 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - Phase 1.5: Nara Marketplace board, API notice search, attachment download, notice analysis
 - Phase 1.6: corporation evidence auto-extraction and profile enrichment
 - Phase 2: basis PDF management and local RAG preparation
-- Phase 3: judgment engine and procurement notice auto-collection
+- Phase 2 operations hardening: basis rule candidate review and Nara collection run management
+- Phase 3: gap-first judgment engine and procurement notice auto-collection
 
 ## Stack
 - Frontend: React, TypeScript, Vite, React Router
@@ -297,6 +446,94 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 - Runtime command: use Windows `py -3.13` or `C:\Python313\python.exe`; do not run backend/OCR with any other Python runtime
 - LLM: Gemini `gemini-2.5-flash` as the default model; OpenAI `gpt-5.4-mini` / `gpt-5.4` as selectable alternatives
 - Future vector DB: Qdrant preferred, Chroma optional
+
+## Quick Setup And Verification
+This project is optimized for local Windows PowerShell operation.
+
+Required tools:
+- Python `3.13.13`
+- Node.js `20.19.0+` or `22.12.0+`
+- npm
+- Git
+
+Install backend dependencies:
+
+```powershell
+cd backend
+py -3.13 -m pip install --upgrade pip
+py -3.13 -m pip install -r requirements.txt
+cd ..
+```
+
+Install frontend dependencies and the browser runtime for UX tests:
+
+```powershell
+cd frontend
+npm install
+npx playwright install chromium
+cd ..
+```
+
+Start local servers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
+```
+
+Default URLs:
+- Backend: `http://127.0.0.1:18111`
+- Frontend: `http://127.0.0.1:5199`
+
+Stop local servers:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
+```
+
+Run full backend tests:
+
+```powershell
+py -3.13 -m pytest backend/tests -q
+```
+
+Run frontend build:
+
+```powershell
+cd frontend
+npm run build
+cd ..
+```
+
+Run encoding and dependency checks:
+
+```powershell
+py -3.13 scripts/check-encoding.py
+cd frontend
+npm audit --audit-level=moderate
+cd ..
+```
+
+Run live API smoke:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
+```
+
+Run UX monkey smoke:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
+cd frontend
+npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 80 --seed 20260531 --screenshot-dir ..\temp\ux-monkey
+cd ..
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
+```
+
+Environment notes:
+- `scripts/manage-servers.ps1` copies `.env.example` files when `.env` files are missing.
+- API keys are optional for basic local tests.
+- Real Gemini/OpenAI/Nara API tests require keys in `backend/.env` or process environment variables.
+- Never commit API keys.
 
 Phase 1.6 should be delivered incrementally:
 - 1.6A: business registration evidence-based corporation registration MVP
@@ -320,7 +557,8 @@ Phase 1.6 should be delivered incrementally:
 - OCR Engine Implementation Plan: [docs/ocr-engine-implementation-plan.md](docs/ocr-engine-implementation-plan.md)
 - Corporation Evidence Auto-Extraction Plan: [docs/corporation-evidence-auto-extraction-plan.md](docs/corporation-evidence-auto-extraction-plan.md)
 - Phase 1.7 Stabilization Plan: [docs/phase-1.7-stabilization-plan.md](docs/phase-1.7-stabilization-plan.md)
-- Eligibility / RAG Plan: [docs/eligibility-rag-implementation-plan.md](docs/eligibility-rag-implementation-plan.md)
+- P1/P2/Documentation Remediation Plan: [docs/p1-p2-doc-remediation-plan.md](docs/p1-p2-doc-remediation-plan.md)
+- Gap Judgment / RAG Plan: [docs/eligibility-rag-implementation-plan.md](docs/eligibility-rag-implementation-plan.md)
 - Gemini API Docs: [https://ai.google.dev/gemini-api/docs](https://ai.google.dev/gemini-api/docs)
 - Gemini Structured Outputs: [https://ai.google.dev/gemini-api/docs/structured-output](https://ai.google.dev/gemini-api/docs/structured-output)
 - OpenAI Models: [https://platform.openai.com/docs/models](https://platform.openai.com/docs/models)

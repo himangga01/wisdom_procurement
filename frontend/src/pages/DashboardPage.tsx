@@ -73,11 +73,33 @@ function recentDate(value: string) {
   });
 }
 
+function hasRequirementValue(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasRequirementValue(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((item) => hasRequirementValue(item));
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  return value !== null && value !== undefined && value !== "";
+}
+
 function hasExtractedNoticeRequirements(notice: SavedNaraNotice) {
   if (!notice.analysis_summary_json) return false;
   try {
     const parsed = JSON.parse(notice.analysis_summary_json) as { notice_requirements?: unknown };
-    return Array.isArray(parsed.notice_requirements) && parsed.notice_requirements.length > 0;
+    const requirements = parsed.notice_requirements;
+    if (Array.isArray(requirements)) {
+      return requirements.some((item) => hasRequirementValue(item));
+    }
+    if (!requirements || typeof requirements !== "object") {
+      return false;
+    }
+    return ["regions", "licenses", "company_types", "required_documents", "requirement_lines", "money", "dates"].some(
+      (key) => hasRequirementValue((requirements as Record<string, unknown>)[key]),
+    );
   } catch {
     return false;
   }

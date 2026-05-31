@@ -244,7 +244,7 @@
   - PDF/DOCX 첨부파일 다운로드
   - 기존 분석 파이프라인 연결
 - Phase 1.5 제외:
-  - 최종 지원 가능/불가능 판단
+  - 최종 자격 판단
   - 기준문서 RAG 판단
   - HWP/HWPX 변환
   - 낙찰/계약 이력 분석
@@ -284,7 +284,7 @@ query Nara Marketplace notices
 | `getBidPblancListInfoCnstwkPPSSrch` | construction notices by Nara search conditions | portal search UI |
 | `getBidPblancListInfoCnstwkBsisAmount` | construction basis amount | enrich notice detail |
 | `getBidPblancListInfoLicenseLimit` | license/industry restrictions | future eligibility input |
-| `getBidPblancListInfoPrtcptPsblRgn` | eligible regions | future eligibility input |
+| `getBidPblancListInfoPrtcptPsblRgn` | participation regions | future requirement input |
 | `getBidPblancListInfoEorderAtchFileInfo` | e-order attachments | optional attachment enrichment |
 
 ## Common Request Parameters

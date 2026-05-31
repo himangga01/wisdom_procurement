@@ -1,12 +1,12 @@
 # 한국어 버전
 
 ## 문서 목적
-이 문서는 `SMART 조달청 계산기`의 핵심 확장 기능인 `법인 사업자 대 공고문 지원 가능성 판단`을 구현하기 위한 상세 계획서입니다.
+이 문서는 `SMART 조달청 계산기`의 핵심 확장 기능인 `법인 사업자 대 공고문 부족조건/준비 상태 판단`을 구현하기 위한 상세 계획서입니다.
 
 핵심 제품 가정은 다음입니다.
 
-- 대부분의 사업자는 특정 공고문에 즉시 지원 가능한 상태가 아니다.
-- 따라서 단순히 `지원 가능/불가능`을 말하는 것보다, `왜 지금은 어려운지`, `무엇이 부족한지`, `지원하려면 무엇을 준비해야 하는지`를 알려주는 것이 더 중요하다.
+- 대부분의 사업자는 특정 공고문에 바로 대응할 준비가 끝난 상태가 아니다.
+- 따라서 단순한 확정 판정보다, `왜 지금은 어려운지`, `무엇이 부족한지`, `지원하려면 무엇을 준비해야 하는지`를 알려주는 것이 더 중요하다.
 - 판단 결과는 반드시 공고문 내용, 기준문서 조항, 법인 입력 정보, 보유 증빙자료를 근거로 설명해야 한다.
 - 근거가 부족한 경우 `불가능`으로 단정하지 않고 `검토 필요`와 `추가 확인 필요 항목`으로 분리한다.
 
@@ -34,7 +34,7 @@
 - 내부 검토용 `요건 대비 보유정보 매트릭스` 제공
 
 ### Phase 3
-- 법인 대 공고 지원 가능성 판단
+- 법인 대 공고 부족조건/준비 상태 판단
 - 부족 조건 분석
 - 준비 필요 인증/면허/서류 출력
 - 근거 조항 citation 출력
@@ -55,13 +55,16 @@
 ```
 
 ## 결과 상태 정의
-최종 화면은 낙관적인 `지원 가능` 중심이 아니라 `준비 상태` 중심이어야 합니다.
+최종 화면은 낙관적인 확정 판정 중심이 아니라 `부족조건과 준비 상태` 중심이어야 합니다.
 
-- `지원 가능`: 필수 조건이 모두 확인되고, 필수 서류도 보유 또는 준비 가능 상태로 확인됨
-- `지원 곤란`: 필수 자격, 면허, 지역, 기업유형, 실적, 금액 조건 중 하나 이상이 명확히 부족함
-- `검토 필요`: 공고문 또는 기준문서 근거가 불충분하거나 법인 입력 정보/증빙자료가 부족함
+- `matched`: 법인 입력/증빙과 공고 요구조건이 현재 데이터 기준으로 일치함
+- `missing`: 필요한 면허, 인증, 지역, 기업유형, 실적, 금액 조건, 제출서류 중 하나 이상이 부족함
+- `uncertain`: 자동 비교만으로 판단하기 어려움
+- `needs_review`: 공고문, 기준문서, 법인 입력 정보, 증빙자료 중 사람이 확인해야 할 부분이 있음
+- `not_applicable`: 해당 조건이 현재 법인 또는 공고에는 적용되지 않음
+- `citation_missing`: 기준문서 citation이 없어 확정 근거로 사용할 수 없음
 
-권장 기본값은 `검토 필요`입니다. 시스템이 근거 없이 `지원 가능`을 쉽게 출력하면 안 됩니다.
+권장 기본값은 `needs_review`입니다. 시스템이 근거 없이 확정 판정을 쉽게 출력하면 안 됩니다.
 
 ## 법인 사업자 입력 필드 추가 검토
 
@@ -88,7 +91,7 @@
 | 내부 메모 | 행정사 실무 메모 | 기존 필드 유지 |
 
 ### 자격/면허/인증 필드
-이 영역은 지원 가능성 판단의 핵심입니다.
+이 영역은 부족조건/준비 상태 판단의 핵심입니다.
 
 | 필드 | 예시 | 판단 활용 |
 |---|---|---|
@@ -420,7 +423,7 @@ corporation_evidence_documents
 
 ```text
 면허/인증 정보는 공고의 참가자격 조건과 비교됩니다.
-만료일이 지난 인증은 지원 가능 조건으로 보지 않습니다.
+만료일이 지난 인증은 충족 조건으로 보지 않습니다.
 ```
 
 ## 기준문서 관리 설계 재검토
@@ -524,7 +527,7 @@ basis_document_chunks
 ```
 
 ### 판단 규칙 추출 테이블 권장
-청크 검색만으로도 RAG는 가능하지만, 지원 가능성 판단은 조건 비교가 필요합니다. 따라서 기준문서에서 구조화된 규칙을 별도 추출하는 것을 권장합니다.
+청크 검색만으로도 RAG는 가능하지만, 부족조건/준비 상태 판단은 조건 비교가 필요합니다. 따라서 기준문서에서 구조화된 규칙을 별도 추출하는 것을 권장합니다.
 
 ```text
 basis_rules
@@ -590,7 +593,7 @@ basis_rules
 ## 로컬 RAG 상세 구현계획
 
 ### RAG 적용이 적합한 이유
-지원 가능성 판단은 단순 요약 문제가 아닙니다. 공고문 조건과 기준문서 근거를 함께 찾아야 합니다.
+부족조건/준비 상태 판단은 단순 요약 문제가 아닙니다. 공고문 조건과 기준문서 근거를 함께 찾아야 합니다.
 
 RAG가 필요한 이유:
 
@@ -794,8 +797,8 @@ upload_basis_pdf
 ### 판단 결과 스키마
 ```json
 {
-  "overall_status": "not_eligible",
-  "summary": "현재 법인은 필수 면허와 중소기업 확인서 유효성 확인이 부족하여 즉시 지원은 어렵습니다.",
+  "overall_status": "needs_review",
+  "summary": "현재 법인은 필수 면허와 중소기업 확인서 유효성 확인이 부족하여 추가 준비가 필요합니다.",
   "requirements": [
     {
       "requirement_id": "req-001",
@@ -898,16 +901,16 @@ GET /api/eligibility/evaluations/{id}/checklist
 - 최근 판단 이력 탭
 
 ### 저장한 공고 상세 화면
-- `법인 선택 후 지원 가능성 검토` 버튼
+- `법인 선택 후 준비 상태 검토` 버튼
 - 검토 대상 법인 선택
 - 검토 전 부족 데이터 안내
 - 검토 결과 화면으로 이동
 
-### 지원 가능성 검토 결과 화면
+### 준비 상태 검토 결과 화면
 - 상단 상태 배지
-  - 지원 가능
-  - 지원 곤란
-  - 검토 필요
+  - 준비 확인
+  - 부족 조건
+  - 확인 필요
 - 핵심 부족 조건 카드
 - 조건별 매칭 테이블
 - 준비 서류 체크리스트
@@ -1033,11 +1036,14 @@ corporation profile
 ```
 
 ## Result States
-- `eligible`: all blocking requirements are verified as met
-- `not_eligible`: one or more blocking requirements are clearly missing, expired, or impossible based on current data
-- `review_required`: evidence, corporation data, notice data, or basis citations are insufficient
+- `matched`: current corporation data/evidence matches the requirement
+- `missing`: required licenses, certifications, regions, company types, performance, amounts, or documents are missing
+- `uncertain`: automated comparison is not enough
+- `needs_review`: notice, basis document, corporation data, or evidence requires human review
+- `not_applicable`: the requirement does not apply in the current context
+- `citation_missing`: no basis-document citation is available, so the item must not become final evidence
 
-Default should be `review_required`. The system must not return `eligible` without strong evidence.
+Default should be `needs_review`. The system must not produce confident final verdicts without strong evidence and citations.
 
 ## Corporation Field Expansion
 
@@ -1631,8 +1637,8 @@ Requirement categories:
 ### Evaluation Output Schema
 ```json
 {
-  "overall_status": "not_eligible",
-  "summary": "The corporation is not immediately ready because key license and certificate evidence is missing.",
+  "overall_status": "needs_review",
+  "summary": "The corporation needs additional preparation because key license and certificate evidence is missing.",
   "requirements": [
     {
       "requirement_id": "req-001",
