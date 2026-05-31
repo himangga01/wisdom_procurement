@@ -4840,3 +4840,29 @@ Per user request, it must be updated whenever new work is performed in this thre
   - enter it in `backend/.env` as `NARA_API_SERVICE_KEY` or set it as a PowerShell environment variable
   - do not expose raw API keys in README, logs, frontend screens, or Git commits
 - Added the Nara API application link to the English Quick Setup notes as well.
+
+## 작업 기록 (2026-05-31) - README 문서 링크 상대경로 수정
+- 사용자 요청에 따라 README의 `문서 링크` 섹션에서 클릭이 되지 않는 링크를 수정했다.
+- 원인:
+  - 기존 링크가 `/D:/project/wisdom_procurement/...` 형태의 로컬 절대경로였기 때문에 다른 PC, GitHub, 일반 Markdown 뷰어에서 정상 링크로 동작하지 않을 수 있었다.
+- 수정:
+  - 모든 문서 링크를 저장소 루트 기준 상대경로로 변경했다.
+  - 예: `/D:/project/wisdom_procurement/docs/technical-design.md` -> `docs/technical-design.md`
+  - `AGENTS.md`도 `/D:/project/wisdom_procurement/AGENTS.md` -> `AGENTS.md`로 변경했다.
+- 검증:
+  - README `문서 링크` 섹션의 링크 18개 파일 존재 확인: `README_DOC_LINKS_OK count=18`
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- README.md docs/work-log.md`: 통과
+
+## Additional Update (2026-05-31) - Fixed README Document Links
+- Fixed the broken README `문서 링크` section per the user's request.
+- Cause:
+  - Links used local absolute Windows paths such as `/D:/project/wisdom_procurement/...`, which do not work reliably on other PCs, GitHub, or regular Markdown viewers.
+- Fix:
+  - Changed all document links to repository-relative paths.
+  - Example: `/D:/project/wisdom_procurement/docs/technical-design.md` -> `docs/technical-design.md`
+  - Changed the agent guide link to `AGENTS.md`.
+- Verification:
+  - Checked all 18 README document links exist: `README_DOC_LINKS_OK count=18`
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- README.md docs/work-log.md`: passed
