@@ -4900,3 +4900,47 @@ Per user request, it must be updated whenever new work is performed in this thre
   - note that this project standardizes on `GEMINI_API_KEY`
   - warn not to expose raw Gemini API keys in README, logs, frontend screens, or Git commits
 - Added the Google AI Studio API keys link to the English Quick Setup section as well.
+
+## 작업 기록 (2026-05-31) - 실제 기준문서 RAG 및 테이블 추출 QA 계획 작성
+- 사용자 요청에 따라 제공된 실제 기준문서 PDF를 대상으로 RAG 테스트와 테이블 추출 품질 검증을 진행하기 위한 계획을 먼저 작성했다.
+- 대상 파일:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- 사전 확인:
+  - 파일 존재 확인 완료
+  - 파일 크기 약 5.36MB 확인
+- 신규 계획 문서:
+  - `docs/real-basis-document-rag-test-plan.md`
+- 계획에 포함한 내용:
+  - 실제 기준문서 샘플 보관 폴더: `backend/tests/real-basis-document-samples/`
+  - 원문 PDF는 기본적으로 Git에 커밋하지 않고 로컬 ignored fixture로 관리하는 정책
+  - 샘플 등록 스크립트 계획
+  - PDF 추출 품질 사전 분석 스크립트 계획
+  - page/text/block/line/table-like line/필수 키워드 coverage 측정 계획
+  - `/api/basis-documents` 업로드 기반 실제 RAG 테스트 계획
+  - JSON basis index 상태 검증 계획
+  - 직접생산/세부품명/생산설비/검사설비/공장등록 등 RAG 검색 질의 후보
+  - 테이블 기반 질의와 chunk 의미 보존 검증 기준
+  - 실패 시 PyMuPDF 정규화/청킹/테이블 metadata 보강 후보
+- 이번 단계에서는 사용자 요청대로 계획만 작성했고, PDF 복사/테스트 코드 작성/RAG 실행/추출 알고리즘 변경은 하지 않았다.
+
+## Additional Update (2026-05-31) - Real Basis Document RAG And Table Extraction QA Plan
+- Per the user's request, created the plan first for testing the provided real basis-document PDF with RAG and table-heavy extraction QA.
+- Target file:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- Preflight:
+  - confirmed the file exists
+  - confirmed size is about 5.36MB
+- New plan document:
+  - `docs/real-basis-document-rag-test-plan.md`
+- Covered:
+  - local fixture directory: `backend/tests/real-basis-document-samples/`
+  - raw PDF should be treated as a local ignored fixture by default
+  - sample registration script plan
+  - PDF extraction preflight analysis script plan
+  - page/text/block/line/table-like-line/required-term coverage metrics
+  - real RAG tests via `/api/basis-documents`
+  - JSON basis index validation
+  - candidate RAG queries around direct production, item detail names, production equipment, inspection equipment, and factory registration
+  - table-oriented query tests and chunk semantic preservation thresholds
+  - potential PyMuPDF normalization, chunking, and table metadata hardening if QA fails
+- No PDF copy, test implementation, RAG execution, or extraction algorithm change was performed in this planning step.
