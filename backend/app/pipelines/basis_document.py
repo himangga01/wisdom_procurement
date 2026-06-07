@@ -76,6 +76,27 @@ def basis_page_ranges(parser_metadata: dict[str, Any], normalized_text: str) -> 
             return []
         return [{"page_number": 1, "start": 0, "end": len(normalized_text)}]
 
+    explicit_ranges: list[dict[str, int]] = []
+    for page in pages:
+        if not isinstance(page, dict) or "char_start" not in page or "char_end" not in page:
+            explicit_ranges = []
+            break
+        start = parse_int(page.get("char_start"), -1)
+        end = parse_int(page.get("char_end"), -1)
+        page_number = parse_int(page.get("page_number"), len(explicit_ranges) + 1)
+        if start < 0 or end < start:
+            explicit_ranges = []
+            break
+        explicit_ranges.append(
+            {
+                "page_number": page_number,
+                "start": min(start, len(normalized_text)),
+                "end": min(end, len(normalized_text)),
+            }
+        )
+    if explicit_ranges:
+        return explicit_ranges
+
     ranges: list[dict[str, int]] = []
     cursor = 0
     for page in pages:
@@ -188,6 +209,97 @@ def split_basis_text_into_chunks(
 
     flush()
     return chunks
+
+
+def split_basis_tables_into_row_chunks(
+    parser_metadata: dict[str, Any],
+    *,
+    start_index: int = 0,
+) -> list[dict[str, Any]]:
+    tables = parser_metadata.get("tables") if isinstance(parser_metadata, dict) else []
+    if not isinstance(tables, list):
+        return []
+
+    chunks: list[dict[str, Any]] = []
+    for table in tables:
+        if not isinstance(table, dict):
+            continue
+        table_id = clean_text(table.get("table_id"))
+        page_number = parse_int(table.get("page_number"), 0) or None
+        raw_headers = table.get("headers") if isinstance(table.get("headers"), list) else []
+        headers = [clean_text(header) for header in raw_headers]
+        rows = table.get("rows") if isinstance(table.get("rows"), list) else []
+        if len(rows) < 2:
+            continue
+        for fallback_row_index, row in enumerate(rows[1:], start=2):
+            if not isinstance(row, dict):
+                continue
+            cells = [clean_text(cell) for cell in row.get("cells", [])]
+            if not any(cells):
+                continue
+            row_index = parse_int(row.get("row_index"), fallback_row_index)
+            row_lines = []
+            for cell_index, cell in enumerate(cells):
+                if not cell:
+                    continue
+                header = headers[cell_index] if cell_index < len(headers) and headers[cell_index] else f"col_{cell_index + 1}"
+                row_lines.append(f"{header}: {cell}")
+            if not row_lines:
+                continue
+            chunk_text = "\n".join(
+                [
+                    f"[table_id: {table_id or 'unknown'}]",
+                    f"[page: {page_number or ''}]",
+                    *row_lines,
+                ]
+            ).strip()
+            chunks.append(
+                {
+                    "chunk_index": start_index + len(chunks),
+                    "chunk_text": chunk_text,
+                    "chunk_text_normalized": chunk_text,
+                    "page_start": page_number,
+                    "page_end": page_number,
+                    "section_title": f"table row {table_id}".strip(),
+                    "article_label": "",
+                    "chunk_hash": basis_chunk_hash(chunk_text),
+                    "token_count": len(basis_tokenize(chunk_text)),
+                    "metadata": {
+                        "chunker": "opendataloader-table-row-v1",
+                        "chunk_type": "table_row",
+                        "source_engine": table.get("source_engine") or parser_metadata.get("engine", ""),
+                        "page_number": page_number,
+                        "table_id": table_id,
+                        "row_index": row_index,
+                        "column_headers": headers,
+                        "cell_texts": cells,
+                        "bbox": row.get("bbox", []),
+                        "table_bbox": table.get("bbox", []),
+                    },
+                }
+            )
+    return chunks
+
+
+def compact_parser_metadata_for_storage(parser_metadata: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(parser_metadata, dict):
+        return {}
+    compact = dict(parser_metadata)
+    tables = compact.pop("tables", [])
+    if isinstance(tables, list):
+        compact["tables_preview"] = [
+            {
+                "table_id": table.get("table_id"),
+                "page_number": table.get("page_number"),
+                "row_count": table.get("row_count"),
+                "column_count": table.get("column_count"),
+                "headers": table.get("headers", []),
+                "bbox": table.get("bbox", []),
+            }
+            for table in tables[:10]
+            if isinstance(table, dict)
+        ]
+    return compact
 
 
 def default_basis_index_payload() -> dict[str, Any]:
@@ -474,6 +586,15 @@ def basis_chunk_payload(row: sqlite3.Row | dict) -> dict:
     return payload
 
 
+def basis_search_score(query_tokens: set[str], vector: dict[str, int]) -> float:
+    if not query_tokens:
+        return 0
+    shared_token_count = sum(1 for token in query_tokens if vector.get(token, 0) > 0)
+    if shared_token_count <= 0:
+        return 0
+    return shared_token_count / len(query_tokens)
+
+
 def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> dict:
     row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
     if not row:
@@ -530,6 +651,10 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
         raw_text = ocr_result.text or parsed.text
         normalized_text = normalize_basis_text(raw_text)
         chunks = split_basis_text_into_chunks(normalized_text, parsed.metadata) if normalized_text else []
+        table_chunks = split_basis_tables_into_row_chunks(parsed.metadata, start_index=len(chunks))
+        chunks = [*chunks, *table_chunks]
+        for chunk_index, chunk in enumerate(chunks):
+            chunk["chunk_index"] = chunk_index
 
         processing_run_id = f"{datetime.now(KST).strftime('%Y%m%d%H%M%S%f')}-{row['file_hash'][:12]}"
         page_count = parse_int(parsed.metadata.get("page_count"), ocr_result.page_count)
@@ -615,13 +740,14 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
             return basis_document_payload(conn, conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone())
 
         metadata = {
-            "parser": parsed.metadata,
+            "parser": compact_parser_metadata_for_storage(parsed.metadata),
             "ocr": ocr_result.to_dict(),
             "normalizer": {"name": "basis-normalize-v1", "char_count": len(normalized_text)},
             "chunker": {
-                "name": "paragraph-window-v1",
+                "name": "paragraph-window-v1+opendataloader-table-row-v1",
                 "max_chars": BASIS_MAX_CHUNK_CHARS,
                 "overlap_chars": BASIS_CHUNK_OVERLAP_CHARS,
+                "table_row_chunk_count": len(table_chunks),
             },
             "indexer": {"name": BASIS_EMBEDDING_MODEL, "vector_count": vector_count},
         }
@@ -898,10 +1024,9 @@ def basis_search_results(
         if not isinstance(item, dict):
             continue
         vector = item.get("tokens") if isinstance(item.get("tokens"), dict) else {}
-        shared = sum(vector.get(token, 0) for token in query_tokens)
-        if shared <= 0:
+        score = basis_search_score(query_tokens, vector)
+        if score <= 0:
             continue
-        score = shared / max(len(query_tokens), 1)
         scored_items.append((score, vector_id, item))
 
     scored: list[dict[str, Any]] = []

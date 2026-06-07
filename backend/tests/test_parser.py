@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,22 @@ import fitz
 from docx import Document
 
 from app.pipelines.parser import extract_document, extract_text_from_file
+
+
+class PdfReaderEnv:
+    def __init__(self, engine: str) -> None:
+        self.engine = engine
+        self.previous: str | None = None
+
+    def __enter__(self) -> None:
+        self.previous = os.environ.get("PDF_READER_ENGINE")
+        os.environ["PDF_READER_ENGINE"] = self.engine
+
+    def __exit__(self, *_args: object) -> None:
+        if self.previous is None:
+            os.environ.pop("PDF_READER_ENGINE", None)
+        else:
+            os.environ["PDF_READER_ENGINE"] = self.previous
 
 
 class ParserTests(unittest.TestCase):
@@ -20,7 +37,8 @@ class ParserTests(unittest.TestCase):
             doc.save(pdf_path)
             doc.close()
 
-            parsed = extract_document(pdf_path)
+            with PdfReaderEnv("pymupdf"):
+                parsed = extract_document(pdf_path)
 
             self.assertEqual(parsed.kind, "pdf")
             self.assertEqual(parsed.metadata["engine"], "PyMuPDF")
@@ -37,7 +55,8 @@ class ParserTests(unittest.TestCase):
             doc.save(pdf_path)
             doc.close()
 
-            parsed = extract_document(pdf_path)
+            with PdfReaderEnv("pymupdf"):
+                parsed = extract_document(pdf_path)
 
             self.assertEqual(parsed.kind, "pdf")
             self.assertTrue(parsed.metadata["needs_ocr"])

@@ -27,6 +27,19 @@ backend/storage/ocr-samples/
 backend/tests/nara-notice-pdf-samples/
 backend/tests/nara-pdf-samples/
 backend/tests/nara-phase2-basis-qa-samples/
+backend/tests/real-basis-document-samples/*.pdf
+backend/tests/real-basis-document-samples/manifest.json
+backend/tests/real-basis-document-samples/extraction-baseline.json
+backend/tests/real-basis-document-samples/extraction-report.json
+backend/tests/real-basis-document-samples/text-comparison-report.json
+backend/tests/real-basis-document-samples/docx-comparison-report.json
+backend/tests/real-basis-document-samples/md-comparison-report.json
+backend/tests/real-basis-document-samples/regenerated-basis-document.md
+backend/tests/real-basis-document-samples/md-regeneration-comparison-report.json
+backend/tests/real-basis-document-samples/opendataloader-basis-qa-report*.json
+backend/tests/real-basis-document-samples/opendataloader-regenerated-basis-document*.md
+backend/tests/real-basis-document-samples/tmp/
+backend/tests/real-basis-document-samples/storage/
 temp/
 
 # OS

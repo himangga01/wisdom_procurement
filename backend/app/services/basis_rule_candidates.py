@@ -121,7 +121,7 @@ def basis_rule_candidate_match_score(requirement: dict[str, Any], candidate: dic
         ]
     )
     candidate_vector = basis_vector_for_text(candidate_text)
-    shared = sum(candidate_vector.get(token, 0) for token in query_tokens)
+    shared = sum(1 for token in query_tokens if candidate_vector.get(token, 0) > 0)
     if shared <= 0:
         return 0
     text_score = shared / max(len(query_tokens), 1)

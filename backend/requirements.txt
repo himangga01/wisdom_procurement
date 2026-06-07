@@ -3,5 +3,6 @@ flask-cors==6.0.1
 python-dotenv==1.1.1
 PyMuPDF==1.26.5
 python-docx==1.1.2
+opendataloader-pdf==2.4.7
 openai==1.109.1
 google-genai==2.0.1

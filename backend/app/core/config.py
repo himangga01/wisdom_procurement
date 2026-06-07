@@ -16,6 +16,16 @@ class Settings(BaseSettings):
 
     ocr_languages: str = "kor+eng"
 
+    pdf_reader_engine: str = "auto"
+    pdf_reader_odl_version: str = "2.4.7"
+    pdf_reader_odl_table_method: str = "cluster"
+    pdf_reader_odl_reading_order: str = "xycut"
+    pdf_reader_odl_format: str = "markdown,json"
+    pdf_reader_odl_timeout_seconds: int = 180
+    pdf_reader_odl_threads: int = 1
+    pdf_reader_odl_enable_hybrid: bool = False
+    pdf_reader_allow_pymupdf_fallback: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

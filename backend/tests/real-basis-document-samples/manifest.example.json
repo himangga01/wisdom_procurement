@@ -1,0 +1,20 @@
+{
+  "schema_version": "real_basis_document_sample_v1",
+  "sample": {
+    "title": "중소기업자간 경쟁제품 직접생산 확인기준",
+    "category": "direct_production_basis",
+    "document_version": "2025-116_2025-11-19",
+    "issuing_agency": "중소벤처기업부",
+    "source_path": "C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf",
+    "saved_path": "backend/tests/real-basis-document-samples/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf",
+    "file_name": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf",
+    "file_size_bytes": 0,
+    "sha256": "",
+    "registered_at": ""
+  },
+  "usage": {
+    "register_command": "py -3.13 scripts/register-real-basis-document-sample.py --source \"<PDF path>\"",
+    "analyze_command": "py -3.13 scripts/analyze-real-basis-document-pdf.py",
+    "test_command": "$env:RUN_REAL_BASIS_RAG_TESTS=\"1\"; py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q"
+  }
+}

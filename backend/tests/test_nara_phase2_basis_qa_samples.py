@@ -20,6 +20,7 @@ os.environ["OPENAI_API_KEY"] = ""
 os.environ["GEMINI_API_KEY"] = ""
 
 from app import main as runtime  # noqa: E402
+from app.core.text import basis_tokenize  # noqa: E402
 from tests.nara_pdf_sample_cache import load_sample_manifest, sample_path  # noqa: E402
 
 
@@ -101,6 +102,6 @@ class NaraPhase2BasisQaSampleTests(unittest.TestCase):
                 self.assertNotIn("지원 불가능", serialized)
 
     def _search_query_from_payload(self, payload: dict) -> str:
-        tokens = runtime.basis_tokenize(payload.get("extracted_text_preview", ""))
+        tokens = basis_tokenize(payload.get("extracted_text_preview", ""))
         selected = [token for token in tokens if len(token) >= 2 and not token.isdigit()][:5]
         return " ".join(selected) or payload.get("title") or "공고문"

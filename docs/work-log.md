@@ -4944,3 +4944,663 @@ Per user request, it must be updated whenever new work is performed in this thre
   - table-oriented query tests and chunk semantic preservation thresholds
   - potential PyMuPDF normalization, chunking, and table metadata hardening if QA fails
 - No PDF copy, test implementation, RAG execution, or extraction algorithm change was performed in this planning step.
+
+## 작업 기록 (2026-06-05) - 실제 기준문서 RAG 상세 구현계획 보강
+- 사용자 요청에 따라 `docs/real-basis-document-rag-test-plan.md`에 실제 구현 가능한 수준의 상세 구현계획을 추가했다.
+- 이번 작업은 계획 상세화만 진행했으며, 아직 PDF 복사/스크립트 작성/테스트 작성/RAG 실행은 하지 않았다.
+- 상세화한 항목:
+  - `.gitignore`에 추가할 실제 기준문서 샘플 산출물 제외 규칙
+  - `backend/tests/real-basis-document-samples/README.md`와 `manifest.example.json` 작성 계획
+  - `scripts/register-real-basis-document-sample.py`의 CLI 옵션, 입출력, manifest schema, 검증 기준
+  - `scripts/analyze-real-basis-document-pdf.py`의 CLI 옵션, PyMuPDF 추출 지표, table-like line 탐지 휴리스틱, report schema, 성공/실패 기준
+  - `backend/tests/test_real_basis_document_rag.py`의 실행 정책, 환경변수, helper 함수 구성
+  - 업로드/청킹/인덱싱 테스트 케이스
+  - RAG 검색 질의 테스트 케이스
+  - 검색 평가 API 테스트 케이스
+  - 테이블 기반 RAG 품질 테스트 케이스
+  - README/샘플 README/work-log 문서화 범위
+  - 기본/엄격 검증 명령
+  - 구현 완료 체크리스트
+- 계획상 핵심 성공 기준:
+  - 실제 기준문서 업로드 후 chunk 10개 이상
+  - `vector_count == chunk_count`
+  - JSON basis index valid
+  - RAG 질의 coverage 80% 이상
+  - table-like 질의 coverage 80% 이상
+  - `직접생산`, `생산설비`, `검사설비` 관련 검색 성공
+
+## Additional Update (2026-06-05) - Detailed Real Basis Document RAG Implementation Plan
+- Per the user's request, expanded `docs/real-basis-document-rag-test-plan.md` into a detailed implementation plan.
+- This step only detailed the plan; no PDF copy, script implementation, test implementation, or RAG execution was performed.
+- Added details for:
+  - gitignore rules for local real-basis artifacts
+  - sample README and `manifest.example.json`
+  - `scripts/register-real-basis-document-sample.py` CLI options, inputs/outputs, manifest schema, and validation criteria
+  - `scripts/analyze-real-basis-document-pdf.py` CLI options, PyMuPDF extraction metrics, table-like line heuristics, report schema, and success/failure criteria
+  - `backend/tests/test_real_basis_document_rag.py` execution policy, environment variables, and helper functions
+  - upload/chunk/index test case
+  - RAG search query test case
+  - retrieval evaluation API test case
+  - table-aware RAG QA test case
+  - README/sample README/work-log documentation scope
+  - basic and strict verification commands
+  - implementation completion checklist
+- Key planned thresholds:
+  - at least 10 chunks after upload
+  - `vector_count == chunk_count`
+  - valid JSON basis index
+  - at least 80% RAG query coverage
+  - at least 80% table-like query coverage
+  - successful searches around direct production, production equipment, and inspection equipment
+
+## 작업 기록 (2026-06-05) - 실제 기준문서 RAG 테스트 구현 및 실행
+- 사용자 요청에 따라 `docs/real-basis-document-rag-test-plan.md`의 상세 구현계획을 실제 코드와 테스트로 구현했다.
+- 추가/수정 파일:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `backend/tests/real-basis-document-samples/manifest.example.json`
+  - `scripts/register-real-basis-document-sample.py`
+  - `scripts/analyze-real-basis-document-pdf.py`
+  - `backend/tests/test_real_basis_document_rag.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/work-log.md`
+- 실제 기준문서 PDF를 로컬 테스트 샘플 폴더에 복사하고 `manifest.json`을 생성했다.
+  - 원본: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+  - 저장 위치: `backend/tests/real-basis-document-samples/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+  - sha256: `e4672ed3d7f4626064729f4db9a329f30f7f9109d9fb19df1b16d5865edfd8c7`
+- 실제 PDF와 `manifest.json`, `extraction-report.json`, `extraction-baseline.json`은 `.gitignore` 대상 로컬 산출물로 관리하도록 했다.
+- 추출 분석 결과:
+  - 파일 크기: 5,360,737 bytes
+  - 페이지 수: 489
+  - 추출 문자 수: 702,598
+  - page coverage: 1.0
+  - 청크 수: 495
+  - table-like line 후보 수: 80
+  - 필수 키워드 `직접생산`, `확인기준`, `중소기업자간`, `경쟁제품`, `세부품명`, `생산시설`, `검사설비` 모두 확인
+- 구현한 테스트:
+  - 실제 기준문서 샘플 manifest/PDF 검증
+  - `/api/basis-documents` 업로드, 청킹, JSON 인덱싱 검증
+  - `/api/basis-search` RAG 검색 citation 후보 검증
+  - `/api/basis-retrieval-evaluations` 검색 평가 저장/coverage 검증
+  - 테이블형 라인 기반 query가 RAG 검색 가능한지 검증
+- 테스트 실행 결과:
+  - `py -3.13 -m py_compile scripts/register-real-basis-document-sample.py scripts/analyze-real-basis-document-pdf.py backend/tests/test_real_basis_document_rag.py`: 통과
+  - `py -3.13 scripts/analyze-real-basis-document-pdf.py --strict`: 통과
+  - `$env:RUN_REAL_BASIS_RAG_TESTS='1'; py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q`: `5 passed, 10 subtests passed`
+  - `py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q`: `5 skipped`
+  - `py -3.13 -m pytest backend/tests -q`: `102 passed, 8 skipped`
+  - `py -3.13 scripts/check-encoding.py`: 통과
+- PyMuPDF에서 `SwigPyPacked`, `SwigPyObject`, `swigvarlink` 관련 DeprecationWarning이 출력되지만 테스트 실패는 아니며 현재 known warning으로 기록한다.
+- 이번 구현에서 파서/청킹 알고리즘 자체 수정은 필요하지 않았다.
+
+## Additional Update (2026-06-05) - Real Basis Document RAG Test Implementation
+- Implemented the detailed real-basis-document RAG QA plan.
+- Added local sample management, extraction analysis, and opt-in real RAG pytest coverage.
+- Changed files:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `backend/tests/real-basis-document-samples/manifest.example.json`
+  - `scripts/register-real-basis-document-sample.py`
+  - `scripts/analyze-real-basis-document-pdf.py`
+  - `backend/tests/test_real_basis_document_rag.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/work-log.md`
+- Local ignored artifacts were generated for the copied PDF, manifest, extraction report, and baseline.
+- Extraction QA passed with 702,598 extracted characters, 489 pages, 495 chunks, and 80 table-like line candidates.
+- Opt-in real RAG tests passed with 5 tests and 10 subtests.
+- Full backend pytest passed with 102 passed and 8 skipped.
+- Encoding check passed.
+
+## 작업 기록 (2026-06-05) - 실제 기준문서 PDF 파싱 텍스트와 외부 TXT 비교
+- 사용자 요청에 따라 외부에서 추출한 TXT 기준 텍스트와 우리 서비스가 직접 PDF를 파싱해 추출한 텍스트를 비교했다.
+- 기준 TXT:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).txt`
+- 추가/수정 파일:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `scripts/compare-real-basis-document-txt.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/work-log.md`
+- 생성된 로컬 ignored 산출물:
+  - `backend/tests/real-basis-document-samples/text-comparison-report.json`
+- 실행 명령:
+  - `py -3.13 -m py_compile scripts/compare-real-basis-document-txt.py`
+  - `py -3.13 scripts/compare-real-basis-document-txt.py --reference-txt "<TXT 경로>" --strict`
+  - `py -3.13 scripts/check-encoding.py`
+- 비교 결과:
+  - TXT 인코딩: `utf-8-sig`
+  - PDF page count: 489
+  - 서비스 파싱 텍스트: 702,598자
+  - TXT 기준 텍스트: 728,596자
+  - compact 기준 문자 수: 서비스 554,921자, TXT 554,696자
+  - service token multiset recall in TXT: 0.9001
+  - TXT token multiset recall in service: 0.7725
+  - service unique token recall in TXT: 0.7719
+  - TXT unique token recall in service: 0.8441
+  - service char 5-gram recall in TXT: 0.8103
+  - TXT char 5-gram recall in service: 0.8107
+  - service line coverage in TXT: 0.9948
+  - TXT line coverage in service: 0.9495
+  - numeric recall: service -> TXT 0.9880, TXT -> service 0.9970
+  - 필수 키워드 `직접생산`, `확인기준`, `중소기업자간`, `경쟁제품`, `세부품명`, `생산시설`, `검사설비` 모두 양쪽 텍스트에서 확인
+- 해석:
+  - 우리 서비스가 추출한 텍스트의 상당 부분은 외부 TXT와 일치한다.
+  - TXT 기준 텍스트가 서비스 텍스트보다 약 26,000자 더 길고 토큰 수도 많아, TXT 전체를 서비스가 모두 회수하는 비율은 상대적으로 낮다.
+  - line coverage와 숫자 recall은 높아 조항/숫자 기반 RAG 검색에는 충분히 안정적인 편으로 판단한다.
+- 검증:
+  - 비교 스크립트 strict 기준 통과
+  - 인코딩 검사 통과
+
+## Additional Update (2026-06-05) - Real Basis PDF Extraction Compared Against External TXT
+- Compared service-side direct PDF parsing output against the user's external TXT extraction.
+- Added `scripts/compare-real-basis-document-txt.py` and documented it in the sample README.
+- Generated local ignored report: `backend/tests/real-basis-document-samples/text-comparison-report.json`.
+- Result:
+  - service text: 702,598 characters
+  - external TXT: 728,596 characters
+  - compact character counts were close: service 554,921, TXT 554,696
+  - service token multiset recall in TXT: 0.9001
+  - TXT token multiset recall in service: 0.7725
+  - service char 5-gram recall in TXT: 0.8103
+  - TXT char 5-gram recall in service: 0.8107
+  - service line coverage in TXT: 0.9948
+  - TXT line coverage in service: 0.9495
+  - numeric recall was high in both directions
+  - all required terms were found in both texts
+- Strict comparison thresholds passed.
+
+## 작업 기록 (2026-06-05) - 실제 기준문서 DOCX 표 포함 비교 지원
+- 사용자 지적에 따라 DOCX 기준 파일에 표가 존재한다는 점을 반영해, 기존 비교 스크립트가 `.docx` 기준 파일도 처리하도록 보강했다.
+- 수정 파일:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `scripts/compare-real-basis-document-txt.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/work-log.md`
+- 변경 내용:
+  - `--reference-file` 옵션 추가
+  - 기존 `--reference-txt` 옵션은 하위 호환용으로 유지
+  - `.txt`와 `.docx` 기준 파일 자동 분기
+  - DOCX의 `document.paragraphs`, `document.tables` 기반 문단/표 메타데이터 수집
+  - DOCX 패키지 내부 `word/*.xml`의 `w:t` 텍스트를 직접 읽어 표/텍스트박스/분할 XML 텍스트를 포함
+  - DOCX 비교 리포트 산출물 `backend/tests/real-basis-document-samples/docx-comparison-report.json`을 `.gitignore`에 추가
+- 실제 DOCX 비교 실행:
+  - 기준 DOCX: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).docx`
+  - 실행 명령: `py -3.13 scripts/compare-real-basis-document-txt.py --reference-file "<DOCX 경로>" --output backend/tests/real-basis-document-samples/docx-comparison-report.json --strict`
+- 중요한 발견:
+  - `python-docx` 문단/표 셀 방식만 쓰면 DOCX 추출 텍스트가 387,786자에 그쳐 strict 비교가 실패했다.
+  - 같은 DOCX에서 패키지 XML `w:t` 텍스트를 직접 읽으면 720,588자가 추출되어 PDF/TXT 기준과 유사한 길이가 됐다.
+- DOCX 기준 비교 결과:
+  - DOCX 문단 수: 3,576
+  - DOCX 표 수: 744
+  - DOCX 표 셀 수: 15,523
+  - 서비스 파싱 텍스트: 702,598자
+  - DOCX XML 기준 텍스트: 720,588자
+  - compact 기준 문자 수: 서비스 554,921자, DOCX 550,700자
+  - service token multiset recall in DOCX: 0.9002
+  - DOCX token multiset recall in service: 0.7721
+  - service char 5-gram recall in DOCX: 0.8425
+  - DOCX char 5-gram recall in service: 0.8489
+  - service line coverage in DOCX: 0.9270
+  - DOCX line coverage in service: 0.8992
+  - numeric recall: service -> DOCX 0.9905, DOCX -> service 0.9971
+  - strict 비교 기준 통과
+- 기존 TXT 비교도 재실행해 strict 기준 통과를 확인했다.
+
+## Additional Update (2026-06-05) - DOCX Table-Aware Reference Comparison Support
+- Extended `scripts/compare-real-basis-document-txt.py` to accept `.docx` reference files through `--reference-file`.
+- Kept `--reference-txt` for backward compatibility.
+- DOCX support now records paragraph/table/table-cell metadata and uses raw DOCX package XML `w:t` text as the comparison reference when it captures more text than plain `python-docx`.
+- Generated local ignored report: `backend/tests/real-basis-document-samples/docx-comparison-report.json`.
+- Actual DOCX result:
+  - DOCX paragraphs: 3,576
+  - DOCX tables: 744
+  - DOCX table cells: 15,523
+  - service text: 702,598 characters
+  - DOCX XML reference text: 720,588 characters
+  - service token multiset recall in DOCX: 0.9002
+  - DOCX token multiset recall in service: 0.7721
+  - service char 5-gram recall in DOCX: 0.8425
+  - DOCX char 5-gram recall in service: 0.8489
+  - service line coverage in DOCX: 0.9270
+  - DOCX line coverage in service: 0.8992
+  - numeric recall was high in both directions
+  - strict comparison thresholds passed
+
+## 작업 기록 (2026-06-05) - DOCX 기준 비교 테스트 코드 추가 및 재검증
+- 사용자 요청에 따라 DOCX 기준 파일 비교 구현을 테스트 코드로 고정하고 실제 비교테스트를 재실행했다.
+- 추가/수정 파일:
+  - `backend/tests/test_real_basis_reference_compare.py`
+  - `scripts/compare-real-basis-document-txt.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/work-log.md`
+- 테스트 코드 내용:
+  - DOCX 헤더, 본문 문단, 표 셀 텍스트가 XML 기반 기준 추출에 포함되는지 검증
+  - TXT 기준 파일 인코딩 감지와 한글 토큰 비교 recall 검증
+  - 지원하지 않는 기준 파일 확장자 거부 검증
+- 구현 중 발견 및 수정:
+  - 작은 DOCX 샘플에서는 `[TABLE]` 마커 때문에 `python-docx` 문자열이 XML 문자열보다 길 수 있어 XML 추출 대신 python-docx 추출이 선택되는 문제가 있었다.
+  - DOCX 기준 비교에서는 XML이 헤더/표/분할 XML 텍스트를 더 포괄하므로, DOCX는 XML `w:t` 텍스트를 우선 사용하도록 수정했다.
+- 실제 DOCX 비교 재실행:
+  - 기준 DOCX: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).docx`
+  - 리포트: `backend/tests/real-basis-document-samples/docx-comparison-report.json`
+  - 결과: strict 기준 통과
+  - 서비스 파싱 텍스트: 702,598자
+  - DOCX XML 기준 텍스트: 720,588자
+  - service token multiset recall in DOCX: 0.9002
+  - DOCX token multiset recall in service: 0.7721
+  - service char 5-gram recall in DOCX: 0.8425
+  - DOCX char 5-gram recall in service: 0.8489
+  - service line coverage in DOCX: 0.9270
+  - DOCX line coverage in service: 0.8992
+  - numeric recall: service -> DOCX 0.9905, DOCX -> service 0.9971
+- 재검증:
+  - `py -3.13 -m pytest backend/tests/test_real_basis_reference_compare.py -q`: `3 passed`
+  - `py -3.13 scripts/compare-real-basis-document-txt.py --reference-file "<DOCX 경로>" --output backend/tests/real-basis-document-samples/docx-comparison-report.json --strict`: 통과
+  - `py -3.13 scripts/compare-real-basis-document-txt.py --reference-file "<TXT 경로>" --output backend/tests/real-basis-document-samples/text-comparison-report.json --strict`: 통과
+  - `py -3.13 -m pytest backend/tests -q`: `105 passed, 8 skipped`
+  - `py -3.13 -m py_compile scripts/compare-real-basis-document-txt.py backend/tests/test_real_basis_reference_compare.py`: 통과
+
+## Additional Update (2026-06-05) - DOCX Reference Comparison Tests And Re-Run
+- Added `backend/tests/test_real_basis_reference_compare.py`.
+- The new tests verify DOCX XML extraction includes header/body/table-cell text, TXT encoding detection and Korean token recall, and unsupported reference extension rejection.
+- Fixed the DOCX reference extractor to prefer DOCX XML `w:t` text whenever available.
+- Re-ran the actual real-basis DOCX comparison; strict thresholds passed.
+- Re-ran the actual TXT comparison; strict thresholds passed.
+- Targeted regression test passed with 3 tests.
+- Full backend pytest passed with 105 passed and 8 skipped.
+
+## 작업 기록 (2026-06-05) - MD 기준 비교 및 추출 로직 보완 계획 작성
+- 사용자 요청에 따라 TXT/DOCX에 이어 MD 기준 파일 비교를 추가로 진행하고, 3개 기준 파일 비교 결과를 분석해 서비스 추출 로직 보완 계획을 작성했다.
+- 기준 MD:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/중소기업자간_경쟁제품_직접생산_확인기준_전체추출.md`
+- 추가/수정 파일:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `backend/tests/test_real_basis_reference_compare.py`
+  - `scripts/compare-real-basis-document-txt.py`
+  - `docs/real-basis-document-rag-test-plan.md`
+  - `docs/basis-document-extraction-improvement-plan.md`
+  - `docs/work-log.md`
+- 구현:
+  - 비교 스크립트가 `.md`, `.markdown` 기준 파일을 지원하도록 확장
+  - MD 기준 파일 회귀 테스트 추가
+  - MD 비교 리포트 산출물 `backend/tests/real-basis-document-samples/md-comparison-report.json`을 `.gitignore`에 추가
+- 실제 비교 테스트 재실행:
+  - TXT strict 비교 통과
+  - DOCX strict 비교 통과
+  - MD strict 비교 통과
+- MD 비교 결과:
+  - 서비스 파싱 텍스트: 702,598자
+  - MD 기준 텍스트: 1,719,849자
+  - compact 기준 문자 수: 서비스 554,921자, MD 1,314,511자
+  - service token multiset recall in MD: 0.9073
+  - MD token multiset recall in service: 0.3541
+  - service char 5-gram recall in MD: 0.9358
+  - MD char 5-gram recall in service: 0.3951
+  - service line coverage in MD: 0.9955
+  - MD line coverage in service: 0.5200
+  - numeric recall: service -> MD 0.9979, MD -> service 0.3625
+- 3개 비교 결과 해석:
+  - TXT/DOCX 기준으로는 서비스 PDF 직접 추출이 본문/숫자/핵심 키워드를 안정적으로 회수한다.
+  - MD 기준은 TXT/DOCX보다 훨씬 길고 Markdown 표/설명/논리페이지/표 변환 결과를 포함하므로, raw reference recall이 낮게 나오는 것이 자연스럽다.
+  - MD 비교의 핵심 의미는 현재 서비스가 표 구조와 행/열/논리페이지 metadata를 충분히 보존하지 않는다는 점이다.
+- 작성한 보완 계획:
+  - `docs/basis-document-extraction-improvement-plan.md`
+  - 핵심 방향: plain text 추출 강화보다 table-aware extraction, table row chunking, logical page metadata, table citation metadata 보강
+
+## Additional Update (2026-06-05) - MD Reference Comparison And Extraction Improvement Plan
+- Added MD/Markdown reference support to `scripts/compare-real-basis-document-txt.py`.
+- Added MD regression coverage to `backend/tests/test_real_basis_reference_compare.py`.
+- Re-ran TXT, DOCX, and MD comparisons; all strict thresholds passed.
+- Generated local ignored MD report: `backend/tests/real-basis-document-samples/md-comparison-report.json`.
+- MD comparison result:
+  - service text: 702,598 characters
+  - MD reference text: 1,719,849 characters
+  - service token multiset recall in MD: 0.9073
+  - MD token multiset recall in service: 0.3541
+  - service char 5-gram recall in MD: 0.9358
+  - MD char 5-gram recall in service: 0.3951
+  - service line coverage in MD: 0.9955
+  - MD line coverage in service: 0.5200
+- Wrote `docs/basis-document-extraction-improvement-plan.md`.
+- Main conclusion: current PDF extraction is stable for body text and numbers, but RAG quality needs table-aware extraction, table-row chunking, logical-page metadata, and table citation metadata.
+
+## 작업 기록 (2026-06-05) - 기준문서 PDF Markdown 재생성 및 기준 MD 비교
+- 사용자 요청에 따라 기준문서 PDF를 직접 추출한 뒤 텍스트와 테이블을 포함한 Markdown으로 재생성하고, 사용자가 업로드한 기준 MD와 비교했다.
+- 구현계획 문서:
+  - `docs/basis-document-md-regeneration-comparison-plan.md`
+- 추가/수정 파일:
+  - `.gitignore`
+  - `backend/tests/real-basis-document-samples/README.md`
+  - `backend/tests/test_real_basis_md_regeneration.py`
+  - `docs/basis-document-extraction-improvement-plan.md`
+  - `docs/basis-document-md-regeneration-comparison-plan.md`
+  - `docs/work-log.md`
+  - `scripts/regenerate-real-basis-document-md.py`
+- 생성 산출물:
+  - `backend/tests/real-basis-document-samples/regenerated-basis-document.md`
+  - `backend/tests/real-basis-document-samples/md-regeneration-comparison-report.json`
+- 구현 내용:
+  - manifest 또는 `--pdf` 입력으로 실제 기준문서 PDF를 읽도록 구성
+  - 물리 1쪽은 단일 논리 페이지로, 2쪽부터는 좌/우 2단 논리 페이지로 분할
+  - 각 논리 페이지의 clipped text를 추출
+  - PyMuPDF `find_tables(clip=...)`로 논리 페이지별 표 후보를 추출
+  - 표 후보를 Markdown table로 렌더링
+  - 재생성 Markdown과 사용자 제공 기준 MD의 텍스트/숫자/라인/table row coverage를 비교
+- 실행 결과:
+  - 물리 페이지: 489
+  - 논리 페이지: 977
+  - 재생성 텍스트 문자 수: 697,837
+  - 재생성 Markdown 문자 수: 1,635,197
+  - 감지 표 수: 3,034
+  - 감지 표 row 수: 11,900
+  - 기준 MD 문자 수: 1,731,919
+  - 기준 MD table 수: 1,928
+  - 기준 MD table row 수: 11,351
+  - regenerated token recall in reference: 0.9303
+  - reference token recall in regenerated: 0.7931
+  - regenerated char 5-gram recall in reference: 0.8665
+  - reference char 5-gram recall in regenerated: 0.8171
+  - regenerated table row coverage in reference: 0.7060
+  - reference table row coverage in regenerated: 0.7644
+  - strict 기준 통과
+- 해석:
+  - 977개 논리 페이지 재생성이 기준 MD의 원문 페이지 체계와 일치한다.
+  - 단순 plain text 추출보다 Markdown 재생성 방식이 기준 MD와 더 잘 맞는다.
+  - 표 row coverage는 기준선으로 사용할 수 있으나 최종 품질로 보기에는 아직 부족하다.
+  - PyMuPDF `find_tables()`가 짧은 제목/고시문 조각을 표로 과검출하는 사례가 있어 table candidate filtering, 인접 table merge, row 품질 점수화가 다음 보강 우선순위다.
+
+## Additional Update (2026-06-05) - PDF To Markdown Regeneration And Reference MD Comparison
+- Implemented `scripts/regenerate-real-basis-document-md.py`.
+- Added targeted tests in `backend/tests/test_real_basis_md_regeneration.py`.
+- The script regenerates Markdown from the real basis-document PDF with logical page metadata, clipped text, and detected Markdown tables.
+- The regenerated Markdown was compared against the user-provided reference MD.
+- Generated local ignored artifacts:
+  - `backend/tests/real-basis-document-samples/regenerated-basis-document.md`
+  - `backend/tests/real-basis-document-samples/md-regeneration-comparison-report.json`
+- Result:
+  - physical pages: 489
+  - logical pages: 977
+  - regenerated Markdown characters: 1,635,197
+  - detected tables: 3,034
+  - detected table rows: 11,900
+  - reference MD characters: 1,731,919
+  - reference MD table rows: 11,351
+  - regenerated token recall in reference: 0.9303
+  - reference token recall in regenerated: 0.7931
+  - regenerated table row coverage in reference: 0.7060
+  - reference table row coverage in regenerated: 0.7644
+  - strict thresholds passed
+- Main follow-up: reduce false-positive table detection before using table rows as final RAG chunks.
+
+## 작업 기록 (2026-06-05) - OpenDataLoader PDF 리더 전환 검토
+- 사용자 요청에 따라 `opendataloader-project/opendataloader-pdf`를 현재 PDF 리더로 교체할 수 있는지 검토했다.
+- 작성 문서:
+  - `docs/opendataloader-pdf-reader-review.md`
+- 확인한 외부 정보:
+  - GitHub 저장소: `https://github.com/opendataloader-project/opendataloader-pdf`
+  - PyPI 패키지: `opendataloader-pdf`
+  - 최신 확인 버전: `2.4.7`
+  - 라이선스: Apache-2.0
+  - 요구사항: Java 11 이상, Python 3.10 이상
+- 현재 서비스 분석:
+  - PDF 추출 진입점은 `backend/app/pipelines/parser.py::extract_document()`
+  - 현재 PDF 엔진은 PyMuPDF `page.get_text("blocks")`
+  - 기준문서 파이프라인은 평문을 paragraph-window chunk로 변환
+  - table id, row index, column headers, bbox, logical page metadata가 부족함
+- 로컬 PoC:
+  - OpenJDK 25 확인
+  - `temp/opendataloader-venv` 임시 venv에 `opendataloader-pdf==2.4.7` 설치
+  - 기준문서 앞 6쪽 변환: 약 0.92초, JSON/Markdown/Text 생성
+  - 기준문서 120-125쪽 변환: 약 9.37초, JSON/Markdown/Text 생성
+  - 120-125쪽 JSON 요소:
+    - paragraph 426
+    - table cell 407
+    - table row 136
+    - list item 95
+    - list 43
+    - table 27
+    - heading 6
+    - caption 4
+  - 2행 이상 table 21개 확인
+- 결론:
+  - 기준문서 RAG와 table-row chunk에는 OpenDataLoader가 유리함
+  - 단순 공고문 PDF까지 전면 교체하기에는 Java 의존성, 처리 시간, 출력 차이 리스크가 있음
+  - 권장 방향은 OpenDataLoader를 기준문서/table-heavy PDF 보조 엔진으로 도입하고 PyMuPDF fallback을 유지하는 것
+
+## Additional Update (2026-06-05) - OpenDataLoader PDF Reader Review
+- Reviewed `opendataloader-project/opendataloader-pdf` as a possible replacement for the current PyMuPDF reader.
+- Added `docs/opendataloader-pdf-reader-review.md`.
+- Verified local prerequisites:
+  - Java OpenJDK 25
+  - Python 3.13
+  - `opendataloader-pdf==2.4.7` in a temporary ignored venv
+- Ran PoC conversions:
+  - real basis first 6 pages: 0.92s
+  - real basis pages 120-125: 9.37s
+- Pages 120-125 produced structured JSON table elements:
+  - 27 tables
+  - 136 table rows
+  - 407 table cells
+  - 21 tables with at least two rows
+- Recommendation:
+  - do not fully replace PyMuPDF immediately
+  - add OpenDataLoader as an optional basis-document/table-heavy PDF adapter
+  - keep PyMuPDF as fallback for simple Nara notice PDFs and Java/package/timeout failures
+
+## 작업 기록 (2026-06-05) - OpenDataLoader PDF 리더 교체 계획 및 테스트 계획 작성
+- 사용자 요청에 따라 `opendataloader-project/opendataloader-pdf`를 PDF 리더 엔진으로 교체하기 위한 구현계획과 테스트계획을 작성했다.
+- 작성 문서:
+  - `docs/opendataloader-pdf-replacement-test-plan.md`
+- 계획 방향:
+  - 기본 PDF 리더를 OpenDataLoader 중심으로 전환
+  - PyMuPDF는 제거하지 않고 fallback 엔진으로 유지
+  - 기준문서 PDF는 OpenDataLoader JSON/Markdown/table metadata를 우선 사용
+  - 나라장터 공고문 PDF는 회귀 테스트 통과 전까지 `auto` 모드로 보호
+- 구현 단계:
+  - ODL-1 의존성 및 설정 추가
+  - ODL-2 PDF reader adapter 분리
+  - ODL-3 OpenDataLoader JSON/Markdown 파싱
+  - ODL-4 표 후보 필터링
+  - ODL-5 기준문서 table-row chunk 추가
+  - ODL-6 JSON basis index table metadata 확장
+  - ODL-7 API/UX 반영
+  - ODL-8 문서 및 운영 가이드 보강
+- 테스트 계획:
+  - 단위 테스트
+  - 통합 테스트
+  - 실제 기준문서 전체 489쪽 QA
+  - 사용자 제공 TXT/DOCX/MD 기준 비교
+  - 나라장터 PDF 30개 샘플 회귀 테스트
+  - Java/패키지/timeout/fallback 실패 복구 테스트
+  - 성능 테스트
+  - UX/API 테스트
+- 합격 기준:
+  - backend 전체 테스트 통과
+  - 실제 기준문서 전체 변환 성공
+  - 기준 MD 대비 table-row coverage 개선
+  - TXT/DOCX 본문/숫자 추출 회귀 없음
+  - 나라장터 PDF 샘플 회귀 없음
+  - Java/ODL 실패 시 PyMuPDF fallback 정상 작동
+
+## Additional Update (2026-06-05) - OpenDataLoader PDF Replacement And Test Plan
+- Added `docs/opendataloader-pdf-replacement-test-plan.md`.
+- The plan defines a replacement path from PyMuPDF-centered extraction to OpenDataLoader-centered extraction.
+- PyMuPDF remains as fallback for Java/package/timeout/conversion failures.
+- Implementation phases:
+  - dependencies/config
+  - reader adapter split
+  - ODL JSON/Markdown parsing
+  - table candidate filtering
+  - basis table-row chunks
+  - JSON basis index metadata extension
+  - API/UX updates
+  - docs and rollout guide
+- Test plan includes unit, integration, real basis PDF QA, Nara 30-PDF regression, failure recovery, performance, and UX/API tests.
+
+## 작업 기록 (2026-06-05) - 사용자 제공 기준문서 PDF 고정 테스트 대상 추가
+- 사용자 요청에 따라 OpenDataLoader PDF 리더 교체 계획에 실제 테스트 대상 PDF를 명시적으로 추가했다.
+- 수정 문서:
+  - `docs/opendataloader-pdf-replacement-test-plan.md`
+- 고정 원본 PDF:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- 테스트용 repo 샘플 경로:
+  - `backend/tests/real-basis-document-samples/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- 확인:
+  - 사용자 제공 원본 PDF 경로가 현재 PC에 존재함을 확인했다.
+- 계획에 추가한 필수 실행 시나리오:
+  - `PDF_READER_ENGINE=opendataloader` 전체 변환
+  - `PDF_READER_ENGINE=auto` 전체 변환
+  - OpenDataLoader 실패 simulation 후 PyMuPDF fallback 확인
+  - ODL Markdown/JSON 기반 재생성 MD와 사용자 제공 기준 MD 비교
+  - table-row chunk 생성 후 직접생산 조건 검색 QA
+  - 기준문서 재처리 실패 simulation 후 기존 chunk/index 보존 확인
+
+## Additional Update (2026-06-05) - Fixed User Basis PDF Added To ODL Replacement QA Plan
+- Updated `docs/opendataloader-pdf-replacement-test-plan.md`.
+- Added the user-provided basis PDF as the fixed real-basis QA target.
+- Verified that the source PDF path exists on the current PC.
+- Added required scenarios for OpenDataLoader, auto mode, fallback simulation, regenerated Markdown comparison, table-row search QA, and failed reprocessing preservation.
+
+## 작업 기록 (2026-06-05) - OpenDataLoader PDF 리더 교체 구현 및 QA 완료
+- 사용자 요청에 따라 계획대로 PDF 리더 엔진을 OpenDataLoader 중심 `auto` 모드로 전환했다.
+- 구현 파일:
+  - `backend/app/pipelines/pdf_readers.py`
+  - `backend/app/pipelines/parser.py`
+  - `backend/app/pipelines/basis_document.py`
+  - `backend/app/main.py`
+  - `backend/app/core/config.py`
+  - `backend/requirements.txt`
+  - `backend/.env.example`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/app/types.ts`
+- 문서 보강:
+  - `README.md`
+  - `docs/technology-summary.md`
+  - `docs/opendataloader-pdf-replacement-test-plan.md`
+  - `docs/work-log.md`
+- 구현 내용:
+  - `opendataloader-pdf==2.4.7` 의존성 추가
+  - `OpenDataLoaderPdfReader`, `PyMuPdfPdfReader`, `AutoPdfReader` adapter 분리
+  - 기본 엔진을 `PDF_READER_ENGINE=auto`로 설정
+  - Java/package/timeout/conversion 실패 시 PyMuPDF fallback 유지
+  - OpenDataLoader JSON/Markdown에서 table metadata 추출
+  - 의미 없는 1행 제목 table filtering 추가
+  - 기준문서 처리 시 `table_row` chunk 생성
+  - 기준문서 metadata 저장 시 전체 table payload 대신 preview만 저장해 DB metadata 비대화 방지
+  - PDF 리더 상태 API 추가: `GET /api/settings/pdf-reader/status`
+  - OpenDataLoader 실제 기준문서 QA 스크립트 추가: `scripts/run-opendataloader-real-basis-qa.py`
+  - PDF 리더 설정값 `PDF_READER_ODL_FORMAT`을 실제 변환 인자에 반영하고, RAG metadata 보존을 위해 JSON 출력은 항상 포함되도록 보강
+- 실제 기준문서 QA:
+  - 대상: `전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+  - PDF page count: 489
+  - `PDF_READER_ENGINE=opendataloader`: 통과
+  - `PDF_READER_ENGINE=auto`: 통과
+  - OpenDataLoader timeout simulation 후 PyMuPDF fallback: 통과
+  - OpenDataLoader table count: 1,566
+  - OpenDataLoader table row count: 10,637
+  - 기준문서 table-row chunk count: 9,069
+  - service row token coverage in reference MD: 1.0
+  - reference MD row token coverage in service: 0.9795
+  - exact table row coverage는 기준 MD와 ODL Markdown의 줄바꿈/셀 병합 차이 때문에 warning으로 유지
+- 나라장터 PDF 회귀 QA:
+  - Phase 1.7 live samples with `PDF_READER_ENGINE=auto`: `3 passed`, `90 subtests passed`
+  - Phase 2 basis QA samples with `PDF_READER_ENGINE=auto`: `2 passed`, `60 subtests passed`
+- 최종 테스트:
+  - `py -3.13 -m py_compile backend/app/main.py backend/app/pipelines/pdf_readers.py backend/app/pipelines/parser.py backend/app/pipelines/basis_document.py backend/tests/test_api_flows.py backend/tests/test_pdf_readers.py backend/tests/test_basis_table_chunks.py scripts/run-opendataloader-real-basis-qa.py`: 통과
+  - `py -3.13 -m pytest backend/tests/test_pdf_readers.py backend/tests/test_api_flows.py::ApiFlowTests::test_pdf_reader_status_exposes_engine_health_without_secrets -q`: `8 passed`
+  - `py -3.13 -m pytest backend/tests -q`: `118 passed`, `8 skipped`
+  - `npm --prefix frontend run build`: 통과
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: trailing whitespace 오류 없음, Windows CRLF 변환 warning만 출력
+
+## Additional Update (2026-06-05) - OpenDataLoader PDF Reader Replacement Implemented And QA Completed
+- Implemented the planned OpenDataLoader-centered PDF reader replacement.
+- Key implementation:
+  - added `opendataloader-pdf==2.4.7`
+  - added `backend/app/pipelines/pdf_readers.py`
+  - split PDF readers into `OpenDataLoaderPdfReader`, `PyMuPdfPdfReader`, and `AutoPdfReader`
+  - set default operational mode to `PDF_READER_ENGINE=auto`
+  - kept PyMuPDF fallback for Java/package/timeout/conversion failures
+  - extracted OpenDataLoader table metadata from JSON/Markdown
+  - filtered one-row title tables
+  - added basis-document `table_row` chunks
+  - added PDF reader status API: `GET /api/settings/pdf-reader/status`
+  - added real basis QA script: `scripts/run-opendataloader-real-basis-qa.py`
+  - wired `PDF_READER_ODL_FORMAT` into conversion args while always preserving JSON output for RAG metadata
+- Real basis QA:
+  - fixed basis PDF page count: 489
+  - `PDF_READER_ENGINE=opendataloader`: passed
+  - `PDF_READER_ENGINE=auto`: passed
+  - timeout simulation with PyMuPDF fallback: passed
+  - table count: 1,566
+  - table row count: 10,637
+  - basis table-row chunk count: 9,069
+  - service row token coverage in reference MD: 1.0
+  - reference MD row token coverage in service: 0.9795
+  - exact table-row coverage remains a warning because of whitespace, line-break, and cell-merge differences between the reference MD and ODL Markdown
+- Nara PDF regression QA:
+  - Phase 1.7 live samples with `PDF_READER_ENGINE=auto`: `3 passed`, `90 subtests passed`
+  - Phase 2 basis QA samples with `PDF_READER_ENGINE=auto`: `2 passed`, `60 subtests passed`
+- Final verification:
+  - py_compile passed
+  - targeted PDF reader/API tests: `8 passed`
+  - full backend tests: `118 passed`, `8 skipped`
+  - frontend build passed
+  - encoding check passed
+  - `git diff --check` reported no whitespace errors, only Windows CRLF conversion warnings
+
+## 작업 기록 (2026-06-05) - 전체 코드리뷰: PDF 리더 및 RAG 버그 수정
+- 사용자 요청에 따라 전체 코드 리뷰를 진행했고, 특히 PDF 리더와 기준문서 RAG 코드를 자세히 재검토했다.
+- 개선 제안이 아니라 실제 버그/문제점으로 판단한 항목만 수정했다.
+- 발견 및 수정한 문제:
+  - PDF 리더 상태 확인에서 `java -version` timeout/OSError가 원시 예외로 튀면 `/api/settings/pdf-reader/status`가 500으로 깨질 수 있었다.
+    - `OpenDataLoaderPdfReader.status()`가 timeout/OSError를 상태 오류 문자열로 정규화하도록 수정했다.
+  - 강제 OpenDataLoader 변환에서 subprocess timeout이 `PdfReaderError`가 아니라 원시 `TimeoutExpired`로 전파될 수 있었다.
+    - `_run_convert()`에서 timeout/OSError를 `PdfReaderError`로 변환하도록 수정했다.
+  - OpenDataLoader page metadata의 `char_count`만 사용하면 페이지 사이 `\n\n` 구분자만큼 offset이 누적 drift되어 기준문서 citation page metadata가 뒤쪽 페이지에서 틀어질 수 있었다.
+    - `render_opendataloader_payload()`가 `char_start`/`char_end`를 기록하고, `basis_page_ranges()`가 명시 offset을 우선 사용하도록 수정했다.
+  - table-row chunk 생성 시 빈 header cell을 제거해 뒤쪽 컬럼명이 앞당겨지는 문제가 있었다.
+    - 빈 header도 위치 보존하고 빈 컬럼은 `col_n` fallback으로 표시하도록 수정했다.
+  - RAG 검색 점수가 query token의 고유 매칭이 아니라 chunk token 빈도 합으로 계산되어, 같은 단어가 반복된 청크가 여러 조건을 고르게 포함한 청크보다 상위에 노출될 수 있었다.
+    - `basis_search_score()`를 추가해 고유 query token coverage 기준으로 검색 점수를 계산하도록 수정했다.
+    - 승인 규칙 후보 매칭 점수도 반복 token 과대평가를 막도록 동일하게 수정했다.
+- 추가/수정 테스트:
+  - Java timeout status 정규화 테스트
+  - OpenDataLoader timeout -> `PdfReaderError` 정규화 테스트
+  - OpenDataLoader page `char_start`/`char_end` metadata 테스트
+  - 기준문서 page range explicit offset 테스트
+  - 빈 table header 컬럼 밀림 방지 테스트
+  - 반복 token 검색 점수 과대평가 방지 단위 테스트
+  - 반복 token 청크가 `/api/basis-search` 상단을 오염시키지 않는 API 회귀 테스트
+- 검증 결과:
+  - `py -3.13 -m py_compile backend/app/pipelines/pdf_readers.py backend/app/pipelines/basis_document.py backend/app/services/basis_rule_candidates.py backend/tests/test_pdf_readers.py backend/tests/test_basis_table_chunks.py backend/tests/test_api_flows.py`: 통과
+  - `py -3.13 -m pytest backend/tests/test_pdf_readers.py backend/tests/test_basis_table_chunks.py backend/tests/test_api_flows.py::ApiFlowTests::test_basis_search_ranking_does_not_overvalue_repeated_single_token -q`: `16 passed`
+  - `py -3.13 -m pytest backend/tests -q`: `126 passed`, `8 skipped`
+  - `npm --prefix frontend run build`: 통과
+  - `py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine opendataloader --threads 4 --timeout-seconds 1200 --strict`: 통과
+  - `RUN_REAL_BASIS_RAG_TESTS=1`, `PDF_READER_ENGINE=opendataloader` 기준 `py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q`: `5 passed`, `10 subtests passed`
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: trailing whitespace 오류 없음, Windows CRLF 변환 warning만 출력
+
+## Additional Update (2026-06-05) - Full Code Review PDF Reader And RAG Bug Fixes
+- Per user request, reviewed the full codebase with extra focus on the PDF reader and basis-document RAG paths.
+- Fixed only concrete bugs/problems, not general improvement ideas.
+- Fixed issues:
+  - `java -version` timeout/OSError could break the PDF reader status API with a raw exception.
+  - forced OpenDataLoader conversion timeout could leak raw `TimeoutExpired` instead of `PdfReaderError`.
+  - page offset drift could corrupt citation page metadata because page ranges only used per-page `char_count` and ignored inserted `\n\n` separators.
+  - table-row chunk generation dropped blank header cells and shifted later column labels.
+  - RAG search scoring overvalued repeated instances of one query token over balanced unique-token coverage.
+  - approved rule candidate matching had the same repeated-token overvaluation problem.
+- Added regression tests for PDF reader timeout handling, page offsets, blank table headers, unique-token RAG scoring, and API-level search ranking.
+- Verification:
+  - py_compile passed
+  - targeted tests: `16 passed`
+  - full backend tests: `126 passed`, `8 skipped`
+  - frontend build passed
+  - real 489-page OpenDataLoader basis QA passed
+  - real basis RAG opt-in tests passed: `5 passed`, `10 subtests passed`
+  - encoding check passed
+  - `git diff --check` reported no whitespace errors, only Windows CRLF conversion warnings

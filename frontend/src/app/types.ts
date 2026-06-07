@@ -140,6 +140,22 @@ export type AiModelSettings = {
   options: AiModelOption[];
 };
 
+export type PdfReaderStatus = {
+  configured_engine: string;
+  opendataloader: {
+    available: boolean;
+    engine: string;
+    expected_version: string;
+    java_version: string;
+    errors: string[];
+  };
+  pymupdf: {
+    available: boolean;
+    engine: string;
+  };
+  fallback_enabled: boolean;
+};
+
 export type Corporation = {
   id: number;
   name: string;

@@ -247,6 +247,558 @@ backend/tests/real-basis-document-samples/*.pdf
 
 사용자 요청이 “계획부터 작성”이므로, 위 항목은 다음 단계에서 진행합니다.
 
+## 상세 구현계획
+
+## 1단계. 로컬 샘플 폴더와 Git 관리 정책
+
+수정 파일:
+
+```text
+.gitignore
+backend/tests/real-basis-document-samples/README.md
+backend/tests/real-basis-document-samples/manifest.example.json
+```
+
+작업 내용:
+1. `backend/tests/real-basis-document-samples/` 폴더를 생성한다.
+2. 폴더 안에 샘플 사용법을 설명하는 `README.md`를 만든다.
+3. `.gitignore`에 다음 항목을 추가한다.
+
+```gitignore
+backend/tests/real-basis-document-samples/*.pdf
+backend/tests/real-basis-document-samples/manifest.json
+backend/tests/real-basis-document-samples/extraction-baseline.json
+backend/tests/real-basis-document-samples/extraction-report.json
+backend/tests/real-basis-document-samples/tmp/
+backend/tests/real-basis-document-samples/storage/
+```
+
+4. `manifest.example.json`에는 실제 파일 없이 schema 예시만 둔다.
+
+예상 manifest schema:
+
+```json
+{
+  "schema_version": "real_basis_document_sample_v1",
+  "registered_at": "2026-06-05T00:00:00+09:00",
+  "source_path": "C:/Users/HOONJAE/Documents/카카오톡 받은 파일/...",
+  "saved_path": "backend/tests/real-basis-document-samples/...",
+  "file_name": "전체합본_(제2025-116호)...pdf",
+  "file_size_bytes": 5360737,
+  "sha256": "sha256:...",
+  "document": {
+    "title": "중소기업자간 경쟁제품 직접생산 확인기준",
+    "category": "direct_production",
+    "document_version": "2025-116_2025-11-19",
+    "issuing_agency": "중소벤처기업부",
+    "effective_date": "2025-11-19"
+  }
+}
+```
+
+완료 기준:
+- 빈 폴더라도 Git에 남길 수 있도록 `README.md`가 존재한다.
+- 원문 PDF와 분석 산출물은 Git stage 대상에서 제외된다.
+- manifest schema를 보고 다른 PC 사용자가 같은 파일을 등록할 수 있다.
+
+## 2단계. 샘플 등록 스크립트 구현
+
+신규 파일:
+
+```text
+scripts/register-real-basis-document-sample.py
+```
+
+명령 예시:
+
+```powershell
+py -3.13 scripts/register-real-basis-document-sample.py `
+  --source "C:\Users\HOONJAE\Documents\카카오톡 받은 파일\전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf"
+```
+
+옵션:
+
+| 옵션 | 기본값 | 설명 |
+| --- | --- | --- |
+| `--source` | 필수 | 원본 PDF 절대경로 |
+| `--output-dir` | `backend/tests/real-basis-document-samples` | 복사 대상 폴더 |
+| `--title` | `중소기업자간 경쟁제품 직접생산 확인기준` | 기준문서 제목 |
+| `--category` | `direct_production` | 기준문서 카테고리 |
+| `--document-version` | `2025-116_2025-11-19` | 기준문서 버전 |
+| `--issuing-agency` | `중소벤처기업부` | 발행기관 |
+| `--effective-date` | `2025-11-19` | 시행/고시일 |
+| `--overwrite` | false | 기존 파일 덮어쓰기 허용 |
+
+구현 로직:
+1. `source`가 존재하는지 확인한다.
+2. 확장자가 `.pdf`인지 확인한다.
+3. 출력 폴더를 만든다.
+4. 파일명을 안전하게 보존해 복사한다.
+5. sha256을 계산한다.
+6. `manifest.json`을 UTF-8로 저장한다.
+7. 결과를 stdout에 JSON으로 출력한다.
+
+예상 stdout:
+
+```json
+{
+  "status": "registered",
+  "saved_path": "backend/tests/real-basis-document-samples/전체합본_....pdf",
+  "sha256": "sha256:...",
+  "file_size_bytes": 5360737,
+  "manifest_path": "backend/tests/real-basis-document-samples/manifest.json"
+}
+```
+
+테스트/검증:
+- source가 없으면 exit code 1
+- PDF가 아니면 exit code 1
+- 정상 등록 시 manifest 생성
+- `--overwrite` 없을 때 기존 파일이 있으면 실패
+
+## 3단계. PDF 추출 사전 분석 스크립트 구현
+
+신규 파일:
+
+```text
+scripts/analyze-real-basis-document-pdf.py
+```
+
+명령 예시:
+
+```powershell
+py -3.13 scripts/analyze-real-basis-document-pdf.py
+```
+
+옵션:
+
+| 옵션 | 기본값 | 설명 |
+| --- | --- | --- |
+| `--manifest` | `backend/tests/real-basis-document-samples/manifest.json` | 샘플 manifest |
+| `--output` | `backend/tests/real-basis-document-samples/extraction-report.json` | 분석 리포트 |
+| `--baseline-output` | 비어 있음 | baseline 생성 시 저장 경로 |
+| `--sample-lines` | `30` | table-like line 샘플 수 |
+| `--low-text-threshold` | `80` | 저텍스트 페이지 기준 |
+
+구현 로직:
+1. manifest를 읽어 PDF 경로를 확인한다.
+2. `fitz.open()`으로 PDF를 연다.
+3. 페이지별로 다음을 추출한다.
+   - `page.get_text("text")`
+   - `page.get_text("blocks")`
+   - `page.get_text("dict")` 기반 line/span 수
+4. 정규화 텍스트를 만든다.
+5. table-like line 후보를 찾는다.
+6. 필수 키워드 coverage를 계산한다.
+7. 리포트를 JSON으로 저장한다.
+
+table-like line 휴리스틱:
+- 한 줄에 2개 이상 연속 공백 또는 tab 유사 간격이 있다.
+- 숫자/코드/품명처럼 짧은 셀이 반복된다.
+- `세부품명`, `생산설비`, `검사설비`, `생산공정`, `직접생산` 같은 표 헤더 후보가 있다.
+- 한 페이지에 table-like line이 일정 수 이상이면 table-like page로 본다.
+
+예상 report schema:
+
+```json
+{
+  "schema_version": "real_basis_extraction_report_v1",
+  "pdf": {
+    "file_name": "...pdf",
+    "sha256": "sha256:...",
+    "file_size_bytes": 5360737
+  },
+  "summary": {
+    "page_count": 0,
+    "text_char_count": 0,
+    "normalized_text_char_count": 0,
+    "pages_with_text_count": 0,
+    "low_text_pages": [],
+    "block_count": 0,
+    "line_count": 0,
+    "table_like_line_count": 0,
+    "table_like_page_count": 0
+  },
+  "required_terms": {
+    "직접생산": {"found": true, "count": 0, "pages": []}
+  },
+  "table_like_samples": [
+    {
+      "page": 1,
+      "line": "세부품명 ... 생산설비 ... 검사설비",
+      "score": 0.0,
+      "matched_reasons": ["multi_spacing", "header_terms"]
+    }
+  ],
+  "warnings": []
+}
+```
+
+성공 기준:
+- `page_count > 0`
+- `normalized_text_char_count >= 10000`
+- 필수 키워드 중 최소 6개 이상 발견
+- table-like page 1개 이상 발견
+- 저텍스트 페이지가 전체의 20% 이하이면 통과로 본다.
+
+실패 시 분류:
+- `pdf_open_failed`
+- `low_text_extraction`
+- `required_terms_missing`
+- `table_like_lines_missing`
+- `unexpected_parser_warning`
+
+## 4단계. 실제 기준문서 RAG 테스트 fixture 구성
+
+신규 파일:
+
+```text
+backend/tests/test_real_basis_document_rag.py
+```
+
+테스트 실행 정책:
+- 샘플 PDF가 없으면 `pytest.skip()`
+- `RUN_REAL_BASIS_RAG_TESTS=1`이 설정되면 더 엄격한 threshold 테스트까지 실행
+- 기본 테스트에서는 시간이 오래 걸리지 않도록 핵심 테스트만 실행
+
+테스트 환경:
+- 기존 `backend/tests/test_api_flows.py`와 동일하게 임시 `SQLITE_PATH`, `STORAGE_ROOT`를 사용한다.
+- OCR은 기본적으로 `OCR_ENGINE=noop`로 두어 PyMuPDF 추출 중심으로 검증한다.
+- Gemini/OpenAI/Nara 키는 필요 없다.
+
+공통 helper:
+
+```python
+def real_basis_sample_manifest() -> dict: ...
+def real_basis_pdf_path() -> Path: ...
+def upload_real_basis_document(client, manifest) -> dict: ...
+def assert_basis_index_healthy(client) -> dict: ...
+def search_basis(client, query: str, top_k: int = 5) -> dict: ...
+```
+
+## 5단계. RAG 업로드/인덱싱 테스트 케이스
+
+테스트 이름:
+
+```text
+test_real_basis_document_upload_extracts_chunks_and_indexes
+```
+
+검증 절차:
+1. manifest에서 PDF 경로를 읽는다.
+2. `/api/basis-documents`에 PDF를 업로드한다.
+3. 응답에서 다음을 확인한다.
+   - `processing_status == completed`
+   - `parse_status == completed`
+   - `chunk_status == completed`
+   - `index_status == completed`
+   - `chunk_count > 0`
+   - `vector_count == chunk_count`
+4. `/api/basis-documents/{id}/chunks`로 chunk 목록을 조회한다.
+5. chunk text에 핵심 키워드가 존재하는지 확인한다.
+6. `/api/basis-index/status`가 valid인지 확인한다.
+
+성공 기준:
+- chunk 10개 이상
+- vector_count와 chunk_count 일치
+- chunk 중 하나 이상에 `직접생산` 포함
+- chunk 중 하나 이상에 `세부품명` 또는 `생산설비` 포함
+
+## 6단계. RAG 검색 테스트 케이스
+
+테스트 이름:
+
+```text
+test_real_basis_document_search_returns_direct_production_citations
+```
+
+질의셋:
+
+```python
+RAG_QUERIES = [
+    {"query": "직접생산 확인기준", "required_terms": ["직접생산", "확인기준"]},
+    {"query": "중소기업자간 경쟁제품", "required_terms": ["중소기업자간", "경쟁제품"]},
+    {"query": "세부품명 직접생산", "required_terms": ["세부품명", "직접생산"]},
+    {"query": "생산설비 검사설비", "required_terms": ["생산설비", "검사설비"]},
+    {"query": "공장등록 직접생산", "required_terms": ["공장등록", "직접생산"]},
+]
+```
+
+검증 절차:
+1. 기준문서를 업로드하고 인덱싱한다.
+2. 각 질의로 `/api/basis-search`를 호출한다.
+3. 각 응답에서 다음을 확인한다.
+   - HTTP 200
+   - `index_source == json_basis_index`
+   - `result_count > 0`
+   - 첫 결과에 `citation_candidate_id` 존재
+   - 첫 결과의 document id가 업로드한 기준문서 id와 일치
+4. top chunk text에 required_terms 중 하나 이상이 포함되는지 확인한다.
+
+성공 기준:
+- 질의 coverage 80% 이상
+- 핵심 질의 `직접생산 확인기준`, `중소기업자간 경쟁제품`은 반드시 성공
+
+## 7단계. 검색 평가 API 테스트 케이스
+
+테스트 이름:
+
+```text
+test_real_basis_document_retrieval_evaluation_records_coverage
+```
+
+검증 절차:
+1. 검색 테스트에서 얻은 citation id 일부를 expected citation으로 사용한다.
+2. `/api/basis-retrieval-evaluations`에 query set을 저장한다.
+3. 응답에서 다음을 확인한다.
+   - HTTP 201
+   - `result.index_source == json_basis_index`
+   - `query_count >= 3`
+   - `citation_coverage > 0`
+   - `average_top_score > 0`
+
+성공 기준:
+- 검색 평가가 저장된다.
+- 운영 QA 리포트에서 source가 JSON 인덱스로 표시된다.
+
+## 8단계. 테이블 추출/RAG 테스트 케이스
+
+테스트 이름:
+
+```text
+test_real_basis_document_table_like_content_is_searchable
+```
+
+입력:
+- `extraction-report.json`의 `table_like_samples`
+- 또는 `extraction-baseline.json`에 고정한 대표 table query
+
+baseline schema:
+
+```json
+{
+  "schema_version": "real_basis_extraction_baseline_v1",
+  "table_queries": [
+    {
+      "name": "생산설비_검사설비_행",
+      "query": "생산설비 검사설비 직접생산",
+      "required_terms": ["생산설비", "검사설비"],
+      "min_required_terms_in_chunk": 2
+    }
+  ]
+}
+```
+
+검증 절차:
+1. `extraction-baseline.json`이 있으면 baseline query를 사용한다.
+2. 없으면 사전 분석 리포트의 table-like sample에서 query 후보를 자동 생성한다.
+3. 각 table query로 `/api/basis-search` 호출.
+4. top chunk에서 required_terms 동시 출현 수를 계산한다.
+5. coverage를 계산한다.
+
+성공 기준:
+- table query 5개 이상일 때 80% 이상 성공
+- table query가 5개 미만이면 테스트는 경고와 함께 soft pass 또는 skip
+- `직접생산`, `생산설비`, `검사설비` 조합 질의는 최소 1개 이상 성공
+
+실패 시 자동 수정계획 후보:
+- 테이블 line 정규화 강화
+- chunk boundary에서 table-like line 보호
+- chunk metadata에 `table_like=true`, `page`, `line_index` 추가
+- 검색 tokenization에 숫자/품명 코드 보존 규칙 추가
+
+## 9단계. 문서/README 보강
+
+수정 후보:
+
+```text
+backend/tests/real-basis-document-samples/README.md
+README.md
+docs/work-log.md
+```
+
+보강 내용:
+- 실제 기준문서 샘플 등록 방법
+- PDF 원문은 Git에 넣지 않는 이유
+- RAG 실제 기준문서 테스트 실행 방법
+- 테이블 추출 QA 리포트 보는 방법
+
+README 추가 후보:
+
+```powershell
+py -3.13 scripts/register-real-basis-document-sample.py --source "<PDF 경로>"
+py -3.13 scripts/analyze-real-basis-document-pdf.py
+$env:RUN_REAL_BASIS_RAG_TESTS="1"
+py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q
+```
+
+## 10단계. 실행 및 검증 명령
+
+기본 검증:
+
+```powershell
+py -3.13 scripts/register-real-basis-document-sample.py --source "<PDF 경로>"
+py -3.13 scripts/analyze-real-basis-document-pdf.py
+py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q
+py -3.13 -m pytest backend/tests -q
+py -3.13 scripts/check-encoding.py
+```
+
+엄격 검증:
+
+```powershell
+$env:RUN_REAL_BASIS_RAG_TESTS="1"
+py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q
+Remove-Item Env:\RUN_REAL_BASIS_RAG_TESTS
+```
+
+프론트 확인이 필요하면:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action start
+```
+
+브라우저에서 확인:
+
+```text
+http://127.0.0.1:5199/basis-documents
+http://127.0.0.1:5199/basis-retrieval-evaluations
+```
+
+## 11단계. 구현 완료 체크리스트
+
+- [x] `.gitignore`에 실제 기준문서 샘플 산출물 제외 규칙 추가
+- [x] `backend/tests/real-basis-document-samples/README.md` 작성
+- [x] `manifest.example.json` 작성
+- [x] `scripts/register-real-basis-document-sample.py` 작성
+- [x] 제공 PDF를 샘플 폴더로 복사
+- [x] `manifest.json` 생성
+- [x] `scripts/analyze-real-basis-document-pdf.py` 작성
+- [x] `extraction-report.json` 생성
+- [x] table-like page/line 확인
+- [x] `extraction-baseline.json` 생성
+- [x] `backend/tests/test_real_basis_document_rag.py` 작성
+- [x] 업로드/청킹/인덱싱 테스트 통과
+- [x] RAG 검색 질의 테스트 통과
+- [x] 검색 평가 API 테스트 통과
+- [x] 테이블 기반 검색 테스트 통과
+- [x] 실패 발견 시 수정계획 검토
+- [x] 필요한 추출/청킹 수정 없음 확인
+- [x] targeted pytest 통과
+- [x] 전체 backend pytest 통과
+- [x] 인코딩 검사 통과
+- [x] work-log 기록
+
+## 구현 결과
+
+구현 완료 파일:
+
+- `.gitignore`
+- `backend/tests/real-basis-document-samples/README.md`
+- `backend/tests/real-basis-document-samples/manifest.example.json`
+- `scripts/register-real-basis-document-sample.py`
+- `scripts/analyze-real-basis-document-pdf.py`
+- `backend/tests/test_real_basis_document_rag.py`
+
+로컬 ignored 산출물:
+
+- `backend/tests/real-basis-document-samples/manifest.json`
+- `backend/tests/real-basis-document-samples/extraction-report.json`
+- `backend/tests/real-basis-document-samples/extraction-baseline.json`
+- `backend/tests/real-basis-document-samples/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+
+실제 기준문서 추출 분석 결과:
+
+- PDF 크기: 5,360,737 bytes
+- PDF 페이지 수: 489
+- 추출 문자 수: 702,598
+- page coverage: 1.0
+- 청크 수: 495
+- table-like line 후보 수: 80
+- 필수 키워드 coverage: `직접생산`, `확인기준`, `중소기업자간`, `경쟁제품`, `세부품명`, `생산시설`, `검사설비` 모두 확인
+
+테스트 결과:
+
+- `py -3.13 -m py_compile scripts/register-real-basis-document-sample.py scripts/analyze-real-basis-document-pdf.py backend/tests/test_real_basis_document_rag.py`: 통과
+- `py -3.13 scripts/analyze-real-basis-document-pdf.py --strict`: 통과
+- `$env:RUN_REAL_BASIS_RAG_TESTS='1'; py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q`: `5 passed, 10 subtests passed`
+- `py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q`: `5 skipped`
+- `py -3.13 -m pytest backend/tests -q`: `102 passed, 8 skipped`
+- `py -3.13 scripts/check-encoding.py`: 통과
+
+외부 TXT 기준 텍스트 비교 결과:
+
+- 기준 TXT: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).txt`
+- 비교 스크립트: `scripts/compare-real-basis-document-txt.py`
+- 리포트: `backend/tests/real-basis-document-samples/text-comparison-report.json`
+- TXT 인코딩: `utf-8-sig`
+- 서비스 파싱 텍스트: 702,598자
+- TXT 기준 텍스트: 728,596자
+- compact 기준 문자 수: 서비스 554,921자, TXT 554,696자
+- service token multiset recall in TXT: 0.9001
+- TXT token multiset recall in service: 0.7725
+- service char 5-gram recall in TXT: 0.8103
+- TXT char 5-gram recall in service: 0.8107
+- service line coverage in TXT: 0.9948
+- TXT line coverage in service: 0.9495
+- numeric recall: service -> TXT 0.9880, TXT -> service 0.9970
+- 필수 키워드 coverage: `직접생산`, `확인기준`, `중소기업자간`, `경쟁제품`, `세부품명`, `생산시설`, `검사설비` 모두 양쪽에서 확인
+- strict 비교 기준 통과
+
+외부 DOCX 기준 텍스트 비교 결과:
+
+- 기준 DOCX: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).docx`
+- 비교 스크립트: `scripts/compare-real-basis-document-txt.py`
+- 리포트: `backend/tests/real-basis-document-samples/docx-comparison-report.json`
+- DOCX 기준 추출 방식: `docx-package-xml-wt`
+- DOCX 문단 수: 3,576
+- DOCX 표 수: 744
+- DOCX 표 셀 수: 15,523
+- `python-docx` 문단/표 방식 추출 문자 수: 387,786
+- DOCX XML 텍스트 추출 문자 수: 720,588
+- 서비스 파싱 텍스트: 702,598자
+- compact 기준 문자 수: 서비스 554,921자, DOCX 550,700자
+- service token multiset recall in DOCX: 0.9002
+- DOCX token multiset recall in service: 0.7721
+- service char 5-gram recall in DOCX: 0.8425
+- DOCX char 5-gram recall in service: 0.8489
+- service line coverage in DOCX: 0.9270
+- DOCX line coverage in service: 0.8992
+- numeric recall: service -> DOCX 0.9905, DOCX -> service 0.9971
+- strict 비교 기준 통과
+- 회귀 테스트 코드: `backend/tests/test_real_basis_reference_compare.py`
+- 회귀 테스트 결과: `3 passed`
+- 전체 backend pytest 결과: `105 passed, 8 skipped`
+- 비고: 이 문서는 `python-docx`의 문단/표 셀 방식만 사용하면 기준 텍스트가 약 38.8만 자에 그쳐 비교가 왜곡되므로, DOCX 패키지 XML의 `w:t` 텍스트를 직접 읽는 방식을 사용한다.
+
+외부 MD 기준 텍스트 비교 결과:
+
+- 기준 MD: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/중소기업자간_경쟁제품_직접생산_확인기준_전체추출.md`
+- 비교 스크립트: `scripts/compare-real-basis-document-txt.py`
+- 리포트: `backend/tests/real-basis-document-samples/md-comparison-report.json`
+- 서비스 파싱 텍스트: 702,598자
+- MD 기준 텍스트: 1,719,849자
+- compact 기준 문자 수: 서비스 554,921자, MD 1,314,511자
+- service token multiset recall in MD: 0.9073
+- MD token multiset recall in service: 0.3541
+- service char 5-gram recall in MD: 0.9358
+- MD char 5-gram recall in service: 0.3951
+- service line coverage in MD: 0.9955
+- MD line coverage in service: 0.5200
+- numeric recall: service -> MD 0.9979, MD -> service 0.3625
+- strict 비교 기준 통과
+- 비고: MD 기준 파일은 Markdown 표/설명/논리페이지/표 변환 결과를 포함해 TXT/DOCX보다 훨씬 길다. 따라서 MD 기준은 본문 텍스트 비교보다 표 구조 보존 여부를 판단하는 기준으로 사용해야 한다.
+
+추출 로직 보완 계획:
+
+- `docs/basis-document-extraction-improvement-plan.md`
+
+비고:
+
+- 실제 PDF와 `manifest.json`, 추출 리포트 산출물은 `.gitignore` 대상이므로 Git에 커밋하지 않는다.
+- 이번 구현에서는 파서/청킹 알고리즘 자체 변경 없이 현재 파이프라인의 실제 기준문서 처리 가능성을 검증했다.
+- MuPDF/PyMuPDF의 `SwigPyPacked`, `SwigPyObject`, `swigvarlink` 관련 DeprecationWarning이 pytest에서 출력되지만 테스트 실패는 아니다.
+
 ## Questions for Product Owner
 - 원문 PDF를 Git에 커밋하지 않는 로컬 샘플 정책으로 진행해도 되는지 확인이 필요합니다. 현재 계획은 원문 PDF를 `.gitignore` 대상으로 두고 로컬에서만 사용하는 방식입니다.
 
@@ -412,6 +964,377 @@ Potential fixes if table QA fails:
 
 ## Out Of Scope For This Step
 No PDF copy, test implementation, RAG execution, or extraction algorithm change is performed in this planning step.
+
+## Detailed Implementation Plan
+
+## Step 1. Fixture Directory And Git Policy
+
+Files:
+
+```text
+.gitignore
+backend/tests/real-basis-document-samples/README.md
+backend/tests/real-basis-document-samples/manifest.example.json
+```
+
+Actions:
+1. Create `backend/tests/real-basis-document-samples/`.
+2. Add a README explaining sample registration and local-only artifacts.
+3. Ignore raw PDFs and generated reports.
+4. Commit only docs, scripts, tests, and manifest examples by default.
+
+Ignore rules:
+
+```gitignore
+backend/tests/real-basis-document-samples/*.pdf
+backend/tests/real-basis-document-samples/manifest.json
+backend/tests/real-basis-document-samples/extraction-baseline.json
+backend/tests/real-basis-document-samples/extraction-report.json
+backend/tests/real-basis-document-samples/tmp/
+backend/tests/real-basis-document-samples/storage/
+```
+
+## Step 2. Sample Registration Script
+
+File:
+
+```text
+scripts/register-real-basis-document-sample.py
+```
+
+Inputs:
+- `--source`
+- `--output-dir`
+- `--title`
+- `--category`
+- `--document-version`
+- `--issuing-agency`
+- `--effective-date`
+- `--overwrite`
+
+Responsibilities:
+- validate source existence and `.pdf` suffix
+- create output directory
+- copy the PDF
+- compute sha256
+- write `manifest.json`
+- print a JSON summary
+
+## Step 3. Extraction Analysis Script
+
+File:
+
+```text
+scripts/analyze-real-basis-document-pdf.py
+```
+
+Inputs:
+- `--manifest`
+- `--output`
+- `--baseline-output`
+- `--sample-lines`
+- `--low-text-threshold`
+
+Responsibilities:
+- open the PDF with PyMuPDF
+- extract page text, blocks, lines, spans
+- normalize text
+- detect table-like lines/pages
+- calculate required-term coverage
+- write `extraction-report.json`
+
+Success thresholds:
+- `page_count > 0`
+- `normalized_text_char_count >= 10000`
+- at least 6 required terms found
+- at least 1 table-like page found
+- low-text pages are no more than 20% of total pages
+
+## Step 4. Real Basis RAG Test Module
+
+File:
+
+```text
+backend/tests/test_real_basis_document_rag.py
+```
+
+Execution policy:
+- skip when the fixture PDF is missing
+- use temporary SQLite/storage roots
+- default OCR engine should be `noop`
+- API keys are not required
+- `RUN_REAL_BASIS_RAG_TESTS=1` enables stricter thresholds
+
+Helpers:
+- `real_basis_sample_manifest()`
+- `real_basis_pdf_path()`
+- `upload_real_basis_document(client, manifest)`
+- `assert_basis_index_healthy(client)`
+- `search_basis(client, query, top_k=5)`
+
+## Step 5. Upload / Chunk / Index Test
+
+Test:
+
+```text
+test_real_basis_document_upload_extracts_chunks_and_indexes
+```
+
+Validate:
+- upload through `/api/basis-documents`
+- `processing_status == completed`
+- `parse_status == completed`
+- `chunk_status == completed`
+- `index_status == completed`
+- `chunk_count > 0`
+- `vector_count == chunk_count`
+- JSON basis index is valid
+
+Success thresholds:
+- at least 10 chunks
+- at least one chunk includes `직접생산`
+- at least one chunk includes `세부품명` or `생산설비`
+
+## Step 6. RAG Search Test
+
+Test:
+
+```text
+test_real_basis_document_search_returns_direct_production_citations
+```
+
+Queries:
+- `직접생산 확인기준`
+- `중소기업자간 경쟁제품`
+- `세부품명 직접생산`
+- `생산설비 검사설비`
+- `공장등록 직접생산`
+
+Validate:
+- HTTP 200
+- `index_source == json_basis_index`
+- `result_count > 0`
+- citation candidate id exists
+- result document id matches the uploaded basis document
+- top chunk contains at least one required term
+
+Success threshold:
+- query coverage at least 80%
+- direct production and competitive products queries must pass
+
+## Step 7. Retrieval Evaluation API Test
+
+Test:
+
+```text
+test_real_basis_document_retrieval_evaluation_records_coverage
+```
+
+Validate:
+- `/api/basis-retrieval-evaluations` stores the query set
+- `result.index_source == json_basis_index`
+- `query_count >= 3`
+- `citation_coverage > 0`
+- `average_top_score > 0`
+
+## Step 8. Table-Aware RAG Test
+
+Test:
+
+```text
+test_real_basis_document_table_like_content_is_searchable
+```
+
+Inputs:
+- `extraction-report.json`
+- optionally `extraction-baseline.json`
+
+Validate:
+- table-oriented queries return results
+- top chunks are non-empty and not garbled
+- required table terms co-occur in the same chunk
+
+Success threshold:
+- at least 5 table queries when available
+- at least 80% coverage
+- at least one query involving `직접생산`, `생산설비`, and `검사설비` passes
+
+## Step 9. Documentation
+
+Update:
+
+```text
+backend/tests/real-basis-document-samples/README.md
+README.md
+docs/work-log.md
+```
+
+Document:
+- how to register the PDF
+- why the raw PDF is ignored
+- how to run real-basis RAG tests
+- how to read extraction reports
+
+## Step 10. Verification Commands
+
+Basic:
+
+```powershell
+py -3.13 scripts/register-real-basis-document-sample.py --source "<PDF path>"
+py -3.13 scripts/analyze-real-basis-document-pdf.py
+py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q
+py -3.13 -m pytest backend/tests -q
+py -3.13 scripts/check-encoding.py
+```
+
+Strict:
+
+```powershell
+$env:RUN_REAL_BASIS_RAG_TESTS="1"
+py -3.13 -m pytest backend/tests/test_real_basis_document_rag.py -q
+Remove-Item Env:\RUN_REAL_BASIS_RAG_TESTS
+```
+
+Manual frontend check:
+
+```text
+http://127.0.0.1:5199/basis-documents
+http://127.0.0.1:5199/basis-retrieval-evaluations
+```
+
+## Completion Checklist
+
+- [x] gitignore rules added
+- [x] sample README added
+- [x] manifest example added
+- [x] registration script added
+- [x] PDF copied locally
+- [x] manifest generated
+- [x] extraction analysis script added
+- [x] extraction report generated
+- [x] table-like pages/lines reviewed
+- [x] extraction baseline generated
+- [x] real-basis RAG pytest added
+- [x] upload/chunk/index test passes
+- [x] RAG query test passes
+- [x] retrieval evaluation API test passes
+- [x] table-oriented test passes
+- [x] remediation plan considered for failures
+- [x] extraction/chunking fixes not needed
+- [x] targeted pytest passes
+- [x] full backend pytest passes
+- [x] encoding check passes
+- [x] work-log updated
+
+## Implementation Result
+
+Implemented files:
+
+- `.gitignore`
+- `backend/tests/real-basis-document-samples/README.md`
+- `backend/tests/real-basis-document-samples/manifest.example.json`
+- `scripts/register-real-basis-document-sample.py`
+- `scripts/analyze-real-basis-document-pdf.py`
+- `backend/tests/test_real_basis_document_rag.py`
+
+Local ignored artifacts:
+
+- `backend/tests/real-basis-document-samples/manifest.json`
+- `backend/tests/real-basis-document-samples/extraction-report.json`
+- `backend/tests/real-basis-document-samples/extraction-baseline.json`
+- copied real PDF sample
+
+Extraction QA result:
+
+- file size: 5,360,737 bytes
+- page count: 489
+- extracted characters: 702,598
+- page coverage: 1.0
+- chunk count: 495
+- table-like line candidates: 80
+- all required terms were found
+
+Verification:
+
+- Python compile check passed
+- strict extraction analyzer passed
+- opt-in real RAG pytest passed with 5 tests and 10 subtests
+- default real RAG pytest skips 5 tests when the env var is absent
+- full backend pytest passed with 102 passed and 8 skipped
+- encoding check passed
+
+External TXT comparison result:
+
+- reference TXT: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).txt`
+- comparison script: `scripts/compare-real-basis-document-txt.py`
+- report: `backend/tests/real-basis-document-samples/text-comparison-report.json`
+- TXT encoding: `utf-8-sig`
+- service text: 702,598 characters
+- reference TXT: 728,596 characters
+- compact characters: service 554,921, TXT 554,696
+- service token multiset recall in TXT: 0.9001
+- TXT token multiset recall in service: 0.7725
+- service char 5-gram recall in TXT: 0.8103
+- TXT char 5-gram recall in service: 0.8107
+- service line coverage in TXT: 0.9948
+- TXT line coverage in service: 0.9495
+- numeric recall: service -> TXT 0.9880, TXT -> service 0.9970
+- all required terms were found in both texts
+- strict comparison thresholds passed
+
+External DOCX comparison result:
+
+- reference DOCX: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).docx`
+- comparison script: `scripts/compare-real-basis-document-txt.py`
+- report: `backend/tests/real-basis-document-samples/docx-comparison-report.json`
+- DOCX extraction engine: `docx-package-xml-wt`
+- DOCX paragraphs: 3,576
+- DOCX tables: 744
+- DOCX table cells: 15,523
+- `python-docx` paragraph/table extraction: 387,786 characters
+- DOCX XML text extraction: 720,588 characters
+- service text: 702,598 characters
+- compact characters: service 554,921, DOCX 550,700
+- service token multiset recall in DOCX: 0.9002
+- DOCX token multiset recall in service: 0.7721
+- service char 5-gram recall in DOCX: 0.8425
+- DOCX char 5-gram recall in service: 0.8489
+- service line coverage in DOCX: 0.9270
+- DOCX line coverage in service: 0.8992
+- numeric recall: service -> DOCX 0.9905, DOCX -> service 0.9971
+- strict comparison thresholds passed
+- regression test code: `backend/tests/test_real_basis_reference_compare.py`
+- regression test result: `3 passed`
+- full backend pytest result: `105 passed, 8 skipped`
+- Note: plain `python-docx` paragraph/table-cell extraction produced only about 387k characters, so this comparison uses raw DOCX package XML `w:t` text.
+
+External MD comparison result:
+
+- reference MD: `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/중소기업자간_경쟁제품_직접생산_확인기준_전체추출.md`
+- comparison script: `scripts/compare-real-basis-document-txt.py`
+- report: `backend/tests/real-basis-document-samples/md-comparison-report.json`
+- service text: 702,598 characters
+- MD reference text: 1,719,849 characters
+- compact characters: service 554,921, MD 1,314,511
+- service token multiset recall in MD: 0.9073
+- MD token multiset recall in service: 0.3541
+- service char 5-gram recall in MD: 0.9358
+- MD char 5-gram recall in service: 0.3951
+- service line coverage in MD: 0.9955
+- MD line coverage in service: 0.5200
+- numeric recall: service -> MD 0.9979, MD -> service 0.3625
+- strict comparison thresholds passed
+- Note: the MD reference is much larger because it includes Markdown tables, notes, logical page handling, and table conversion outputs. Use it as a table-structure reference, not a plain body-text reference.
+
+Extraction improvement plan:
+
+- `docs/basis-document-extraction-improvement-plan.md`
+
+Note:
+
+- The raw PDF and generated QA outputs are local ignored artifacts.
+- No parser or chunking algorithm change was required in this implementation.
+- PyMuPDF emits Swig-related deprecation warnings during pytest, but they do not fail the test run.
 
 ## Questions for Product Owner
 - Confirm that the raw PDF should remain a local ignored fixture rather than being committed to Git.

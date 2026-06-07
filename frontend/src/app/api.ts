@@ -25,6 +25,7 @@ import type {
   NaraIntegrationTestResult,
   OperationRun,
   OperationsSummary,
+  PdfReaderStatus,
   Project,
   SavedNaraNotice,
   CorporationComparisonProfile,
@@ -91,6 +92,7 @@ export const api = {
       body: JSON.stringify({ dry_run: true }),
     }),
   getAiModelSettings: () => request<AiModelSettings>("/api/settings/ai-models"),
+  getPdfReaderStatus: () => request<PdfReaderStatus>("/api/settings/pdf-reader/status"),
   listCorporations: () => request<Corporation[]>("/api/corporations"),
   createCorporation: (body: Record<string, unknown>) =>
     request<Corporation>("/api/corporations", {

@@ -139,7 +139,8 @@ wisdom_procurement/
 - File Storage: Local filesystem
 - OCR: PaddleOCR PP-OCRv5 primary, Tesseract fallback candidate
 - Parsing: PDF, DOCX only
-  - PDF 기본 추출 엔진은 `PyMuPDF`
+  - PDF 기본 추출 엔진은 `OpenDataLoader PDF` 우선 `auto` 모드
+  - `OpenDataLoader PDF` 실패, Java 미설치, timeout 시 `PyMuPDF` fallback
   - DOCX는 `python-docx` 유지
   - 스캔/이미지형 PDF는 추출 텍스트 부족 시 OCR fallback 적용
 - AI: External LLM API
@@ -150,7 +151,8 @@ wisdom_procurement/
 - 보조 Provider/모델: OpenAI `gpt-5.4-mini`, `gpt-5.4`
 - 포탈에서 분석 실행 시 사용할 Provider/모델을 선택할 수 있습니다.
 - 실제 API 키는 `backend/.env`에 직접 입력하며, 화면에는 설정 여부와 마스킹 값만 표시합니다.
-- PDF는 `PyMuPDF`로 텍스트/블록/페이지 구조를 먼저 추출
+- PDF는 `OpenDataLoader PDF`로 Markdown/JSON/table metadata를 먼저 추출
+- `PyMuPDF`는 빠른 fallback 및 PDF 렌더링/OCR 보조 엔진으로 유지
 - OCR은 텍스트 레이어가 부족한 PDF에만 fallback으로 적용
 - OCR 주 엔진은 `PaddleOCR PP-OCRv5`, 경량 대안은 `Tesseract(kor+eng)`로 둔다.
 - PaddleOCR은 Windows 기준 Python 3.13.13 런타임(`py -3.13`)에서 우선 검증한다.
@@ -171,6 +173,10 @@ wisdom_procurement/
   - 확인: `node -v`, `npm -v`
 - Git
 - Windows PowerShell
+- Java 11 이상
+  - OpenDataLoader PDF 변환에 필요합니다.
+  - 확인: `java -version`
+  - Java가 없거나 변환이 실패하면 기본 `auto` 모드에서 `PyMuPDF` fallback으로 동작합니다.
 
 OCR 엔진은 기본 테스트에 필수는 아닙니다. OCR 의존성이 없어도 업로드/분석 흐름은 `needs_ocr_setup` 또는 fallback 상태로 동작해야 합니다.
 
@@ -227,6 +233,25 @@ GEMINI_API_KEY=
 OPENAI_API_KEY=
 NARA_API_SERVICE_KEY=
 ```
+
+PDF 리더는 기본적으로 OpenDataLoader를 먼저 시도하고 실패하면 PyMuPDF로 fallback합니다. 기본값은 `backend/.env.example`에 들어 있으며, 직접 조정하려면 `backend/.env`에 아래 값을 넣습니다.
+
+```env
+PDF_READER_ENGINE=auto
+PDF_READER_ODL_VERSION=2.4.7
+PDF_READER_ODL_TABLE_METHOD=cluster
+PDF_READER_ODL_READING_ORDER=xycut
+PDF_READER_ODL_FORMAT=markdown,json
+PDF_READER_ODL_TIMEOUT_SECONDS=180
+PDF_READER_ODL_THREADS=1
+PDF_READER_ODL_ENABLE_HYBRID=false
+PDF_READER_ALLOW_PYMUPDF_FALLBACK=true
+```
+
+엔진 선택:
+- `auto`: OpenDataLoader 우선, 실패 시 PyMuPDF fallback
+- `opendataloader`: OpenDataLoader만 사용
+- `pymupdf`: 기존 PyMuPDF만 사용
 
 주의:
 - API 키는 Git에 커밋하지 않습니다.
@@ -298,6 +323,19 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action star
 
 ```powershell
 py -3.13 -m pytest backend/tests -q
+```
+
+OpenDataLoader 실제 기준문서 PDF QA:
+
+```powershell
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine opendataloader --threads 4 --timeout-seconds 1200 --strict
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine auto --threads 4 --timeout-seconds 1200 --strict
+```
+
+OpenDataLoader 실패 시 PyMuPDF fallback QA:
+
+```powershell
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine auto --threads 1 --timeout-seconds 1 --min-table-count 0 --min-table-row-chunks 0 --min-reference-table-row-coverage 0 --min-reference-table-row-token-coverage 0
 ```
 
 프론트엔드 빌드:
@@ -482,7 +520,7 @@ npm run dev -- --host 127.0.0.1 --port 5199
 - Backend: Python 3.13.13; current implementation uses Flask; FastAPI remains an optional future refactor target
 - DB: SQLite
 - Storage: local filesystem
-- PDF extraction: PyMuPDF as the default PDF reader/extractor
+- PDF extraction: OpenDataLoader PDF in `auto` mode by default, with PyMuPDF fallback
 - DOCX extraction: python-docx
 - OCR: PaddleOCR PP-OCRv5 primary, Tesseract as a lighter fallback candidate
 - Runtime command: use Windows `py -3.13` or `C:\Python313\python.exe`; do not run backend/OCR with any other Python runtime
@@ -497,6 +535,7 @@ Required tools:
 - Node.js `20.19.0+` or `22.12.0+`
 - npm
 - Git
+- Java 11+ for OpenDataLoader PDF conversion
 
 Install backend dependencies:
 
@@ -538,6 +577,19 @@ Run full backend tests:
 py -3.13 -m pytest backend/tests -q
 ```
 
+Run real basis PDF OpenDataLoader QA:
+
+```powershell
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine opendataloader --threads 4 --timeout-seconds 1200 --strict
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine auto --threads 4 --timeout-seconds 1200 --strict
+```
+
+Run fallback QA:
+
+```powershell
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine auto --threads 1 --timeout-seconds 1 --min-table-count 0 --min-table-row-chunks 0 --min-reference-table-row-coverage 0 --min-reference-table-row-token-coverage 0
+```
+
 Run frontend build:
 
 ```powershell
@@ -575,6 +627,7 @@ Environment notes:
 - `scripts/manage-servers.ps1` copies `.env.example` files when `.env` files are missing.
 - API keys are optional for basic local tests.
 - Real Gemini/OpenAI/Nara API tests require keys in `backend/.env` or process environment variables.
+- `PDF_READER_ENGINE=auto` tries OpenDataLoader first and falls back to PyMuPDF when Java/package/timeout/conversion failures occur.
 - Gemini API users can create and manage keys in [Google AI Studio API keys](https://aistudio.google.com/app/apikey), then copy the issued key into `GEMINI_API_KEY`.
 - Nara API users must apply for access on the [Public Data Portal Nara Bid Notice API page](https://www.data.go.kr/data/15129394/openapi.do), then copy the issued service key into `NARA_API_SERVICE_KEY`.
 - Never commit API keys.

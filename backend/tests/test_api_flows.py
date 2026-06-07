@@ -872,6 +872,29 @@ class ApiFlowTests(unittest.TestCase):
         self.assertNotIn("eligible", json.dumps(payload).lower())
         self.assertNotIn("지원 가능", json.dumps(payload, ensure_ascii=False))
 
+    def test_basis_search_ranking_does_not_overvalue_repeated_single_token(self) -> None:
+        repeated = self.upload_basis_document(
+            "direct direct direct direct direct direct direct direct unrelated glossary",
+            file_name="basis-repeated-token.pdf",
+        )
+        balanced = self.upload_basis_document(
+            "direct production certificate is required for procurement review",
+            file_name="basis-balanced-match.pdf",
+        )
+
+        search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "direct production certificate", "top_k": 2},
+        )
+
+        self.assertEqual(search_response.status_code, 200)
+        payload = search_response.get_json()
+        self.assertGreaterEqual(payload["result_count"], 2)
+        first = payload["results"][0]
+        self.assertEqual(first["document"]["id"], balanced["id"])
+        self.assertNotEqual(first["document"]["id"], repeated["id"])
+        self.assertLessEqual(first["score"], 1)
+
     def test_basis_search_excludes_failed_or_unindexed_chunks(self) -> None:
         basis = self.upload_basis_document(
             "Direct production confirmation certificate is required for goods procurement bids.",
@@ -1858,6 +1881,21 @@ class ApiFlowTests(unittest.TestCase):
         finally:
             runtime.GEMINI_API_KEY = previous_gemini_key
             runtime.OPENAI_API_KEY = previous_openai_key
+
+    def test_pdf_reader_status_exposes_engine_health_without_secrets(self) -> None:
+        response = self.client.get("/api/settings/pdf-reader/status")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertIn(payload["configured_engine"], {"auto", "opendataloader", "pymupdf"})
+        self.assertIn("opendataloader", payload)
+        self.assertIn("pymupdf", payload)
+        self.assertIn("fallback_enabled", payload)
+        self.assertEqual(payload["opendataloader"]["engine"], "opendataloader-pdf")
+        self.assertEqual(payload["opendataloader"]["expected_version"], "2.4.7")
+        self.assertEqual(payload["pymupdf"]["engine"], "PyMuPDF")
+        self.assertNotIn("api_key", json.dumps(payload).lower())
+        self.assertNotIn("service_key", json.dumps(payload).lower())
 
     def test_document_analysis_uses_selected_ai_model(self) -> None:
         corporation = self.create_corporation()

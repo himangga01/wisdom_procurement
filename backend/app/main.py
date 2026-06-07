@@ -44,6 +44,7 @@ from app.pipelines.basis_document import (
     validate_basis_index,
 )
 from app.pipelines.parser import extract_document
+from app.pipelines.pdf_readers import pdf_reader_status as build_pdf_reader_status
 from app.services.basis_rule_candidates import (
     basis_rule_candidate_match_score,
     merge_citation_results,
@@ -6476,6 +6477,11 @@ def ai_model_settings():
             "options": ai_model_options(),
         }
     )
+
+
+@app.route("/api/settings/pdf-reader/status", methods=["GET"])
+def pdf_reader_status():
+    return jsonify(build_pdf_reader_status())
 
 
 @app.route("/api/settings/integrations/nara/status", methods=["GET"])
