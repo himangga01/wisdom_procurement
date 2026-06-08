@@ -10,6 +10,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from app.core.json_utils import parse_json_dict
+from app.core.logging import get_logger, log_event, log_exception
 from app.core.text import basis_tokenize, basis_vector_for_text, clean_text, parse_int
 from app.pipelines.ocr import run_ocr_if_needed
 from app.pipelines.parser import extract_document
@@ -19,6 +20,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parents[3]
 BACKEND_DIR = BASE_DIR / "backend"
 KST = timezone(timedelta(hours=9))
+LOGGER = get_logger("pipelines.basis_document")
 
 
 def _resolve_local_path(raw_value: str) -> Path:
@@ -124,6 +126,23 @@ def page_for_offset(page_ranges: list[dict[str, int]], offset: int) -> int | Non
     return page_ranges[-1]["page_number"]
 
 
+def basis_processing_options(metadata: dict[str, Any] | None, overrides: dict[str, Any] | None = None) -> dict[str, bool]:
+    def bool_option(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        return clean_text(value).lower() in {"1", "true", "yes", "on", "y"}
+
+    options = metadata.get("options") if isinstance(metadata, dict) else {}
+    if not isinstance(options, dict):
+        options = {}
+    force_ocr = bool_option(options.get("force_ocr"))
+    if overrides and "force_ocr" in overrides:
+        force_ocr = bool_option(overrides.get("force_ocr"))
+    return {"force_ocr": force_ocr}
+
+
 def detect_basis_section_title(chunk_text: str) -> str:
     for line in chunk_text.splitlines():
         candidate = clean_text(line)
@@ -139,6 +158,40 @@ def detect_basis_section_title(chunk_text: str) -> str:
 
 def basis_chunk_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def append_basis_text_chunk(
+    chunks: list[dict[str, Any]],
+    chunk_text: str,
+    start: int,
+    page_ranges: list[dict[str, int]],
+) -> None:
+    leading_trim = len(chunk_text) - len(chunk_text.lstrip())
+    chunk_text = chunk_text.strip()
+    if not chunk_text:
+        return
+    start += leading_trim
+    end = start + len(chunk_text)
+    chunks.append(
+        {
+            "chunk_index": len(chunks),
+            "chunk_text": chunk_text,
+            "chunk_text_normalized": chunk_text,
+            "page_start": page_for_offset(page_ranges, start),
+            "page_end": page_for_offset(page_ranges, end),
+            "section_title": detect_basis_section_title(chunk_text),
+            "article_label": "",
+            "chunk_hash": basis_chunk_hash(chunk_text),
+            "token_count": len(basis_tokenize(chunk_text)),
+            "metadata": {
+                "char_start": start,
+                "char_end": end,
+                "chunker": "paragraph-window-v1",
+                "max_chars": BASIS_MAX_CHUNK_CHARS,
+                "overlap_chars": BASIS_CHUNK_OVERLAP_CHARS,
+            },
+        }
+    )
 
 
 def split_basis_text_into_chunks(
@@ -163,26 +216,7 @@ def split_basis_text_into_chunks(
             return
         start = current_start
         end = start + len(chunk_text)
-        chunks.append(
-            {
-                "chunk_index": len(chunks),
-                "chunk_text": chunk_text,
-                "chunk_text_normalized": chunk_text,
-                "page_start": page_for_offset(page_ranges, start),
-                "page_end": page_for_offset(page_ranges, end),
-                "section_title": detect_basis_section_title(chunk_text),
-                "article_label": "",
-                "chunk_hash": basis_chunk_hash(chunk_text),
-                "token_count": len(basis_tokenize(chunk_text)),
-                "metadata": {
-                    "char_start": start,
-                    "char_end": end,
-                    "chunker": "paragraph-window-v1",
-                    "max_chars": BASIS_MAX_CHUNK_CHARS,
-                    "overlap_chars": BASIS_CHUNK_OVERLAP_CHARS,
-                },
-            }
-        )
+        append_basis_text_chunk(chunks, chunk_text, start, page_ranges)
 
         overlap = chunk_text[-BASIS_CHUNK_OVERLAP_CHARS:].strip()
         current_parts = [overlap] if overlap and len(overlap) < len(chunk_text) else []
@@ -198,10 +232,15 @@ def split_basis_text_into_chunks(
         if not current_parts:
             current_start = paragraph_offset
         if len(paragraph) > BASIS_MAX_CHUNK_CHARS:
-            for start in range(0, len(paragraph), BASIS_MAX_CHUNK_CHARS - BASIS_CHUNK_OVERLAP_CHARS):
-                current_parts = [paragraph[start : start + BASIS_MAX_CHUNK_CHARS]]
-                current_start = paragraph_offset + start
-                flush()
+            current_parts = []
+            step = max(1, BASIS_MAX_CHUNK_CHARS - BASIS_CHUNK_OVERLAP_CHARS)
+            for start in range(0, len(paragraph), step):
+                append_basis_text_chunk(
+                    chunks,
+                    paragraph[start : start + BASIS_MAX_CHUNK_CHARS],
+                    paragraph_offset + start,
+                    page_ranges,
+                )
             current_parts = []
         else:
             current_parts.append(paragraph)
@@ -595,14 +634,88 @@ def basis_search_score(query_tokens: set[str], vector: dict[str, int]) -> float:
     return shared_token_count / len(query_tokens)
 
 
-def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> dict:
+def process_basis_document(
+    conn: sqlite3.Connection,
+    basis_document_id: int,
+    option_overrides: dict[str, Any] | None = None,
+) -> dict:
+    log_event(
+        LOGGER,
+        "basis.processing.started",
+        domain="basis_document",
+        target_id=basis_document_id,
+    )
     row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
     if not row:
+        log_event(
+            LOGGER,
+            "basis.processing.not_found",
+            level="warning",
+            domain="basis_document",
+            target_id=basis_document_id,
+        )
         raise ValueError("Basis document not found")
+
+    row_metadata = parse_json_dict(row["metadata_json"])
+    processing_options = basis_processing_options(row_metadata, option_overrides)
+    log_event(
+        LOGGER,
+        "basis.processing.options",
+        domain="basis_document",
+        target_id=basis_document_id,
+        force_ocr=processing_options["force_ocr"],
+    )
 
     path = Path(row["stored_file_path"])
     if not path.exists():
         now = now_iso()
+        existing_indexed_count = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM basis_document_chunks
+            WHERE basis_document_id=? AND vector_status='indexed' AND vector_id<>''
+            """,
+            (basis_document_id,),
+        ).fetchone()[0]
+        if row["processing_status"] == "completed" and row["index_status"] == "completed" and existing_indexed_count:
+            log_event(
+                LOGGER,
+                "basis.processing.storage_missing_preserved",
+                level="error",
+                domain="basis_document",
+                target_id=basis_document_id,
+                file_name=path.name,
+                existing_indexed_count=existing_indexed_count,
+            )
+            metadata = dict(row_metadata)
+            metadata["options"] = processing_options
+            metadata["last_reprocess_attempt"] = {
+                "status": "failed",
+                "error_message": "Stored file not found",
+                "attempted_at": now,
+                "preserved_existing_index": True,
+            }
+            conn.execute(
+                """
+                UPDATE basis_documents
+                SET error_message='Stored file not found; existing indexed result preserved',
+                    metadata_json=?, updated_at=?
+                WHERE id=?
+                """,
+                (json.dumps(metadata, ensure_ascii=False), now, basis_document_id),
+            )
+            return basis_document_payload(
+                conn,
+                conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone(),
+            )
+        log_event(
+            LOGGER,
+            "basis.processing.storage_missing_failed",
+            level="error",
+            domain="basis_document",
+            target_id=basis_document_id,
+            file_name=path.name,
+        )
         conn.execute(
             """
             UPDATE basis_documents
@@ -619,6 +732,13 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
     try:
         index_snapshot = load_basis_index()
     except BasisIndexError as exc:
+        log_exception(
+            LOGGER,
+            "basis.index.unavailable",
+            exc,
+            domain="basis_document",
+            target_id=basis_document_id,
+        )
         now = now_iso()
         conn.execute(
             """
@@ -647,7 +767,13 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
         )
 
         parsed = extract_document(path)
-        ocr_result = run_ocr_if_needed(parsed.text, path, parsed.kind, parsed.metadata)
+        ocr_result = run_ocr_if_needed(
+            parsed.text,
+            path,
+            parsed.kind,
+            parsed.metadata,
+            force=processing_options["force_ocr"],
+        )
         raw_text = ocr_result.text or parsed.text
         normalized_text = normalize_basis_text(raw_text)
         chunks = split_basis_text_into_chunks(normalized_text, parsed.metadata) if normalized_text else []
@@ -718,11 +844,35 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
             )
             mark_basis_rule_candidates_for_revalidation(conn, basis_document_id)
         else:
+            metadata = {
+                "options": processing_options,
+                "parser": compact_parser_metadata_for_storage(parsed.metadata),
+                "ocr": ocr_result.to_dict(),
+                "normalizer": {"name": "basis-normalize-v1", "char_count": len(normalized_text)},
+                "chunker": {
+                    "name": "paragraph-window-v1+opendataloader-table-row-v1",
+                    "max_chars": BASIS_MAX_CHUNK_CHARS,
+                    "overlap_chars": BASIS_CHUNK_OVERLAP_CHARS,
+                    "table_row_chunk_count": len(table_chunks),
+                },
+                "indexer": {"name": BASIS_EMBEDDING_MODEL, "vector_count": 0},
+            }
+            log_event(
+                LOGGER,
+                "basis.processing.no_text",
+                level="warning",
+                domain="basis_document",
+                target_id=basis_document_id,
+                ocr_status=ocr_status,
+                chunk_status=chunk_status,
+                index_status=index_status,
+                message=error_message,
+            )
             conn.execute(
                 """
                 UPDATE basis_documents
                 SET processing_status=?, parse_status='completed', ocr_status=?,
-                    chunk_status=?, index_status=?, error_message=?, updated_at=?
+                    chunk_status=?, index_status=?, metadata_json=?, error_message=?, updated_at=?
                 WHERE id=?
                 """,
                 (
@@ -730,6 +880,7 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
                     ocr_status,
                     chunk_status,
                     index_status,
+                    json.dumps(metadata, ensure_ascii=False),
                     error_message,
                     now_iso(),
                     basis_document_id,
@@ -740,6 +891,7 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
             return basis_document_payload(conn, conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone())
 
         metadata = {
+            "options": processing_options,
             "parser": compact_parser_metadata_for_storage(parsed.metadata),
             "ocr": ocr_result.to_dict(),
             "normalizer": {"name": "basis-normalize-v1", "char_count": len(normalized_text)},
@@ -779,7 +931,29 @@ def process_basis_document(conn: sqlite3.Connection, basis_document_id: int) -> 
         )
         conn.execute(f"RELEASE SAVEPOINT {savepoint_name}")
         savepoint_active = False
+        log_event(
+            LOGGER,
+            "basis.processing.completed",
+            domain="basis_document",
+            target_id=basis_document_id,
+            processing_run_id=processing_run_id,
+            page_count=page_count,
+            chunk_count=len(chunks),
+            table_chunk_count=len(table_chunks),
+            vector_count=vector_count,
+            ocr_status=ocr_status,
+            index_status=index_status,
+        )
     except Exception as exc:
+        log_exception(
+            LOGGER,
+            "basis.processing.failed",
+            exc,
+            domain="basis_document",
+            target_id=basis_document_id,
+            processing_run_id=processing_run_id,
+            index_mutated=index_mutated,
+        )
         if savepoint_active:
             try:
                 conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
@@ -886,6 +1060,15 @@ def validate_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
 
     if not state.get("valid"):
         result["rebuild_required"] = True
+        log_event(
+            LOGGER,
+            "basis.index.validation.failed",
+            level="warning",
+            domain="basis_document",
+            status=result["status"],
+            db_indexed_chunk_count=len(db_rows),
+            errors=result["errors"],
+        )
         return result
 
     if state.get("status") == "missing" and db_rows:
@@ -893,6 +1076,15 @@ def validate_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
         result["valid"] = False
         result["errors"].append("basis-index.json is missing while DB has indexed chunks.")
         result["rebuild_required"] = True
+        log_event(
+            LOGGER,
+            "basis.index.validation.failed",
+            level="warning",
+            domain="basis_document",
+            status=result["status"],
+            db_indexed_chunk_count=len(db_rows),
+            errors=result["errors"],
+        )
         return result
 
     index_chunks = payload.get("chunks", {}) if payload else {}
@@ -901,6 +1093,15 @@ def validate_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
         result["valid"] = False
         result["errors"].append("chunks must be an object.")
         result["rebuild_required"] = True
+        log_event(
+            LOGGER,
+            "basis.index.validation.failed",
+            level="warning",
+            domain="basis_document",
+            status=result["status"],
+            db_indexed_chunk_count=len(db_rows),
+            errors=result["errors"],
+        )
         return result
 
     missing_from_index = sorted(set(db_by_vector_id) - set(index_chunks))
@@ -947,11 +1148,33 @@ def validate_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
         if invalid_index_items:
             result["errors"].append("basis-index.json contains invalid chunk items.")
         result["rebuild_required"] = True
+        log_event(
+            LOGGER,
+            "basis.index.validation.failed",
+            level="warning",
+            domain="basis_document",
+            status=result["status"],
+            db_indexed_chunk_count=len(db_rows),
+            missing_from_index_count=len(missing_from_index),
+            missing_from_db_count=len(missing_from_db),
+            mismatched_count=len(mismatched),
+            invalid_item_count=len(invalid_index_items),
+            errors=result["errors"],
+        )
         return result
 
     result["valid"] = True
     result["can_search"] = bool(index_chunks)
     result["rebuild_required"] = False
+    log_event(
+        LOGGER,
+        "basis.index.validation.completed",
+        domain="basis_document",
+        status=result["status"],
+        db_indexed_chunk_count=len(db_rows),
+        chunk_count=len(index_chunks),
+        can_search=result["can_search"],
+    )
     return result
 
 
@@ -971,6 +1194,7 @@ def archive_invalid_basis_index() -> str:
 
 
 def rebuild_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
+    log_event(LOGGER, "basis.index.rebuild.started", domain="basis_document")
     state = load_basis_index_state()
     archived_path = archive_invalid_basis_index() if not state.get("valid") else ""
     payload = default_basis_index_payload()
@@ -997,6 +1221,15 @@ def rebuild_basis_index(conn: sqlite3.Connection) -> dict[str, Any]:
     result = basis_index_status_payload(conn)
     result["rebuilt_chunk_count"] = len(chunks)
     result["archived_path"] = archived_path
+    log_event(
+        LOGGER,
+        "basis.index.rebuild.completed",
+        domain="basis_document",
+        rebuilt_chunk_count=len(chunks),
+        archived_path=archived_path,
+        status=result.get("status"),
+        valid=result.get("valid"),
+    )
     return result
 
 
@@ -1009,12 +1242,36 @@ def basis_search_results(
 ) -> list[dict[str, Any]]:
     query_tokens = set(basis_tokenize(query))
     if not query_tokens:
+        log_event(
+            LOGGER,
+            "basis.search.empty_query",
+            level="warning",
+            domain="basis_document",
+            query_length=len(query or ""),
+        )
         return []
 
     validation = validate_basis_index(conn)
     if not validation["valid"]:
+        log_event(
+            LOGGER,
+            "basis.search.failed",
+            level="error",
+            domain="basis_document",
+            query_length=len(query or ""),
+            category=category,
+            document_version=document_version,
+            errors=validation["errors"],
+        )
         raise BasisIndexError("; ".join(validation["errors"]) or "Basis index validation failed.")
     if not validation["can_search"]:
+        log_event(
+            LOGGER,
+            "basis.search.no_indexed_chunks",
+            level="warning",
+            domain="basis_document",
+            query_length=len(query or ""),
+        )
         return []
 
     index_chunks = validation["payload"].get("chunks", {})
@@ -1077,4 +1334,16 @@ def basis_search_results(
         if len(scored) >= max(1, min(top_k, 20)):
             break
 
+    log_event(
+        LOGGER,
+        "basis.search.completed",
+        domain="basis_document",
+        query_length=len(query or ""),
+        query_token_count=len(query_tokens),
+        category=category,
+        document_version=document_version,
+        top_k=top_k,
+        candidate_count=len(scored_items),
+        result_count=len(scored),
+    )
     return scored

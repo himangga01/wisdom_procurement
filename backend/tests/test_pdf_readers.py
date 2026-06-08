@@ -124,6 +124,52 @@ class PdfReaderTests(unittest.TestCase):
         self.assertEqual(pages[2]["char_start"], text.index("page three"))
         self.assertEqual(pages[2]["char_end"], len(text))
 
+    def test_opendataloader_payload_reads_nested_blank_content_nodes(self) -> None:
+        payload = {
+            "number of pages": 1,
+            "kids": [
+                {
+                    "type": "paragraph",
+                    "page number": 1,
+                    "content": "",
+                    "kids": [paragraph("nested paragraph text", 1)],
+                },
+                {
+                    "type": "table",
+                    "page number": 1,
+                    "number of rows": 2,
+                    "number of columns": 2,
+                    "rows": [
+                        {
+                            "type": "table row",
+                            "row number": 1,
+                            "cells": ["item", "content"],
+                        },
+                        {
+                            "type": "table row",
+                            "row number": 2,
+                            "cells": [
+                                {
+                                    "type": "table cell",
+                                    "page number": 1,
+                                    "content": "",
+                                    "kids": [paragraph("nested cell", 1)],
+                                },
+                                "string cell",
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+
+        text, _pages, tables = render_opendataloader_payload(payload)
+
+        self.assertIn("nested paragraph text", text)
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(tables[0]["rows"][1]["cells"], ["nested cell", "string cell"])
+        self.assertIn("| nested cell | string cell |", text)
+
     def test_status_normalizes_unknown_configured_engine_to_auto(self) -> None:
         with PdfReaderEnv(PDF_READER_ENGINE="unknown-engine"):
             status = pdf_reader_status()
@@ -201,6 +247,25 @@ class PdfReaderTests(unittest.TestCase):
 
         self.assertEqual(result.metadata["engine"], "PyMuPDF")
         self.assertIn("forced smoke test", result.text)
+
+    def test_pymupdf_reader_records_page_offsets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pdf_path = Path(tmp) / "multi-page.pdf"
+            doc = fitz.open()
+            page = doc.new_page(width=300, height=200)
+            page.insert_text((30, 50), "first page text")
+            page = doc.new_page(width=300, height=200)
+            page.insert_text((30, 50), "second page text")
+            doc.save(pdf_path)
+            doc.close()
+
+            result = PyMuPdfPdfReader().read(pdf_path)
+
+        pages = result.metadata["pages"]
+        self.assertEqual(result.text, "first page text\n\nsecond page text")
+        self.assertEqual(pages[0]["char_start"], result.text.index("first page"))
+        self.assertEqual(pages[1]["char_start"], result.text.index("second page"))
+        self.assertEqual(pages[1]["char_end"], len(result.text))
 
     def test_real_opendataloader_reader_extracts_pdf_when_available(self) -> None:
         status = OpenDataLoaderPdfReader().status()

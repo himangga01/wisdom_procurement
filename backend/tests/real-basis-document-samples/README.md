@@ -80,11 +80,38 @@ py -3.13 scripts/regenerate-real-basis-document-md.py `
 
 - `text-comparison-report.json`
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+이 폴더는 실제 기준문서 PDF를 Git에 넣지 않고 로컬에서만 QA fixture로 쓰기 위한 위치입니다.
+
+현재 사용 기준:
+- 원본 PDF와 `manifest.json`, 실제 추출 report는 `.gitignore` 대상입니다.
+- `regenerated-basis-document.md`는 PyMuPDF 기반 역사적 Markdown 재생성 baseline입니다.
+- `opendataloader-regenerated-basis-document.md`, `opendataloader-regenerated-basis-document-auto.md`, `opendataloader-regenerated-basis-document-fallback.md`는 OpenDataLoader 전환 이후 QA 산출물입니다.
+- 현재 서비스 기본 PDF reader는 OpenDataLoader 우선 `auto` 모드이며, PyMuPDF는 fallback으로 유지됩니다.
+- DOCX 기준 비교는 문단과 표 cell 텍스트를 함께 사용합니다.
+- 실제 기준문서 RAG opt-in 테스트는 `RUN_REAL_BASIS_RAG_TESTS=1`일 때만 실행합니다.
+
+권장 실행:
+```powershell
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine opendataloader --threads 4 --timeout-seconds 1200 --strict
+py -3.13 scripts/run-opendataloader-real-basis-qa.py --engine auto --threads 4 --timeout-seconds 1200 --strict
+```
+
 ---
 
 # AI / Engineering Version (English)
 
 This folder stores opt-in local real-basis-document QA samples.
+
+Current code update:
+- real PDFs, `manifest.json`, and extraction reports remain ignored local artifacts
+- `regenerated-basis-document.md` is a historical PyMuPDF Markdown baseline
+- `opendataloader-regenerated-basis-document*.md` files are post-replacement OpenDataLoader QA artifacts
+- default service PDF reader is OpenDataLoader-first `auto` mode with PyMuPDF fallback
+- DOCX reference comparison includes paragraph and table-cell text
+- real-basis RAG tests run only with `RUN_REAL_BASIS_RAG_TESTS=1`
 
 Tracked files:
 

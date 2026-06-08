@@ -178,9 +178,27 @@ Phase 1.5로 구현 가능한 범위:
 - 기준문서 RAG 판단
 - 낙찰/계약 이력 분석
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 이 문서는 2026-05-05 기준 나라장터 API 테스트 결과의 역사적 기록입니다.
+- 현재 서비스는 나라장터 API 키를 `NARA_API_SERVICE_KEY`로 받고, README에 활용신청/발급 안내를 포함합니다.
+- 현재 첨부 PDF/DOCX 분석은 OpenDataLoader 우선 `auto` reader 정책을 공유합니다.
+- 과거 샘플 manifest의 `PyMuPDF` 엔진 표기는 당시 캐시 기준선으로 봅니다.
+- 최신 전체 코드/문서 상태는 `docs/current-code-documentation-audit.md`와 `docs/work-log.md`를 우선합니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- This is a historical Nara API test result from 2026-05-05.
+- Current service uses `NARA_API_SERVICE_KEY`, with application/key issuance guidance in README.
+- Current Nara PDF/DOCX attachment analysis shares the OpenDataLoader-first `auto` reader policy.
+- Historical sample manifests that mention `PyMuPDF` are old cache baselines.
+- Prefer `docs/current-code-documentation-audit.md` and `docs/work-log.md` for current whole-service state.
 
 ## Purpose
 This document records real Nara Marketplace API test results for `2026-05-05` and maps the responses to SMART Procurement Calculator features.

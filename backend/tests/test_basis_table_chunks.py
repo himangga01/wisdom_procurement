@@ -1,10 +1,13 @@
 import unittest
 
 from app.pipelines.basis_document import (
+    BASIS_CHUNK_OVERLAP_CHARS,
+    BASIS_MAX_CHUNK_CHARS,
     basis_page_ranges,
     basis_search_score,
     page_for_offset,
     split_basis_tables_into_row_chunks,
+    split_basis_text_into_chunks,
 )
 from app.services.basis_rule_candidates import basis_rule_candidate_match_score
 
@@ -91,6 +94,19 @@ class BasisTableChunkTests(unittest.TestCase):
 
         self.assertLess(basis_search_score(query_tokens, repeated_one_token), basis_search_score(query_tokens, balanced_match))
         self.assertLessEqual(basis_search_score(query_tokens, repeated_one_token), 1)
+
+    def test_long_single_paragraph_chunks_keep_overlap(self) -> None:
+        text = "A" * (BASIS_MAX_CHUNK_CHARS + 80)
+
+        chunks = split_basis_text_into_chunks(text, {"page_count": 1})
+
+        self.assertGreaterEqual(len(chunks), 2)
+        self.assertEqual(chunks[0]["metadata"]["char_start"], 0)
+        self.assertEqual(chunks[1]["metadata"]["char_start"], BASIS_MAX_CHUNK_CHARS - BASIS_CHUNK_OVERLAP_CHARS)
+        self.assertEqual(
+            chunks[0]["chunk_text"][-BASIS_CHUNK_OVERLAP_CHARS:],
+            chunks[1]["chunk_text"][:BASIS_CHUNK_OVERLAP_CHARS],
+        )
 
     def test_rule_candidate_score_does_not_reward_repeated_single_token(self) -> None:
         requirement = {

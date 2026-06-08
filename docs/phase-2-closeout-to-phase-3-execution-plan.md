@@ -179,9 +179,25 @@
 - Phase 2.5 규칙 후보 승인 UX는 Phase 3 이전에 필수일까요?
 - 판단 결과 화면에서 확정 자격 판정 표현을 계속 숨기고 `준비 상태`만 보여주는 정책으로 확정해도 될까요?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- Phase 2 종료 보강, Phase 2.5A-D, Phase 3A-G 핵심 MVP는 현재 코드에 구현되어 있습니다.
+- 현재 남은 핵심 보강은 DNS rebinding/shared address 보안, OpenDataLoader `auto` 전체 회귀 운영 방식, 실제 복원 실행 기능, 운영 감사 로그 고도화입니다.
+- 판단 엔진은 부족조건 중심이며 citation이 없거나 약한 조건을 확정 근거로 사용하지 않습니다.
+- 최신 PDF/RAG 보강 후 전체 backend 기준선은 `134 passed`, `8 skipped`입니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Phase 2 closeout, Phase 2.5A-D, and core Phase 3A-G MVP scope are implemented.
+- Remaining hardening focuses on DNS rebinding/shared-address security, OpenDataLoader `auto` regression policy, actual restore execution, and operational audit logs.
+- The judgment engine is gap-first and does not treat missing/weak citations as final evidence.
+- Latest PDF/RAG backend baseline: `134 passed`, `8 skipped`.
 
 ## Purpose
 Execution plan from Phase 2 closeout hardening through Phase 2.5A-D and Phase 3A-G.

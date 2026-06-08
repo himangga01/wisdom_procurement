@@ -1,5 +1,19 @@
 # 실제 기준문서 RAG 및 테이블 추출 QA 계획
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+이 문서는 사용자가 제공한 실제 기준문서 PDF를 로컬 fixture로 등록하고 RAG/표 추출 품질을 검증하기 위한 계획과 실행 기록입니다.
+초기 분석 일부는 PyMuPDF 기준이지만, 현재 서비스 기본 PDF reader는 OpenDataLoader 우선 `auto` 모드입니다.
+
+현재 기준:
+- 실제 기준문서 PDF 원본은 Git에 커밋하지 않고 로컬 fixture/manifest 정책을 유지합니다.
+- OpenDataLoader QA는 489쪽 기준문서 전체 변환, `auto` 변환, fallback simulation을 포함합니다.
+- 기준문서 검색은 JSON basis index를 사용하며, 인덱스 손상/불일치 상태에서는 검색과 citation 사용을 차단합니다.
+- DOCX 비교/분석은 문단과 표 cell 텍스트를 함께 사용합니다.
+- 최신 PDF/RAG 보강 후 전체 backend 테스트 기준선은 `134 passed`, `8 skipped`입니다.
+- MuPDF/PyMuPDF의 Swig 관련 warning은 알려진 내부 경고로 기록하되, 테스트 실패 조건은 아닙니다.
+
 ## 한국어 버전
 
 ## 문서 목적
@@ -768,7 +782,8 @@ http://127.0.0.1:5199/basis-retrieval-evaluations
 - strict 비교 기준 통과
 - 회귀 테스트 코드: `backend/tests/test_real_basis_reference_compare.py`
 - 회귀 테스트 결과: `3 passed`
-- 전체 backend pytest 결과: `105 passed, 8 skipped`
+- 당시 전체 backend pytest 결과: `105 passed, 8 skipped`
+- 현재 최신 전체 backend 기준선: `134 passed`, `8 skipped`
 - 비고: 이 문서는 `python-docx`의 문단/표 셀 방식만 사용하면 기준 텍스트가 약 38.8만 자에 그쳐 비교가 왜곡되므로, DOCX 패키지 XML의 `w:t` 텍스트를 직접 읽는 방식을 사용한다.
 
 외부 MD 기준 텍스트 비교 결과:
@@ -805,6 +820,20 @@ http://127.0.0.1:5199/basis-retrieval-evaluations
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Update
+Last updated: 2026-06-07
+
+This document records the plan and execution history for the user-provided real basis PDF fixture and RAG/table extraction QA.
+Some initial analysis used PyMuPDF, but the current default PDF reader is OpenDataLoader-first `auto` mode.
+
+Current baseline:
+- The real basis PDF stays out of Git and is managed as a local fixture/manifest.
+- OpenDataLoader QA covers full 489-page conversion, `auto` conversion, and fallback simulation.
+- Basis retrieval uses the JSON basis index and blocks search/citation usage when the index is missing/corrupt/inconsistent.
+- DOCX comparison/parsing includes paragraphs and table cells.
+- Latest PDF/RAG backend baseline: `134 passed`, `8 skipped`.
+- MuPDF/PyMuPDF Swig warnings remain known internal warnings, not test failures.
 
 ## Purpose
 This plan defines how to store the provided real basis-document PDF locally and verify the current basis-document RAG pipeline and table-heavy text extraction quality.
@@ -1305,7 +1334,8 @@ External DOCX comparison result:
 - strict comparison thresholds passed
 - regression test code: `backend/tests/test_real_basis_reference_compare.py`
 - regression test result: `3 passed`
-- full backend pytest result: `105 passed, 8 skipped`
+- historical full backend pytest result: `105 passed, 8 skipped`
+- current full backend baseline: `134 passed`, `8 skipped`
 - Note: plain `python-docx` paragraph/table-cell extraction produced only about 387k characters, so this comparison uses raw DOCX package XML `w:t` text.
 
 External MD comparison result:

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../app/api";
-import type { BasisDocument, BasisSearchResponse } from "../app/types";
+import type { BasisDocument, BasisDocumentChunk, BasisSearchResponse } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
 
 function statusTone(status: string) {
@@ -26,6 +26,26 @@ const emptyEditForm = {
   memo: "",
 };
 
+const CHUNK_PREVIEW_LIMIT = 360;
+
+type ReprocessProgress = {
+  documentId: number;
+  forceOcr: boolean;
+  startedAt: number;
+};
+
+function basisForceOcrEnabled(document: BasisDocument | null) {
+  const options = document?.metadata?.options;
+  if (!options || typeof options !== "object") return false;
+  return Boolean((options as Record<string, unknown>).force_ocr);
+}
+
+function chunkDisplayText(chunk: BasisDocumentChunk, expanded: boolean) {
+  const text = chunk.chunk_text || "";
+  if (expanded || text.length <= CHUNK_PREVIEW_LIMIT) return text;
+  return `${text.slice(0, CHUNK_PREVIEW_LIMIT).trimEnd()}...`;
+}
+
 export function BasisDocumentsPage() {
   const { runWithOverlay } = useWorkOverlay();
   const [documents, setDocuments] = useState<BasisDocument[]>([]);
@@ -41,16 +61,31 @@ export function BasisDocumentsPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [memo, setMemo] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [uploadForceOcr, setUploadForceOcr] = useState(false);
+  const [reprocessForceOcr, setReprocessForceOcr] = useState(false);
+  const [reprocessProgress, setReprocessProgress] = useState<ReprocessProgress | null>(null);
+  const [progressTick, setProgressTick] = useState(Date.now());
 
   const [keyword, setKeyword] = useState("");
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchCategory, setSearchCategory] = useState("");
   const [searchResult, setSearchResult] = useState<BasisSearchResponse | null>(null);
+  const [expandedChunkIds, setExpandedChunkIds] = useState<Set<number>>(() => new Set());
+  const [chunks, setChunks] = useState<BasisDocumentChunk[]>([]);
+  const [chunksVisible, setChunksVisible] = useState(false);
+  const [chunksLoading, setChunksLoading] = useState(false);
+  const [chunksError, setChunksError] = useState("");
 
   const loadDetail = async (id: number) => {
     const detail = await api.getBasisDocument(id);
     setSelectedDoc(detail);
+    setReprocessForceOcr(basisForceOcrEnabled(detail));
+    setChunks([]);
+    setChunksVisible(false);
+    setChunksLoading(false);
+    setChunksError("");
+    setExpandedChunkIds(new Set());
     setEditForm({
       title: detail.title,
       category: detail.category,
@@ -68,7 +103,7 @@ export function BasisDocumentsPage() {
       const data = await api.listBasisDocuments({ keyword: nextKeyword });
       setDocuments(data);
       setError("");
-      const targetId = nextSelectedId === null ? data[0]?.id : nextSelectedId ?? selectedDoc?.id ?? data[0]?.id;
+      const targetId = nextSelectedId === null ? undefined : nextSelectedId ?? selectedDoc?.id;
       if (targetId) {
         const target = data.find((item) => item.id === targetId);
         await loadDetail(target?.id ?? targetId);
@@ -86,6 +121,12 @@ export function BasisDocumentsPage() {
     refresh();
   }, []);
 
+  useEffect(() => {
+    if (!reprocessProgress) return;
+    const timer = window.setInterval(() => setProgressTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [reprocessProgress]);
+
   const categories = useMemo(() => {
     return Array.from(new Set(documents.map((item) => item.category).filter(Boolean))).sort();
   }, [documents]);
@@ -102,6 +143,7 @@ export function BasisDocumentsPage() {
     formData.append("effective_date", effectiveDate);
     formData.append("source_url", sourceUrl);
     formData.append("memo", memo);
+    formData.append("force_ocr", uploadForceOcr ? "true" : "false");
     formData.append("file", file);
 
     try {
@@ -124,6 +166,7 @@ export function BasisDocumentsPage() {
           setSourceUrl("");
           setMemo("");
           setFile(null);
+          setUploadForceOcr(false);
           setKeyword("");
           await refresh(created.id, "");
         },
@@ -165,23 +208,60 @@ export function BasisDocumentsPage() {
 
   const onReprocess = async () => {
     if (!selectedDoc) return;
+    const documentId = selectedDoc.id;
+    const forceOcr = reprocessForceOcr;
+    const startedAt = Date.now();
+    setProgressTick(startedAt);
+    setReprocessProgress({ documentId, forceOcr, startedAt });
+    setSelectedDoc((prev) =>
+      prev?.id === documentId
+        ? {
+            ...prev,
+            processing_status: "processing",
+            parse_status: "processing",
+            ocr_status: forceOcr ? "processing" : "pending",
+            chunk_status: "pending",
+            index_status: "pending",
+          }
+        : prev,
+    );
+    setDocuments((prev) =>
+      prev.map((item) =>
+        item.id === documentId
+          ? {
+              ...item,
+              processing_status: "processing",
+              parse_status: "processing",
+              ocr_status: forceOcr ? "processing" : "pending",
+              chunk_status: "pending",
+              index_status: "pending",
+            }
+          : item,
+      ),
+    );
     try {
       await runWithOverlay(
         {
           title: "기준문서 재처리 중",
-          description: "기존 청크와 검색 인덱스를 교체합니다.",
-          steps: ["이전 청크 정리", "텍스트 재추출", "청크 재생성", "인덱스 재생성"],
+          description: forceOcr
+            ? "OCR 강제 실행이 켜져 있어 PDF 전체 페이지를 PaddleOCR로 처리합니다. 대용량 기준문서는 오래 걸릴 수 있습니다."
+            : "기존 청크와 검색 인덱스를 교체합니다.",
+          steps: forceOcr
+            ? ["PDF 텍스트/표 추출", "PaddleOCR 전체 페이지 처리", "청크 재생성", "검색 인덱스 재생성"]
+            : ["이전 청크 정리", "텍스트 재추출", "청크 재생성", "인덱스 재생성"],
           successMessage: "기준문서 재처리가 완료되었습니다.",
           failureMessage: "기준문서 재처리를 완료하지 못했습니다.",
           minVisibleMs: 700,
         },
         async () => {
-          const updated = await api.reprocessBasisDocument(selectedDoc.id);
+          const updated = await api.reprocessBasisDocument(documentId, { force_ocr: forceOcr });
           await refresh(updated.id);
         },
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "기준문서 재처리에 실패했습니다.");
+    } finally {
+      setReprocessProgress((prev) => (prev?.documentId === documentId ? null : prev));
     }
   };
 
@@ -221,6 +301,52 @@ export function BasisDocumentsPage() {
       setError(err instanceof Error ? err.message : "기준문서 검색에 실패했습니다.");
     }
   };
+
+  const toggleChunkExpanded = (chunkId: number) => {
+    setExpandedChunkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chunkId)) {
+        next.delete(chunkId);
+      } else {
+        next.add(chunkId);
+      }
+      return next;
+    });
+  };
+
+  const onToggleChunks = async () => {
+    if (!selectedDoc) return;
+    if (chunksVisible) {
+      setChunksVisible(false);
+      setExpandedChunkIds(new Set());
+      return;
+    }
+    if (chunks.length > 0 || selectedDoc.chunk_count === 0) {
+      setChunksVisible(true);
+      return;
+    }
+    setChunksLoading(true);
+    setChunksError("");
+    try {
+      const data = await api.listBasisDocumentChunks(selectedDoc.id);
+      setChunks(data);
+      setChunksVisible(true);
+    } catch (err) {
+      setChunksError(err instanceof Error ? err.message : "청크를 불러오지 못했습니다.");
+    } finally {
+      setChunksLoading(false);
+    }
+  };
+
+  const selectedReprocessProgress =
+    selectedDoc && reprocessProgress?.documentId === selectedDoc.id ? reprocessProgress : null;
+  const reprocessElapsedSeconds = selectedReprocessProgress
+    ? Math.max(0, Math.floor((progressTick - selectedReprocessProgress.startedAt) / 1000))
+    : 0;
+  const reprocessElapsedText =
+    reprocessElapsedSeconds >= 60
+      ? `${Math.floor(reprocessElapsedSeconds / 60)}분 ${String(reprocessElapsedSeconds % 60).padStart(2, "0")}초`
+      : `${reprocessElapsedSeconds}초`;
 
   return (
     <section className="content-stack">
@@ -269,6 +395,23 @@ export function BasisDocumentsPage() {
               <span>PDF 파일</span>
               <input type="file" accept=".pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
             </label>
+
+            <label className="toggle-field field--full">
+              <input
+                type="checkbox"
+                checked={uploadForceOcr}
+                onChange={(event) => setUploadForceOcr(event.target.checked)}
+              />
+              <span className="toggle-field__body">
+                <strong>OCR 강제 실행</strong>
+                <small>텍스트 레이어가 있어도 OCR을 실행해 기준문서 텍스트를 다시 확인합니다.</small>
+              </span>
+            </label>
+            {uploadForceOcr ? (
+              <p className="inline-warning field--full" role="note">
+                OCR 강제 실행은 PDF 전체 페이지를 다시 판독하므로 대용량 기준문서는 오래 걸릴 수 있습니다.
+              </p>
+            ) : null}
 
             <label className="field field--full">
               <span>운영 메모</span>
@@ -328,9 +471,12 @@ export function BasisDocumentsPage() {
         </div>
 
         {loading ? (
-          <div className="empty-state">
+          <div className="empty-state loading-state">
             <strong>기준문서를 불러오는 중입니다.</strong>
             <p>로컬 기준문서 라이브러리를 확인하고 있습니다.</p>
+            <div className="loading-bar" role="progressbar" aria-label="기준문서 로딩 진행 상태">
+              <span />
+            </div>
           </div>
         ) : documents.length === 0 ? (
           <div className="empty-state">
@@ -398,9 +544,32 @@ export function BasisDocumentsPage() {
                 <h3>{selectedDoc.title}</h3>
                 <p className="section-copy">{selectedDoc.original_file_name}</p>
               </div>
-              <button type="button" className="button-secondary" onClick={onReprocess}>
-                재처리
-              </button>
+              <div className="basis-reprocess-control">
+                <div className="basis-reprocess-actions">
+                  <label className="inline-toggle">
+                    <input
+                      type="checkbox"
+                      checked={reprocessForceOcr}
+                      disabled={Boolean(selectedReprocessProgress)}
+                      onChange={(event) => setReprocessForceOcr(event.target.checked)}
+                    />
+                    <span>OCR 강제 실행</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={onReprocess}
+                    disabled={Boolean(selectedReprocessProgress)}
+                  >
+                    {selectedReprocessProgress ? "처리 중" : "재처리"}
+                  </button>
+                </div>
+                {reprocessForceOcr && !selectedReprocessProgress ? (
+                  <p className="inline-warning inline-warning--compact" role="note">
+                    OCR 강제 실행은 PDF 전체 페이지를 다시 판독하므로 대용량 기준문서는 오래 걸릴 수 있습니다.
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <div className="status-strip">
@@ -417,6 +586,30 @@ export function BasisDocumentsPage() {
                 index {selectedDoc.index_status}
               </span>
             </div>
+
+            {selectedReprocessProgress ? (
+              <div className="basis-processing-panel" aria-live="polite">
+                <div className="basis-processing-panel__top">
+                  <div>
+                    <strong>
+                      {selectedReprocessProgress.forceOcr ? "OCR 강제 실행 처리 중" : "기준문서 재처리 중"}
+                    </strong>
+                    <span>
+                      {selectedReprocessProgress.forceOcr
+                        ? `${selectedDoc.page_count || "전체"}페이지 PDF를 PaddleOCR로 처리하고 있습니다.`
+                        : "기준문서 텍스트, 청크, 검색 인덱스를 다시 만들고 있습니다."}
+                    </span>
+                  </div>
+                  <span className="status-badge status-badge--pending">{reprocessElapsedText}</span>
+                </div>
+                <div className="loading-bar" role="progressbar" aria-label="기준문서 재처리 진행 중">
+                  <span />
+                </div>
+                <p>
+                  대용량 기준문서는 완료까지 시간이 걸립니다. 처리 중에는 같은 문서의 재처리 버튼을 다시 누르지 마세요.
+                </p>
+              </div>
+            ) : null}
 
             <div className="form-grid">
               <label className="field">
@@ -484,31 +677,71 @@ export function BasisDocumentsPage() {
                 <p className="eyebrow">Chunks</p>
                 <h3>생성된 청크</h3>
               </div>
-              <span className="status-badge status-badge--muted">{selectedDoc.chunks?.length ?? 0}개</span>
+              <div className="toolbar">
+                <span className="status-badge status-badge--muted">{selectedDoc.chunk_count}개</span>
+                <button type="button" className="button-secondary" onClick={onToggleChunks} disabled={chunksLoading}>
+                  {chunksVisible ? "청크 숨기기" : chunksLoading ? "불러오는 중" : "청크 보기"}
+                </button>
+              </div>
             </div>
 
-            {!selectedDoc.chunks?.length ? (
+            {chunksLoading ? (
+              <div className="empty-state loading-state">
+                <strong>청크를 불러오는 중입니다.</strong>
+                <p>필요한 경우에만 청크 본문을 가져오고 있습니다.</p>
+                <div className="loading-bar" role="progressbar" aria-label="기준문서 청크 로딩 진행 상태">
+                  <span />
+                </div>
+              </div>
+            ) : chunksError ? (
+              <div className="empty-state empty-state--warning">
+                <strong>청크를 불러오지 못했습니다.</strong>
+                <p>{chunksError}</p>
+              </div>
+            ) : !chunksVisible ? (
+              <div className="empty-state">
+                <strong>청크 본문은 숨겨져 있습니다.</strong>
+                <p>페이지 렉을 줄이기 위해 청크 목록과 본문은 필요할 때만 불러옵니다.</p>
+              </div>
+            ) : !chunks.length ? (
               <div className="empty-state">
                 <strong>청크가 없습니다.</strong>
                 <p>텍스트 추출이 불가능하거나 OCR 설정이 필요한 문서입니다.</p>
               </div>
             ) : (
               <div className="chunk-list">
-                {selectedDoc.chunks.map((chunk) => (
-                  <article key={chunk.id} className="chunk-row">
-                    <div className="chunk-row__meta">
-                      <strong>#{chunk.chunk_index + 1}</strong>
-                      <span>{chunk.section_title || "섹션 없음"}</span>
-                      <small>
-                        page {chunk.page_start ?? "-"} · tokens {chunk.token_count}
-                      </small>
-                    </div>
-                    <p>{chunk.chunk_text}</p>
-                    <span className={`status-badge status-badge--${statusTone(chunk.vector_status)}`}>
-                      {chunk.vector_status}
-                    </span>
-                  </article>
-                ))}
+                {chunks.map((chunk) => {
+                  const expanded = expandedChunkIds.has(chunk.id);
+                  const canExpand = (chunk.chunk_text || "").length > CHUNK_PREVIEW_LIMIT;
+
+                  return (
+                    <article key={chunk.id} className="chunk-row">
+                      <div className="chunk-row__meta">
+                        <strong>#{chunk.chunk_index + 1}</strong>
+                        <span>{chunk.section_title || "섹션 없음"}</span>
+                        <small>
+                          page {chunk.page_start ?? "-"} · tokens {chunk.token_count}
+                        </small>
+                      </div>
+                      <div className="chunk-row__body">
+                        <p className="chunk-row__text">{chunkDisplayText(chunk, expanded)}</p>
+                        {canExpand ? (
+                          <button
+                            type="button"
+                            className="chunk-row__toggle"
+                            aria-expanded={expanded}
+                            onClick={() => toggleChunkExpanded(chunk.id)}
+                          >
+                            {expanded ? "접기" : "더보기"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <span className={`status-badge status-badge--${statusTone(chunk.vector_status)}`}>
+                        {chunk.vector_status}
+                      </span>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>

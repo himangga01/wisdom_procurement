@@ -127,6 +127,9 @@ export function WorkOverlayProvider({ children }: { children: ReactNode }) {
               <h3>{activeTask.title}</h3>
               {activeTask.description ? <p>{activeTask.description}</p> : null}
             </div>
+            <div className="work-overlay-progress" role="progressbar" aria-label="작업 처리 진행 중">
+              <span />
+            </div>
             <ol className="work-step-list">
               {activeTask.steps.map((step, index) => (
                 <li

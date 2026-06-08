@@ -976,9 +976,29 @@ GET /api/eligibility/evaluations/{id}/checklist
 - 공동수급 가능성 안내를 어느 수준까지 제공할 것인가?
 - 판단 결과를 인쇄/PDF/Excel로 내보내야 하는가?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 부족조건 중심 판단 엔진은 `judgment_runs` 기반으로 구현되어 있습니다.
+- 판단 결과는 최종 합격/불합격 확정이 아니라 `matched`, `missing`, `uncertain`, `needs_review`, `not_applicable`, citation 상태와 준비 가이드를 저장합니다.
+- 기준문서 citation은 JSON basis index가 valid일 때만 검색/승인/판단에 사용합니다.
+- 승인된 기준문구 후보 citation도 JSON basis index 건강 상태를 통과해야 판단 엔진에서 우선 사용합니다.
+- citation이 없거나 점수가 약한 조건은 확정 근거가 아니라 검토 리스크로 표시합니다.
+- 현재 PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드이며, 기준문서 table metadata는 `table_row` chunk로 이어집니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- The gap-first judgment engine is implemented through `judgment_runs`.
+- Judgment output stores `matched`, `missing`, `uncertain`, `needs_review`, `not_applicable`, citation status, and preparation guidance rather than final eligibility verdicts.
+- Basis citations are usable only when the JSON basis index is valid.
+- Approved rule-candidate citations also require JSON basis-index health before the judgment engine prefers them.
+- Missing or weak citations are review risks, not final evidence.
+- Current PDF reader default is OpenDataLoader-first `auto`, and basis table metadata feeds `table_row` chunks.
 
 ## Purpose
 This document defines the detailed implementation plan for the future corporation-vs-notice eligibility/readiness feature.

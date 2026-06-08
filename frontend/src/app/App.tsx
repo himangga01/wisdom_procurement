@@ -1,13 +1,36 @@
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { NavLink, Route, Routes } from "react-router-dom";
+import {
+  Activity,
+  BookmarkCheck,
+  Building2,
+  ClipboardCheck,
+  DatabaseBackup,
+  ExternalLink,
+  FilePenLine,
+  FileText,
+  FolderKanban,
+  History,
+  LayoutDashboard,
+  Library,
+  ListChecks,
+  Plug,
+  RefreshCw,
+  Scale,
+  Search,
+  SearchCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { AnalysisPage } from "../pages/AnalysisPage";
 import { BackupsPage } from "../pages/BackupsPage";
 import { BasisDocumentsPage } from "../pages/BasisDocumentsPage";
 import { BasisRetrievalEvaluationsPage } from "../pages/BasisRetrievalEvaluationsPage";
 import { BasisRuleCandidatesPage } from "../pages/BasisRuleCandidatesPage";
+import { ContractsPage } from "../pages/ContractsPage";
 import { CorporationsPage } from "../pages/CorporationsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
+import { ExternalAccessPage } from "../pages/ExternalAccessPage";
 import { JudgmentRunsPage } from "../pages/JudgmentRunsPage";
 import { NaraCollectionRunsPage } from "../pages/NaraCollectionRunsPage";
 import { NaraBoardPage } from "../pages/NaraBoardPage";
@@ -18,11 +41,12 @@ import { OperationRunsPage } from "../pages/OperationRunsPage";
 import { OperationsPage } from "../pages/OperationsPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { ActionHelpProvider, getMenuHelpGuide, HelpGuideButton } from "./helpGuides";
 import { WorkOverlayProvider } from "./workOverlay";
 
 type NavItem = {
   to?: string;
-  icon: string;
+  icon: LucideIcon;
   label: string;
   note: string;
   disabled?: boolean;
@@ -37,44 +61,45 @@ const navGroups: NavGroup[] = [
   {
     title: "업무 현황",
     items: [
-      { to: "/", icon: "OV", label: "대시보드", note: "오늘 처리할 일과 시스템 상태" },
-      { to: "/operations", icon: "OP", label: "운영 대시보드", note: "실패, 검토대기, 연동 상태" },
-      { to: "/operation-runs", icon: "OR", label: "작업 이력", note: "실행, 실패 사유, 재시도" },
-      { to: "/backups", icon: "BK", label: "백업/복원", note: "백업 생성, 검증, dry-run" },
+      { to: "/", icon: LayoutDashboard, label: "대시보드", note: "오늘 처리할 일과 시스템 상태" },
+      { to: "/operations", icon: Activity, label: "운영 대시보드", note: "실패, 검토대기, 연동 상태" },
+      { to: "/operation-runs", icon: History, label: "작업 이력", note: "실행, 실패 사유, 재시도" },
+      { to: "/backups", icon: DatabaseBackup, label: "백업/복원", note: "백업 생성, 검증, dry-run" },
     ],
   },
   {
     title: "공고 업무",
     items: [
-      { to: "/nara-board", icon: "NB", label: "나라장터 공고 검색", note: "API 조회, 선택 저장, 자동 분석" },
-      { to: "/nara-saved-notices", icon: "SN", label: "저장한 공고", note: "저장 공고와 첨부 처리 상태" },
-      { to: "/notice-comparison", icon: "PV", label: "부족조건 미리보기", note: "공고 요구조건과 법인 준비상태 비교" },
-      { to: "/judgment-runs", icon: "JR", label: "판단 검토", note: "부족조건, citation 후보, 검토 상태 관리" },
-      { to: "/nara-collection-runs", icon: "NC", label: "자동 수집 관리", note: "나라장터 API 수집 실행과 이력 확인" },
+      { to: "/nara-board", icon: Search, label: "나라장터 공고 검색", note: "API 조회, 선택 저장, 자동 분석" },
+      { to: "/nara-saved-notices", icon: BookmarkCheck, label: "저장한 공고", note: "저장 공고와 첨부 처리 상태" },
+      { to: "/notice-comparison", icon: Scale, label: "부족조건 미리보기", note: "공고 요구조건과 법인 준비상태 비교" },
+      { to: "/judgment-runs", icon: ClipboardCheck, label: "판단 검토", note: "부족조건, citation 후보, 검토 상태 관리" },
+      { to: "/contracts", icon: FilePenLine, label: "계약서 생성", note: "공고와 법인 기반 DOCX 초안" },
+      { to: "/nara-collection-runs", icon: RefreshCw, label: "자동 수집 관리", note: "나라장터 API 수집 실행과 이력 확인" },
     ],
   },
   {
     title: "문서 분석",
-    items: [{ to: "/documents", icon: "DC", label: "문서 업로드", note: "PDF/DOCX 업로드와 분석 이력" }],
+    items: [{ to: "/documents", icon: FileText, label: "문서 업로드", note: "PDF/DOCX 업로드와 분석 이력" }],
   },
   {
     title: "기준문서 / RAG",
     items: [
       {
         to: "/basis-documents",
-        icon: "RG",
+        icon: Library,
         label: "기준문서 관리",
         note: "PDF 업로드, 청킹, 로컬 검색 인덱스",
       },
       {
         to: "/basis-rule-candidates",
-        icon: "RC",
+        icon: ListChecks,
         label: "규칙 후보 관리",
         note: "기준문서 조건 후보 승인, 반려, 수정",
       },
       {
         to: "/basis-retrieval-evaluations",
-        icon: "EV",
+        icon: SearchCheck,
         label: "검색 평가",
         note: "검색 coverage와 citation 누락 확인",
       },
@@ -83,22 +108,25 @@ const navGroups: NavGroup[] = [
   {
     title: "내부 관리",
     items: [
-      { to: "/corporations", icon: "CO", label: "법인 관리", note: "법인 정보와 기본 자격 맥락" },
-      { to: "/projects", icon: "PR", label: "프로젝트 관리", note: "프로젝트 단위 업무 흐름" },
+      { to: "/corporations", icon: Building2, label: "법인 관리", note: "법인 정보와 기본 자격 맥락" },
+      { to: "/projects", icon: FolderKanban, label: "프로젝트 관리", note: "프로젝트 단위 업무 흐름" },
     ],
   },
   {
     title: "설정",
-    items: [{ to: "/settings/integrations/nara", icon: "ST", label: "API 설정", note: "나라장터 API 키와 연결 상태" }],
+    items: [
+      { to: "/settings/integrations/nara", icon: Plug, label: "API 설정", note: "나라장터 API 키와 연결 상태" },
+      { to: "/settings/external-access", icon: ExternalLink, label: "외부 접속", note: "ngrok 공개 URL과 로컬 명령" },
+    ],
   },
 ];
 
 const pageMeta = [
   {
     match: (pathname: string) => pathname === "/",
-    eyebrow: "Operations Overview",
-    title: "오늘 처리할 조달 업무를 한눈에",
-    description: "공고, 문서, 분석 상태를 운영형 대시보드로 정리해 다음 액션을 빠르게 찾습니다.",
+    eyebrow: "",
+    title: "",
+    description: "",
   },
   {
     match: (pathname: string) => pathname.startsWith("/backups"),
@@ -149,6 +177,12 @@ const pageMeta = [
     description: "기준문서에서 추출한 조건 후보를 승인, 반려, 수정하며 citation 품질을 관리합니다.",
   },
   {
+    match: (pathname: string) => pathname.startsWith("/settings/external-access"),
+    eyebrow: "External Access",
+    title: "ngrok 외부 접속 상태",
+    description: "로컬 PC에서 실행 중인 서비스를 외부에서 확인할 수 있는 공개 URL 상태를 표시합니다.",
+  },
+  {
     match: (pathname: string) => pathname.startsWith("/settings"),
     eyebrow: "Integration Settings",
     title: "외부 API 연결 상태",
@@ -185,6 +219,12 @@ const pageMeta = [
     description: "공고 요구조건, 법인 준비상태, 기준문서 citation 후보를 묶어 검토 가능한 결과로 정리합니다.",
   },
   {
+    match: (pathname: string) => pathname.startsWith("/contracts"),
+    eyebrow: "Contract Drafts",
+    title: "계약서 초안 생성",
+    description: "저장 공고와 법인 기본정보를 기준으로 검토용 용역표준계약서 DOCX를 생성합니다.",
+  },
+  {
     match: (pathname: string) => pathname.startsWith("/basis-retrieval-evaluations"),
     eyebrow: "Retrieval Evaluation",
     title: "기준문서 검색 품질 확인",
@@ -197,47 +237,45 @@ function getPageMeta(pathname: string) {
 }
 
 export function App() {
-  const location = useLocation();
-  const currentPage = getPageMeta(location.pathname);
-
   return (
     <WorkOverlayProvider>
+    <ActionHelpProvider>
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand-card">
-          <div className="brand-mark">SC</div>
-          <div>
-            <p className="eyebrow eyebrow--soft">SMART Procurement</p>
-            <h1>SMART 조달청 계산기</h1>
-            <p className="brand-copy">문서 분석, 공고 저장, 기준문서 확장을 위한 로컬 운영 포탈</p>
-          </div>
-        </div>
-
         <nav className="nav-stack" aria-label="Primary Navigation">
           {navGroups.map((group) => (
             <div className="nav-section" key={group.title}>
               <p className="nav-section-title">{group.title}</p>
               {group.items.map((item) =>
                 item.to ? (
-                  <NavLink
-                    key={item.label}
-                    to={item.to}
-                    end={item.to === "/"}
-                    className={({ isActive }) => `nav-card${isActive ? " active" : ""}`}
-                  >
-                    <span className="nav-icon">{item.icon}</span>
-                    <span>
-                      <span className="nav-label">{item.label}</span>
-                      <span className="nav-note">{item.note}</span>
-                    </span>
-                  </NavLink>
+                  <div key={item.label} className="nav-card-row">
+                    <NavLink
+                      to={item.to}
+                      end={item.to === "/"}
+                      className={({ isActive }) => `nav-card${isActive ? " active" : ""}`}
+                    >
+                      <span className="nav-icon">
+                        <item.icon size={18} strokeWidth={2.2} aria-hidden="true" />
+                      </span>
+                      <span>
+                        <span className="nav-label">{item.label}</span>
+                        <span className="nav-note">{item.note}</span>
+                      </span>
+                    </NavLink>
+                    <HelpGuideButton guide={getMenuHelpGuide(item.to, item.label, item.note)} compact />
+                  </div>
                 ) : (
-                  <div key={item.label} className="nav-card nav-card--disabled" aria-disabled="true">
-                    <span className="nav-icon">{item.icon}</span>
-                    <span>
-                      <span className="nav-label">{item.label}</span>
-                      <span className="nav-note">{item.note}</span>
-                    </span>
+                  <div key={item.label} className="nav-card-row">
+                    <div className="nav-card nav-card--disabled" aria-disabled="true">
+                      <span className="nav-icon">
+                        <item.icon size={18} strokeWidth={2.2} aria-hidden="true" />
+                      </span>
+                      <span>
+                        <span className="nav-label">{item.label}</span>
+                        <span className="nav-note">{item.note}</span>
+                      </span>
+                    </div>
+                    <HelpGuideButton guide={getMenuHelpGuide(item.to, item.label, item.note)} compact />
                   </div>
                 ),
               )}
@@ -256,16 +294,29 @@ export function App() {
       </aside>
 
       <main className="main">
-        <header className="hero-panel">
-          <div>
-            <p className="eyebrow">{currentPage.eyebrow}</p>
-            <h2>{currentPage.title}</h2>
-            <p className="hero-description">{currentPage.description}</p>
-          </div>
-          <div className="hero-chip-group">
-            <span className="hero-chip">Local PC</span>
-            <span className="hero-chip hero-chip--petal">Phase 1.5</span>
-            <span className="hero-chip hero-chip--leaf">RAG Ready Next</span>
+        <header className="hero-panel hero-panel--mark" aria-label="SMART 조달 업무 대시보드">
+          <div className="hero-logo">
+            <div className="hero-logo__core" aria-hidden="true">
+              <LayoutDashboard size={30} strokeWidth={1.9} />
+            </div>
+            <div className="hero-logo__wordmark">
+              <span>SMART Procurement</span>
+              <strong>SMART 조달청 계산기</strong>
+            </div>
+            <div className="hero-logo__nodes" aria-hidden="true">
+              <span className="hero-logo__node">
+                <Search size={16} strokeWidth={2} />
+              </span>
+              <span className="hero-logo__node">
+                <FileText size={16} strokeWidth={2} />
+              </span>
+              <span className="hero-logo__node">
+                <Library size={16} strokeWidth={2} />
+              </span>
+              <span className="hero-logo__node">
+                <ClipboardCheck size={16} strokeWidth={2} />
+              </span>
+            </div>
           </div>
         </header>
 
@@ -287,12 +338,15 @@ export function App() {
             <Route path="/nara-saved-notices/:id" element={<NaraSavedNoticeDetailPage />} />
             <Route path="/notice-comparison" element={<NoticeComparisonPage />} />
             <Route path="/judgment-runs" element={<JudgmentRunsPage />} />
+            <Route path="/contracts" element={<ContractsPage />} />
             <Route path="/nara-collection-runs" element={<NaraCollectionRunsPage />} />
             <Route path="/settings/integrations/nara" element={<SettingsPage />} />
+            <Route path="/settings/external-access" element={<ExternalAccessPage />} />
           </Routes>
         </section>
       </main>
     </div>
+    </ActionHelpProvider>
     </WorkOverlayProvider>
   );
 }

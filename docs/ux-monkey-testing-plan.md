@@ -95,6 +95,35 @@ npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 120 --seed 2026053
 - 프론트 정적 라우트 계약 테스트 실패
 - 스크린샷에서 주요 화면이 빈 상태이거나 레이아웃이 심하게 겹침
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+현재 UX monkey/라우트 검증에서 우선 열어야 하는 실제 React route:
+- `/`
+- `/operations`
+- `/operation-runs`
+- `/backups`
+- `/corporations`
+- `/projects`
+- `/documents`
+- `/basis-documents`
+- `/basis-rule-candidates`
+- `/basis-retrieval-evaluations`
+- `/nara-board`
+- `/nara-saved-notices`
+- `/notice-comparison`
+- `/judgment-runs`
+- `/contracts`
+- `/nara-collection-runs`
+- `/settings/integrations/nara`
+- `/settings/external-access`
+
+검증 기준:
+- 기본 safe mode는 삭제/승인/반려/백업 생성/복원계획/계약서 생성/다운로드/ngrok 실행 안내의 복사 버튼 같은 mutation-heavy 또는 외부 노출 관련 동작을 피합니다.
+- `--allow-dangerous`는 임시 DB/storage에서만 실행합니다.
+- PDF reader 상태 화면은 설정/API 연동 또는 관련 route smoke에서 `GET /api/settings/pdf-reader/status` 응답이 secret을 노출하지 않는지 확인합니다.
+- 외부 접속 상태 화면은 `GET /api/external-access/status` 응답이 ngrok token/API key/raw env 값을 노출하지 않는지 확인합니다.
+
 ## Questions for Product Owner
 
 - 파괴적 몽키테스트를 위한 전용 임시 DB/임시 storage 실행 명령을 표준화할지 결정이 필요하다.
@@ -103,6 +132,35 @@ npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 120 --seed 2026053
 ---
 
 # AI / Engineering Version (English)
+
+## Current Route Update
+Last updated: 2026-06-07
+
+Routes to prioritize in UX monkey and route smoke tests:
+- `/`
+- `/operations`
+- `/operation-runs`
+- `/backups`
+- `/corporations`
+- `/projects`
+- `/documents`
+- `/basis-documents`
+- `/basis-rule-candidates`
+- `/basis-retrieval-evaluations`
+- `/nara-board`
+- `/nara-saved-notices`
+- `/notice-comparison`
+- `/judgment-runs`
+- `/contracts`
+- `/nara-collection-runs`
+- `/settings/integrations/nara`
+- `/settings/external-access`
+
+Rules:
+- Safe mode avoids destructive/mutation-heavy actions by default.
+- `--allow-dangerous` must run only against temporary DB/storage.
+- PDF reader status smoke should verify `GET /api/settings/pdf-reader/status` does not expose secrets.
+- External access status smoke should verify `GET /api/external-access/status` does not expose ngrok tokens, API keys, or raw env values.
 
 ## Recommendation
 

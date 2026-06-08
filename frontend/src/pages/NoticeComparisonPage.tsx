@@ -329,6 +329,17 @@ export function NoticeComparisonPage() {
           <strong>저장 공고 재확인</strong>
           <span>첨부 분석 상태와 공고 요약을 다시 확인하세요.</span>
         </Link>
+        <Link
+          to={
+            selectedNotice && selectedCorporation
+              ? `/contracts?notice_id=${selectedNotice.id}&corporation_id=${selectedCorporation.id}`
+              : "/contracts"
+          }
+          className="quick-action"
+        >
+          <strong>계약서 초안 생성</strong>
+          <span>선택한 공고와 법인 조합으로 DOCX 초안을 생성합니다.</span>
+        </Link>
         <button type="button" className="button-secondary" onClick={onExtractRequirements} disabled={!selectedNoticeId}>
           요구조건 다시 추출
         </button>

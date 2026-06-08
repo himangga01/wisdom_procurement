@@ -1,12 +1,28 @@
 import os
-import tempfile
+import shutil
 import unittest
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 import fitz
 
 from app.pipelines.corporation_evidence import analyze_corporation_evidence
 from app.pipelines import ocr
+
+
+TEST_TMP_ROOT = Path(__file__).resolve().parents[2] / "temp" / "ocr-tests"
+TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+@contextmanager
+def test_temp_dir():
+    path = TEST_TMP_ROOT / f"case-{uuid.uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=False)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 class FakeOcrEngine(ocr.OcrEngine):
@@ -58,11 +74,26 @@ class OcrPipelineTests(unittest.TestCase):
         self.assertEqual(result.status, ocr.OCR_STATUS_SKIPPED)
         self.assertEqual(result.text, text)
 
+    def test_force_ocr_runs_even_when_text_is_above_threshold(self) -> None:
+        fake_engine = FakeOcrEngine()
+        ocr.get_ocr_engine = lambda: fake_engine
+
+        with test_temp_dir() as tmp:
+            image_path = tmp / "basis-page.png"
+            image_path.write_bytes(b"fake-image")
+
+            result = ocr.run_ocr_if_needed("A" * 120, image_path, "image", {}, force=True)
+
+        self.assertEqual(result.status, ocr.OCR_STATUS_COMPLETED)
+        self.assertEqual(result.engine, "fake")
+        self.assertIn("142-81-28387", result.text)
+        self.assertEqual(len(fake_engine.seen_images), 1)
+
     def test_missing_ocr_engine_returns_setup_status(self) -> None:
         os.environ["OCR_ENGINE"] = "noop"
 
-        with tempfile.TemporaryDirectory() as tmp:
-            image_path = Path(tmp) / "sample.png"
+        with test_temp_dir() as tmp:
+            image_path = tmp / "sample.png"
             image_path.write_bytes(b"fake-image")
 
             result = ocr.run_ocr(image_path)
@@ -75,8 +106,8 @@ class OcrPipelineTests(unittest.TestCase):
         fake_engine = FakeOcrEngine()
         ocr.get_ocr_engine = lambda: fake_engine
 
-        with tempfile.TemporaryDirectory() as tmp:
-            image_path = Path(tmp) / "business_registration.png"
+        with test_temp_dir() as tmp:
+            image_path = tmp / "business_registration.png"
             image_path.write_bytes(b"fake-image")
 
             result = ocr.run_ocr(image_path)
@@ -90,8 +121,8 @@ class OcrPipelineTests(unittest.TestCase):
         fake_engine = FakeOcrEngine()
         ocr.get_ocr_engine = lambda: fake_engine
 
-        with tempfile.TemporaryDirectory() as tmp:
-            pdf_path = Path(tmp) / "scan.pdf"
+        with test_temp_dir() as tmp:
+            pdf_path = tmp / "scan.pdf"
             doc = fitz.open()
             doc.new_page(width=300, height=200)
             doc.save(pdf_path)

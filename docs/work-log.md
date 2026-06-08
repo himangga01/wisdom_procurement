@@ -5604,3 +5604,1608 @@ Per user request, it must be updated whenever new work is performed in this thre
   - real basis RAG opt-in tests passed: `5 passed`, `10 subtests passed`
   - encoding check passed
   - `git diff --check` reported no whitespace errors, only Windows CRLF conversion warnings
+
+## 작업 기록 (2026-06-07) - PDF/RAG 코드리뷰 수정계획 작성
+- 사용자 요청에 따라 전체 코드리뷰에서 발견된 PDF 리더 및 기준문서 RAG 문제 중 DNS rebinding 첨부 URL 이슈를 즉시 수정 범위에서 제외했다.
+- 작성 문서:
+  - `docs/pdf-rag-code-review-remediation-plan.md`
+- 즉시 수정계획 대상:
+  - 기준문서 원본 파일 없음 재처리 시 기존 RAG 인덱스 보존
+  - 승인된 기준문구 후보와 판단 엔진의 JSON 인덱스 검증 일관성 보강
+  - PyMuPDF fallback 기준문서 page citation offset 보정
+  - OpenDataLoader JSON 중첩 텍스트 및 표 셀 누락 방지
+  - DOCX 표 텍스트 추출 보강
+  - 긴 단일 문단 chunk overlap 적용 오류 수정
+- 기록만 하는 이슈:
+  - 첨부 URL 검증 DNS rebinding/shared address 보강
+- 이번 단계는 수정계획 및 이슈 기록만 진행했으며 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-06-07) - PDF/RAG Code Review Remediation Plan
+- Per user request, excluded the attachment URL DNS rebinding issue from the immediate fix scope.
+- Added:
+  - `docs/pdf-rag-code-review-remediation-plan.md`
+- Immediate plan scope:
+  - preserve existing RAG index when basis reprocess fails because the stored file is missing
+  - align approved rule candidates and judgment with JSON basis-index validation
+  - fix PyMuPDF fallback page citation offsets
+  - prevent OpenDataLoader nested text/table-cell loss
+  - extract DOCX table text
+  - fix long single-paragraph chunk overlap
+- Record-only issue:
+  - attachment URL DNS rebinding/shared-address hardening
+- No implementation code was changed in this planning step.
+
+## 작업 기록 (2026-06-07) - PDF/RAG 코드리뷰 수정계획 구현
+- 사용자 요청에 따라 `docs/pdf-rag-code-review-remediation-plan.md`의 즉시 수정계획을 구현했다.
+- DNS rebinding/shared address 첨부 URL 검증 이슈는 사용자 요청대로 구현하지 않고 기록-only 상태를 유지했다.
+- 구현 완료:
+  - 기준문서 원본 파일이 사라진 재처리에서 기존 completed/indexed RAG 산출물이 있으면 문서 상태와 JSON 인덱스를 보존한다.
+  - 기준문구 후보 승인 시 JSON 기준문서 인덱스가 valid이고 대상 chunk metadata가 일치해야 승인되도록 보강했다.
+  - 판단 엔진이 JSON 인덱스 오류 상태에서 승인 후보 citation을 우회 사용하지 않도록 보강했다.
+  - PyMuPDF fallback PDF reader가 page `char_start`/`char_end`를 기록하도록 보강했다.
+  - OpenDataLoader JSON 변환에서 빈 `content` 아래 nested text/table cell text를 놓치지 않도록 보강했다.
+  - DOCX 추출에서 표 cell 텍스트를 포함하도록 보강했다.
+  - 긴 단일 문단 chunk의 overlap이 실제 chunk에 반영되도록 수정했다.
+- 추가 테스트:
+  - 원본 파일 없음 재처리 보존 테스트
+  - JSON 인덱스 손상/누락 vector 상태에서 기준문구 후보 승인 차단 테스트
+  - JSON 인덱스 오류 상태에서 판단 엔진 승인 후보 citation 차단 테스트
+  - OpenDataLoader nested text/table cell 추출 테스트
+  - PyMuPDF page offset 테스트
+  - DOCX table cell 추출 테스트
+  - 긴 단일 문단 overlap 테스트
+- 검증:
+  - `py -3.13 -m py_compile backend/app/pipelines/pdf_readers.py backend/app/pipelines/parser.py backend/app/pipelines/basis_document.py backend/app/main.py backend/app/services/basis_rule_candidates.py backend/tests/test_pdf_readers.py backend/tests/test_parser.py backend/tests/test_basis_table_chunks.py backend/tests/test_api_flows.py`: 통과
+  - `py -3.13 -m pytest backend/tests/test_pdf_readers.py backend/tests/test_parser.py backend/tests/test_basis_table_chunks.py -q`: `22 passed`
+  - 신규 API 회귀 테스트 4개: `4 passed`
+  - `py -3.13 -m pytest backend/tests -q`: `134 passed`, `8 skipped`
+
+## Additional Update (2026-06-07) - Implemented PDF/RAG Code Review Remediation
+- Implemented the immediate fix scope from `docs/pdf-rag-code-review-remediation-plan.md`.
+- The attachment URL DNS rebinding/shared-address issue remains record-only per user request.
+- Completed fixes:
+  - preserve existing completed/indexed RAG artifacts when basis reprocess fails because the stored PDF is missing
+  - require valid JSON basis-index and matching chunk metadata before approving basis rule candidates
+  - prevent the judgment engine from bypassing invalid JSON index state via approved rule candidates
+  - add PyMuPDF fallback page `char_start`/`char_end` metadata
+  - preserve nested OpenDataLoader text/table-cell content
+  - include DOCX table cell text in extraction
+  - fix overlap for long single-paragraph basis chunks
+- Verification:
+  - py_compile passed
+  - PDF/parser/table chunk targeted tests: `22 passed`
+  - new API regression tests: `4 passed`
+  - full backend tests: `134 passed`, `8 skipped`
+
+## 작업 기록 (2026-06-07) - 전체 코드리뷰 및 MD 문서 최신화
+- 사용자 요청에 따라 현재 코드 상태를 기준으로 전체 구조를 재검토하고 Markdown 문서의 누락/불일치 내용을 최신화했다.
+- 코드 리뷰 기준으로 확인한 현재 상태:
+  - PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드이고 PyMuPDF는 fallback/OCR 보조 엔진이다.
+  - 일반 문서, 나라장터 첨부 PDF, 기준문서 PDF는 `extract_document()` parser 정책을 공유한다.
+  - DOCX 추출은 문단과 표 cell 텍스트를 함께 포함한다.
+  - 기준문서 RAG 검색 source는 JSON basis index 운영 산출물이다.
+  - 기준문구 후보 승인과 Phase 3 판단 citation은 JSON basis index 건강 상태를 요구한다.
+  - Phase 4 운영 대시보드, 작업/실패 관리, 백업/검증/복원계획 dry-run이 구현되어 있다.
+- 신규 문서:
+  - `docs/current-code-documentation-audit.md`
+- 주요 업데이트 문서:
+  - `README.md`
+  - `AGENTS.md`
+  - `docs/technical-design.md`
+  - `docs/technology-summary.md`
+  - `docs/ai-api-setup.md`
+  - `docs/ux-design.md`
+  - `docs/ux-monkey-testing-plan.md`
+  - `docs/current-service-verification-remediation-plan.md`
+  - `docs/remaining-development-roadmap.md`
+  - `docs/운영 제품화 세부계획서.md`
+  - `docs/코드리뷰 후 수정필요.md`
+  - PDF/RAG/기준문서/나라장터/Phase 계획 관련 기존 MD 문서들
+  - `backend/tests/real-basis-document-samples/README.md`
+- 정리한 문서 불일치:
+  - PyMuPDF 중심 설명을 OpenDataLoader `auto` + PyMuPDF fallback으로 갱신
+  - DB chunk 검색 source 표현을 JSON basis index 기준으로 갱신
+  - DOCX 문단-only 설명을 표 cell 포함으로 갱신
+  - Phase 2.5/3/4 계획서를 현재 구현 완료 + 남은 운영/보안 보강 중심으로 갱신
+  - 실제 기준문서 PyMuPDF Markdown 재생성 산출물은 역사적 baseline으로 표시
+  - OpenDataLoader QA 산출물과 table-row token coverage를 현재 기준으로 표시
+  - 첨부 URL DNS rebinding/shared address 보강은 기록-only 보안 이슈로 유지
+- 검증:
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: whitespace 오류 없음, Windows CRLF 변환 warning만 출력
+  - README 문서 링크 존재 확인: `README_DOC_LINKS_OK count=26`
+  - 오래된 `db_chunks_completed_indexed` 문자열은 현재 기준 문서에서 제거했고, 과거 이력인 `docs/work-log.md`에만 남아 있음을 확인
+
+## Additional Update (2026-06-07) - Full Code Review And Markdown Documentation Refresh
+- Reviewed the current code structure and refreshed Markdown documentation against the current implementation.
+- Current code facts recorded:
+  - default PDF reader is OpenDataLoader-first `auto`, with PyMuPDF fallback/OCR helper
+  - normal documents, Nara PDFs, and basis PDFs share `extract_document()`
+  - DOCX extraction includes paragraphs and table cells
+  - basis retrieval source is the operational JSON basis index
+  - rule-candidate approval and Phase 3 judgment citations require JSON basis-index health
+  - Phase 4 operations dashboard, operation/failure management, and backup validation/restore dry-run are implemented
+- Added:
+  - `docs/current-code-documentation-audit.md`
+- Updated README, AGENTS, technical/technology/UX/API/Phase/PDF/RAG/Nara/operations docs, and the real-basis sample README.
+- Documentation drift fixed:
+  - PyMuPDF-centered descriptions updated to OpenDataLoader `auto` plus PyMuPDF fallback
+  - DB chunk retrieval wording updated to JSON basis index
+  - DOCX paragraph-only wording updated to include table cells
+  - Phase 2.5/3/4 plans marked as implemented where applicable, with remaining hardening called out
+  - PyMuPDF regenerated real-basis Markdown artifacts marked as historical baselines
+  - OpenDataLoader QA artifacts and table-row token coverage marked as current basis QA signals
+  - attachment URL DNS rebinding/shared-address hardening remains record-only
+- Verification:
+  - encoding check passed
+  - `git diff --check` reported no whitespace errors, only Windows CRLF conversion warnings
+  - README doc links exist: `README_DOC_LINKS_OK count=26`
+  - stale `db_chunks_completed_indexed` wording remains only in historical work-log entries
+
+## 작업 기록 (2026-06-07) - 전체 코드리뷰 후 URL 안전성 회귀 테스트 보강
+- 사용자 요청에 따라 전체 코드리뷰 관점에서 최근 변경 영역을 다시 점검하고, 실제로 테스트가 비어 있던 나라장터 첨부 URL 안전성 경계값을 보강했다.
+- 코드리뷰 확인:
+  - PDF 리더는 OpenDataLoader 우선 `auto` 모드와 PyMuPDF fallback 구조로 동작한다.
+  - 기준문서 RAG 검색/평가/citation 경로는 JSON basis index 기준으로 정렬되어 있다.
+  - 백업/복원 dry-run, 기준문서 재처리 swap, 나라장터 재분석 보존 경로는 기존 회귀 테스트가 이미 존재한다.
+  - 나라장터 첨부 URL 검증은 localhost/사설망 차단 테스트는 있었지만 `100.64.0.0/10` 같은 non-global shared address와 DNS 해석 결과 non-global인 hostname 테스트가 부족했다.
+- 수정:
+  - `backend/app/services/nara_api.py`에서 link-local 사유를 private보다 먼저 판정하고, `ipaddress.is_global`이 아닌 주소를 `non-global address is not allowed`로 차단하도록 보강했다.
+  - `backend/tests/test_nara_url_safety.py`를 추가해 literal unsafe URL, shared address, DNS-resolved non-global address, public address 허용을 검증했다.
+  - `docs/코드리뷰 후 수정필요.md`, `docs/pdf-rag-code-review-remediation-plan.md`에서 shared/non-global 주소 차단은 완료로 정리하고 DNS rebinding 완화만 후속 이슈로 남겼다.
+- 검증:
+  - `py -3.13 -m pytest backend/tests/test_nara_url_safety.py -q`: `3 passed, 7 subtests passed`
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "attachment_preview_rejects_private_network_url or nara_notice_attachment_download_rejects_private_network_url or reanalysis"`: `4 passed, 82 deselected`
+  - `py -3.13 -m pytest backend/tests -q`: `137 passed, 8 skipped, 5 warnings, 7 subtests passed`
+  - `npm run build`: 통과
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: whitespace 오류 없음, Windows CRLF 변환 warning만 출력
+
+## Additional Update (2026-06-07) - Full Code Review And URL Safety Regression Tests
+- Reviewed the recently changed code paths and added missing regression coverage for Nara attachment URL safety boundaries.
+- Review findings:
+  - PDF reader remains OpenDataLoader-first `auto` with PyMuPDF fallback.
+  - Basis RAG search, evaluation, and citation paths are aligned to the JSON basis index.
+  - Backup restore dry-run, basis reprocess swap, and Nara reanalysis preservation already have regression tests.
+  - Nara attachment URL validation covered localhost/private-network cases but lacked non-global shared-address and DNS-resolved non-global hostname coverage.
+- Changes:
+  - Updated `backend/app/services/nara_api.py` to classify link-local before private and reject any non-global IP address.
+  - Added `backend/tests/test_nara_url_safety.py` for literal unsafe URLs, `100.64.0.0/10`, DNS-resolved non-global hostnames, and public-address acceptance.
+  - Updated issue-tracking docs so shared/non-global blocking is marked fixed while DNS rebinding mitigation remains follow-up work.
+- Verification:
+  - `py -3.13 -m pytest backend/tests/test_nara_url_safety.py -q`: `3 passed, 7 subtests passed`
+  - targeted Nara API flow pytest: `4 passed, 82 deselected`
+  - `py -3.13 -m pytest backend/tests -q`: `137 passed, 8 skipped, 5 warnings, 7 subtests passed`
+  - `npm run build`: passed
+  - `py -3.13 scripts/check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: no whitespace errors, only Windows CRLF conversion warnings
+
+## 작업 기록 (2026-06-07) - ngrok 외부 접속 및 계약서 DOCX 생성 계획 작성
+- 사용자 요청에 따라 구현 전에 두 신규 기능의 FE/BE 설계와 구현계획을 우선 문서화했다.
+- 작성 문서:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- 계획 범위:
+  - Phase 4E: ngrok 기반 외부 접속 지원
+  - Phase 5A: 법인 기본정보와 저장 공고문 기반 계약서 DOCX 자동 생성 MVP
+- 주요 설계:
+  - ngrok은 백엔드 public URL을 먼저 획득한 뒤 해당 URL을 `VITE_API_BASE_URL`로 주입해 프론트를 실행하는 순서로 설계
+  - 외부 접속 상태 API와 `scripts/manage-ngrok.ps1` 추가 계획 수립
+  - 계약서 생성은 `contract_documents` 테이블, `storage/contracts/`, `python-docx` 기반 생성 서비스로 설계
+  - 생성물은 법률적으로 확정된 계약서가 아니라 관리자 검토가 필요한 기본 계약서 초안으로 정의
+- 이번 단계는 계획 문서 작성만 수행했고 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-06-07) - Planned ngrok External Access And DOCX Contract Drafts
+- Wrote the FE/BE design and implementation plan before implementation, per user request.
+- Added:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- Scope:
+  - Phase 4E: ngrok-based external access for the local app
+  - Phase 5A: DOCX contract draft generation from corporation and saved notice data
+- Key design decisions:
+  - ngrok flow discovers the backend public URL first, then starts the frontend with that URL as `VITE_API_BASE_URL`
+  - add external access status API and `scripts/manage-ngrok.ps1`
+  - contract generation uses a `contract_documents` table, `storage/contracts/`, and `python-docx`
+  - generated documents are contract drafts requiring admin/legal review
+- No implementation code was changed in this planning step.
+
+## 작업 기록 (2026-06-07) - 계약서 표준양식 PDF 반영 계획 보강
+- 사용자가 제공한 `[별지 제9호서식] 용역 표준계약서(지방자치단체를 당사자로 하는 계약에 관한 법률 시행규칙).pdf`를 계약서 생성 양식 기준으로 삼도록 계획 문서를 보강했다.
+- 확인한 PDF:
+  - `C:/Users/HOONJAE/Documents/카카오톡 받은 파일/[별지 제9호서식] 용역 표준계약서(지방자치단체를 당사자로 하는 계약에 관한 법률 시행규칙).pdf`
+  - 1페이지 A4 세로 양식
+  - 제목 `용역표준계약서`
+  - 계약번호/공고번호, `계약서` 세로 라벨 표, `계약내용` 세로 라벨 표, 붙임서류, 서명/날인란 포함
+- 보강 문서:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- 반영 내용:
+  - DOCX 생성물이 자유 서술형 계약서가 아니라 해당 표준계약서 양식의 표 구조를 재현해야 한다는 요구사항 추가
+  - 공고/법인/사용자 입력값과 표준계약서 항목 간 필드 매핑 초안 추가
+  - 원본 PDF는 사용자 로컬 파일이므로 저장소에 바로 커밋하지 않고, 구현 시 repository-native DOCX/code template으로 재현하는 정책 추가
+  - DOCX layout 회귀 테스트 항목 추가
+- 이번 단계는 계획 문서 보강만 수행했고 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-06-07) - Added Standard Contract Form Reference To Plan
+- Updated the contract generation plan to use the user-provided `[별지 제9호서식] 용역 표준계약서` PDF as the layout reference.
+- Inspected reference PDF:
+  - one-page A4 portrait form
+  - title `용역표준계약서`
+  - contract/notice number fields
+  - contract party table with vertical `계약서` label
+  - contract detail table with vertical `계약내용` label
+  - attachment list and signature/seal lines
+- Updated:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- Added:
+  - requirement to reproduce the standard form table layout in DOCX
+  - field mapping from saved notice/corporation/custom fields to the standard form
+  - policy not to commit the user's local PDF unless explicitly approved
+  - DOCX layout regression test expectations
+- No implementation code was changed in this planning update.
+
+## 작업 기록 (2026-06-07) - ngrok/계약서 기능 상세 구현 Step 세분화
+- 사용자 요청에 따라 `docs/ngrok-external-access-and-contract-docx-plan.md`의 구현 순서를 더 세부적인 작업 단위로 나눴다.
+- 보강 문서:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- 세분화한 구현 단계:
+  - Step 0: 구현 전 정책 고정
+  - Step 1: 계약서 BE 데이터 모델
+  - Step 2: 계약서 BE 입력 스냅샷/검증
+  - Step 3: 표준계약서 DOCX layout builder
+  - Step 4: 계약서 BE API
+  - Step 5: 계약서 FE 타입/API
+  - Step 6: 계약서 FE 화면
+  - Step 7: 기존 화면의 계약서 생성 진입점 연결
+  - Step 8: ngrok 실행 스크립트
+  - Step 9: ngrok 상태 API와 FE 설정 화면
+  - Step 10: README/문서/전체 QA
+- 각 step에 작업 항목, 테스트 기준, 완료 기준을 추가했다.
+- 이번 단계는 구현 전 계획 세분화만 수행했고 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-06-07) - Split ngrok/Contract Features Into Detailed Implementation Steps
+- Split the implementation order in `docs/ngrok-external-access-and-contract-docx-plan.md` into smaller execution steps.
+- Updated:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- Detailed steps added:
+  - Step 0: product policy freeze
+  - Step 1: contract backend data model
+  - Step 2: contract backend snapshot and validation
+  - Step 3: standard contract DOCX layout builder
+  - Step 4: contract backend APIs
+  - Step 5: contract frontend types/API
+  - Step 6: contract frontend page
+  - Step 7: contract entry points
+  - Step 8: ngrok script
+  - Step 9: ngrok status API and frontend settings page
+  - Step 10: README/docs/full QA
+- Added work items, tests, and exit criteria for the implementation steps.
+- No implementation code was changed in this planning update.
+
+## 작업 기록 (2026-06-07) - ngrok/계약서 구현계획 누락 항목 더블체크
+- 사용자 요청에 따라 `docs/ngrok-external-access-and-contract-docx-plan.md`의 누락 가능 항목을 재검토했다.
+- 보강 문서:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- 더블체크 후 추가한 항목:
+  - 계약서 생성물의 immutable snapshot 정책
+  - 용역표준계약서 전용 MVP와 비용역 공고 경고 정책
+  - 계약서 `status`/`review_status` 허용값
+  - 한글 파일명 다운로드와 파일시스템 안전명 분리
+  - 법인 프로필 자동 수정 금지와 계약서용 custom field 저장 정책
+  - DOCX 임시 파일 렌더링 후 성공 시 최종 경로 교체
+  - 생성 실패 row, operation run, 실패 사유 기록
+  - 계약서 이력 필터, 중복 생성 허용, 기존 초안 덮어쓰기 금지
+  - ngrok 포트 충돌 처리, 재시작 시 public URL 변경 대응, status 파일 secret 미저장
+  - README 링크/백업 문구/운영 작업 이력 라벨 갱신 항목
+- Product Questions는 Step 0의 기본 정책과 충돌하지 않도록 “정책 변경 필요 여부” 형태로 정리했다.
+- 이번 단계는 계획 문서 보강만 수행했고 구현 코드는 수정하지 않았다.
+
+## Additional Update (2026-06-07) - Double-Checked Missing Items In ngrok/Contract Plan
+- Reviewed `docs/ngrok-external-access-and-contract-docx-plan.md` for implementation gaps before coding.
+- Updated:
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- Added missing implementation criteria:
+  - immutable generated-contract snapshots
+  - service-contract-only MVP with warning for unclear notice types
+  - allowed `status` and `review_status` values
+  - UTF-8-safe download names separated from filesystem-safe names
+  - no automatic corporation profile mutation from contract custom fields
+  - temporary DOCX render before final file move
+  - failed contract rows, failed operation runs, and error reasons
+  - contract history filters, duplicate drafts, and no overwrite behavior
+  - ngrok port collision handling, public URL refresh behavior, and secret-free status files
+  - README link, backup wording, and operations UI label updates
+- Product Questions were adjusted so they no longer conflict with Step 0 default policies.
+- No implementation code was changed in this planning update.
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 1 계약서 BE 데이터 모델/저장/백업 구현
+- 구현 단계:
+  - Step 0 정책 재확인 완료
+  - Step 1 계약서 BE 데이터 모델/저장/백업 구현 완료
+- 수정 파일:
+  - `backend/app/main.py`
+  - `backend/app/services/backups.py`
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- 구현 내용:
+  - `contract_documents` 테이블과 인덱스 추가
+  - 계약서 산출물 저장 위치 `storage/contracts/{id}/` 표준화
+  - 계약서 status/review_status CHECK 제약 추가
+  - 백업 포함 디렉터리에 `contracts` 추가
+  - 계약서 저장 경로 helper 추가
+- 테스트:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract"`
+  - 결과: 2 passed, 86 deselected
+- 다음 단계:
+  - Step 2 계약서 입력 snapshot/검증 서비스 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 1 Contract Backend Data Model
+- Completed:
+  - Step 0 policy check
+  - Step 1 contract backend data model/storage/backup support
+- Updated:
+  - `backend/app/main.py`
+  - `backend/app/services/backups.py`
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- Added:
+  - `contract_documents` table and indexes
+  - `storage/contracts/{id}/` storage convention
+  - status/review_status CHECK constraints
+  - backup inclusion for `storage/contracts`
+  - contract output path helper
+- Test:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract"`
+  - Result: 2 passed, 86 deselected
+- Next:
+  - Step 2 contract input snapshot and validation service
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 2 계약서 입력 스냅샷/검증 구현
+- 구현 단계:
+  - Step 2 계약서 입력 스냅샷/검증 구현 완료
+- 수정 파일:
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- 구현 내용:
+  - `ContractInputError` 추가
+  - `build_contract_input_snapshot()` 구현
+  - `validate_contract_generation_input()` 구현
+  - 공고/법인/judgment run allowlist snapshot 구성
+  - custom field 정규화와 생성 필드 매핑 추가
+  - raw_json, API key, token, ServiceKey 류 민감 문자열 미포함 검증 추가
+  - 비용역 가능 공고에 대한 검토 경고 추가
+- 테스트:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_input"`
+  - 결과: 3 passed, 88 deselected
+- 다음 단계:
+  - Step 3 표준계약서 DOCX layout builder 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 2 Contract Input Snapshot
+- Completed:
+  - Step 2 contract input snapshot and validation service
+- Updated:
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- Added:
+  - `ContractInputError`
+  - `build_contract_input_snapshot()`
+  - `validate_contract_generation_input()`
+  - allowlisted notice/corporation/judgment snapshot
+  - normalized custom fields and generated field mapping
+  - secret exclusion tests for raw JSON/API key/token/ServiceKey values
+  - warning for notices that are not clearly service contracts
+- Test:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_input"`
+  - Result: 3 passed, 88 deselected
+- Next:
+  - Step 3 standard contract DOCX layout builder
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 3 표준계약서 DOCX 빌더 구현
+- 구현 단계:
+  - Step 3 표준계약서 DOCX layout builder 구현 완료
+- 수정 파일:
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- 구현 내용:
+  - `render_standard_service_contract_docx()` 추가
+  - A4 세로, 한글 기본 글꼴, 표준계약서 제목/상단 문구 적용
+  - 계약번호/공고번호 표, `계약서` 표, `계약내용` 표, 붙임서류, 서명/날인란 생성
+  - 입력 snapshot의 생성 필드를 DOCX에 자동 매핑
+  - 임시 DOCX 렌더링 후 성공 시 최종 경로로 교체
+  - 렌더링 실패 시 임시/부분 산출물이 남지 않도록 정리
+- 테스트:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_docx"`
+  - 결과: 2 passed, 91 deselected
+- 다음 단계:
+  - Step 4 계약서 BE API 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 3 Standard Contract DOCX Builder
+- Completed:
+  - Step 3 standard contract DOCX layout builder
+- Updated:
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- Added:
+  - `render_standard_service_contract_docx()`
+  - A4 portrait page setup and Korean font settings
+  - standard title/header, contract/notice number table, party table, contract detail table, attachments, and signature lines
+  - generated-field mapping from the immutable input snapshot
+  - temporary render then final-path replacement
+  - cleanup behavior for render failures
+- Test:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_docx"`
+  - Result: 2 passed, 91 deselected
+- Next:
+  - Step 4 contract backend APIs
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 4 계약서 BE API 구현
+- 구현 단계:
+  - Step 4 계약서 BE API 구현 완료
+- 수정 파일:
+  - `backend/app/main.py`
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- 구현 내용:
+  - `GET /api/contracts`
+  - `POST /api/contracts/preview`
+  - `POST /api/contracts`
+  - `GET /api/contracts/{id}`
+  - `GET /api/contracts/{id}/download`
+  - `PATCH /api/contracts/{id}/review`
+  - `DELETE /api/contracts/{id}`
+  - 계약서 생성/삭제/검토 변경 operation run 기록
+  - 생성 실패 row와 실패 사유 기록
+  - 다운로드 DOCX MIME과 UTF-8 파일명 header 적용
+- 테스트:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_api"`
+  - 결과: 2 passed, 93 deselected
+- 발견/수정:
+  - Windows에서 다운로드 응답 객체가 파일 핸들을 잡아 삭제 테스트가 실패했다.
+  - 테스트에서 다운로드 응답 검증 후 `download_response.close()`를 호출하도록 수정했다.
+- 다음 단계:
+  - Step 5 프론트 타입/API helper 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 4 Contract Backend APIs
+- Completed:
+  - Step 4 contract backend APIs
+- Updated:
+  - `backend/app/main.py`
+  - `backend/app/services/contract_documents.py`
+  - `backend/tests/test_api_flows.py`
+- Added:
+  - `GET /api/contracts`
+  - `POST /api/contracts/preview`
+  - `POST /api/contracts`
+  - `GET /api/contracts/{id}`
+  - `GET /api/contracts/{id}/download`
+  - `PATCH /api/contracts/{id}/review`
+  - `DELETE /api/contracts/{id}`
+  - operation run logging for contract create/delete/review updates
+  - failed generation row and error reason persistence
+  - DOCX MIME type and UTF-8 download filename headers
+- Test:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase5a_contract_api"`
+  - Result: 2 passed, 93 deselected
+- Fix during testing:
+  - Windows held the downloaded DOCX file handle during delete verification.
+  - The test now closes the download response after asserting the DOCX content.
+- Next:
+  - Step 5 frontend types and API helpers
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 5 프론트 타입/API helper 구현
+- 구현 단계:
+  - Step 5 프론트 타입/API helper 구현 완료
+- 수정 파일:
+  - `frontend/src/app/types.ts`
+  - `frontend/src/app/api.ts`
+- 구현 내용:
+  - `ContractCustomFields`, `ContractValidation`, `ContractInputSnapshot`, `ContractPreview`, `ContractDocument` 타입 추가
+  - 계약서 목록/미리보기/생성/상세/검토수정/삭제/다운로드 URL helper 추가
+  - `buildApiUrl()` export 처리
+- 테스트:
+  - `npm run build`
+  - 결과: 통과
+- 다음 단계:
+  - Step 6 계약서 FE 화면 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 5 Frontend Types And API Helpers
+- Completed:
+  - Step 5 frontend types and API helpers
+- Updated:
+  - `frontend/src/app/types.ts`
+  - `frontend/src/app/api.ts`
+- Added:
+  - `ContractCustomFields`, `ContractValidation`, `ContractInputSnapshot`, `ContractPreview`, and `ContractDocument` types
+  - contract list/preview/create/detail/review/delete/download URL helpers
+  - exported `buildApiUrl()`
+- Test:
+  - `npm run build`
+  - Result: passed
+- Next:
+  - Step 6 contract frontend page
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 6 계약서 FE 화면 구현
+- 구현 단계:
+  - Step 6 계약서 FE 화면 구현 완료
+- 수정 파일:
+  - `frontend/src/pages/ContractsPage.tsx`
+- 구현 내용:
+  - 저장 공고/법인/judgment run 선택 폼 추가
+  - 계약번호, 계약금액, 계약기간, 위치, 전화번호, 지연배상금률, 그 밖의 사항, 붙임서류 입력 추가
+  - 계약서 미리보기 API 호출과 표준계약서 필드 매핑 표시
+  - 계약서 초안 생성 API 호출과 생성 이력 refresh
+  - 생성 이력 검색, review status 필터, 다운로드, 삭제 액션 추가
+  - 실패 생성 응답도 화면 오류 상태와 이력 목록에 반영
+- 테스트:
+  - `npm run build`
+  - 결과: 통과
+- 다음 단계:
+  - Step 7 기존 화면 진입점 연결
+
+## Additional Update (2026-06-07) - Phase 5A Step 6 Contract Frontend Page
+- Completed:
+  - Step 6 contract frontend page
+- Added:
+  - `frontend/src/pages/ContractsPage.tsx`
+- Implemented:
+  - saved notice/corporation/judgment-run selectors
+  - contract number, amount, period, location, phone, delay penalty, other terms, and attachments inputs
+  - preview API action and standard-form field mapping panel
+  - create API action and history refresh
+  - generated history search, review-status filter, download, and delete actions
+  - failed create response handling in UI state and history
+- Test:
+  - `npm run build`
+  - Result: passed
+- Next:
+  - Step 7 existing workflow entry points
+
+## 작업 기록 (2026-06-07) - Phase 5A Step 7 기존 화면 진입점 연결
+- 구현 단계:
+  - Step 7 기존 화면 진입점 연결 완료
+- 수정 파일:
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/ContractsPage.tsx`
+  - `frontend/src/pages/NaraSavedNoticeDetailPage.tsx`
+  - `frontend/src/pages/JudgmentRunsPage.tsx`
+  - `frontend/src/pages/NoticeComparisonPage.tsx`
+- 구현 내용:
+  - `/contracts` 라우트와 사이드바 `계약서 생성` 메뉴 추가
+  - `/contracts?notice_id=...&corporation_id=...&judgment_run_id=...` query param 초기 선택 지원
+  - 저장 공고 상세에서 공고 기준 계약서 생성 링크 추가
+  - 판단 run 상세에서 공고/법인/judgment run 기준 계약서 생성 링크 추가
+  - 부족조건 미리보기에서 선택 공고/법인 조합 기준 계약서 생성 링크 추가
+- 테스트:
+  - `npm run build`
+  - 결과: 통과
+- 다음 단계:
+  - Step 8 ngrok 실행 스크립트 구현
+
+## Additional Update (2026-06-07) - Phase 5A Step 7 Existing Workflow Entry Points
+- Completed:
+  - Step 7 existing workflow entry points
+- Updated:
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/ContractsPage.tsx`
+  - `frontend/src/pages/NaraSavedNoticeDetailPage.tsx`
+  - `frontend/src/pages/JudgmentRunsPage.tsx`
+  - `frontend/src/pages/NoticeComparisonPage.tsx`
+- Added:
+  - `/contracts` route and sidebar menu item
+  - query-param initialization for notice/corporation/judgment-run ids
+  - contract draft entry link from saved notice detail
+  - contract draft entry link from selected judgment run
+  - contract draft entry link from notice comparison
+- Test:
+  - `npm run build`
+  - Result: passed
+- Next:
+  - Step 8 ngrok script
+
+## 작업 기록 (2026-06-07) - Phase 4E Step 8 ngrok 실행 스크립트 구현
+- 구현 단계:
+  - Step 8 ngrok 실행 스크립트 구현 완료
+- 추가 파일:
+  - `scripts/manage-ngrok.ps1`
+- 구현 내용:
+  - `start`, `status`, `stop` action 추가
+  - ngrok CLI/auth 설정 확인
+  - 백엔드 서버 실행 후 backend tunnel public URL 조회
+  - `VITE_API_BASE_URL=<backend public URL>`로 프론트엔드 실행
+  - frontend tunnel public URL 조회
+  - `temp/ngrok.status.json`에 public/local URL, port, pid, updated_at 저장
+  - token/API key/raw env 값은 status 파일에 저장하지 않음
+  - 포트 충돌 시 관리 대상 프로세스가 아니면 명확한 오류 반환
+- 테스트:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 status`
+  - `[System.Management.Automation.PSParser]::Tokenize(...)`
+  - PATH를 비운 start 호출로 ngrok CLI 미설치 안내 확인
+  - 결과: status JSON 출력, PowerShell parse 통과, `NGROK_MISSING_ERROR_OK`
+- 다음 단계:
+  - Step 9 ngrok 상태 API/FE 구현
+
+## Additional Update (2026-06-07) - Phase 4E Step 8 ngrok Script
+- Completed:
+  - Step 8 ngrok script
+- Added:
+  - `scripts/manage-ngrok.ps1`
+- Implemented:
+  - `start`, `status`, and `stop` actions
+  - ngrok CLI/auth checks
+  - backend start, backend tunnel discovery, frontend start with backend public URL, frontend tunnel discovery
+  - `temp/ngrok.status.json` with public/local URLs, ports, pids, and updated time
+  - no token/API key/raw env values in status file
+  - port collision guard for unmanaged processes
+- Tests:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 status`
+  - PowerShell parser tokenization
+  - PATH-empty start call for ngrok-missing error
+  - Result: status output, parse OK, `NGROK_MISSING_ERROR_OK`
+- Next:
+  - Step 9 ngrok status API and frontend page
+
+## 작업 기록 (2026-06-07) - Phase 4E Step 9 ngrok 상태 API/FE 구현
+- 구현 단계:
+  - Step 9 ngrok 상태 API/FE 구현 완료
+- 수정 파일:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/vite.config.ts`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/ExternalAccessPage.tsx`
+- 구현 내용:
+  - `GET /api/external-access/status` 추가
+  - `temp/ngrok.status.json` allowlist 응답과 secret-like 필드 미노출 처리
+  - `VITE_ALLOW_NGROK_HOSTS=1`일 때 Vite `allowedHosts=true` 적용
+  - `/settings/external-access` 화면/라우트/설정 메뉴 추가
+  - 공개 URL 복사 버튼, PowerShell 명령 안내, 외부 노출 경고 추가
+  - 프론트에서는 ngrok start/stop을 직접 실행하지 않고 상태만 표시
+- 테스트:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase4e_external_access"`
+  - `npm run build`
+  - 결과: backend 1 passed, frontend build 통과
+- 다음 단계:
+  - Step 10 README/docs/전체 QA
+
+## Additional Update (2026-06-07) - Phase 4E Step 9 ngrok Status API And Frontend
+- Completed:
+  - Step 9 ngrok status API and frontend page
+- Updated:
+  - `backend/app/main.py`
+  - `backend/tests/test_api_flows.py`
+  - `frontend/vite.config.ts`
+  - `frontend/src/app/types.ts`
+  - `frontend/src/app/api.ts`
+  - `frontend/src/app/App.tsx`
+  - `frontend/src/pages/ExternalAccessPage.tsx`
+- Added:
+  - `GET /api/external-access/status`
+  - allowlisted status-file response with secret-like field exclusion
+  - Vite `allowedHosts=true` when `VITE_ALLOW_NGROK_HOSTS=1`
+  - `/settings/external-access` route, nav item, and page
+  - public URL copy buttons, local PowerShell commands, and external exposure warning
+  - frontend status-only behavior; no start/stop execution from UI
+- Tests:
+  - `py -3.13 -m pytest backend/tests/test_api_flows.py -q -k "phase4e_external_access"`
+  - `npm run build`
+  - Result: backend 1 passed, frontend build passed
+- Next:
+  - Step 10 README/docs/full QA
+
+## 작업 기록 (2026-06-07) - Phase 4E/5A Step 10 문서/전체 QA 완료
+- 구현 단계:
+  - Step 10 README/docs/전체 QA 완료
+- 수정 파일:
+  - `README.md`
+  - `docs/ux-monkey-testing-plan.md`
+  - `scripts/ux-monkey-test.mjs`
+  - `frontend/src/pages/BackupsPage.tsx`
+  - `frontend/src/pages/OperationRunsPage.tsx`
+- 문서/운영 보강:
+  - README에 Phase 4E ngrok 외부 접속과 Phase 5A 계약서 DOCX 초안 생성 설명 추가
+  - README 빠른 가이드에 ngrok token 등록/start/status/stop 방법 추가
+  - README 빠른 가이드에 계약서 DOCX 초안 생성 절차 추가
+  - README 문서 링크에 `docs/ngrok-external-access-and-contract-docx-plan.md` 추가
+  - UX monkey route 목록에 `/contracts`, `/settings/external-access` 추가
+  - safe monkey 위험 라벨에 다운로드/복사/외부/ngrok 관련 키워드 추가
+  - 백업 화면 포함 항목에 `contracts` 추가
+  - 작업 이력 화면에 계약서 생성/검토 변경/삭제 라벨 추가
+- 전체 검증:
+  - `py -3.13 -m py_compile backend/app/main.py backend/app/services/contract_documents.py`: 통과
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 3 tests OK
+  - `npm run build`: 통과
+  - `py -3.13 -m pytest backend/tests -q`: 147 passed, 8 skipped, 7 subtests passed
+  - `powershell -ExecutionPolicy Bypass -File scripts\manage-servers.ps1 -Action start`: 서버 시작
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `SMOKE_OK`
+  - `npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 40 --seed 20260607 --screenshot-dir ..\temp\ux-monkey-contracts`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: 공백 오류 없음, CRLF 변환 경고만 있음
+- UX monkey 중 발견/수정:
+  - 기존 `networkidle` 대기가 `/nara-board`에서 timeout을 유발했다.
+  - route smoke 목적에 맞게 `domcontentloaded`를 기준으로 이동하고 짧은 network idle은 best-effort로 변경했다.
+- 서버 상태:
+  - 로컬 서버가 실행 중이다.
+  - Backend: `http://127.0.0.1:18111`
+  - Frontend: `http://127.0.0.1:5199`
+
+## Additional Update (2026-06-07) - Phase 4E/5A Step 10 Docs And Full QA
+- Completed:
+  - Step 10 README/docs/full QA
+- Updated:
+  - `README.md`
+  - `docs/ux-monkey-testing-plan.md`
+  - `scripts/ux-monkey-test.mjs`
+  - `frontend/src/pages/BackupsPage.tsx`
+  - `frontend/src/pages/OperationRunsPage.tsx`
+- Documentation/ops updates:
+  - added Phase 4E ngrok external access and Phase 5A DOCX contract draft generation to README
+  - added ngrok token/start/status/stop quick guide
+  - added contract draft generation quick guide
+  - added `docs/ngrok-external-access-and-contract-docx-plan.md` to README document links
+  - added `/contracts` and `/settings/external-access` to UX monkey routes
+  - added download/copy/external/ngrok labels to safe monkey dangerous-action filter
+  - updated backup UI wording to include `contracts`
+  - added operation labels for contract create/review/delete
+- Full verification:
+  - `py -3.13 -m py_compile backend/app/main.py backend/app/services/contract_documents.py`: passed
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 3 tests OK
+  - `npm run build`: passed
+  - `py -3.13 -m pytest backend/tests -q`: 147 passed, 8 skipped, 7 subtests passed
+  - `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1`: `SMOKE_OK`
+  - `npm run ux:monkey -- --base-url http://127.0.0.1:5199 --steps 40 --seed 20260607 --screenshot-dir ..\temp\ux-monkey-contracts`: passed
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: no whitespace errors; CRLF conversion warnings only
+- UX monkey fix:
+  - changed route navigation from strict `networkidle` to `domcontentloaded` with best-effort short network-idle wait because `/nara-board` can keep network activity long enough to timeout.
+- Server state:
+  - Backend: `http://127.0.0.1:18111`
+  - Frontend: `http://127.0.0.1:5199`
+
+## 작업 기록 (2026-06-07) - ngrok 토큰 등록 및 외부 접속 실기동 보강
+- 사용자 요청에 따라 ngrok authtoken을 로컬 ngrok 설정 파일에 등록했다.
+- 토큰 값은 문서/상태 파일/응답에 기록하지 않았다.
+- `scripts/manage-ngrok.ps1 start` 실기동 중 발견한 문제를 수정했다.
+  - ngrok 3.39.3에서 `--web-addr` 플래그가 지원되지 않아 터널 public URL을 읽지 못하던 문제 수정
+  - ngrok 로그 파일의 JSON 이벤트에서 public URL을 파싱하도록 변경
+  - Windows PowerShell의 UTF-8 BOM 때문에 `GET /api/external-access/status`가 상태 파일을 JSON으로 읽지 못하던 문제 수정
+  - `py.exe`/`cmd.exe`가 실제 서버 프로세스를 자식으로 띄우는 구조를 반영해 관리 PID의 자식 프로세스까지 포트 검증/정지 대상에 포함
+- 검증:
+  - `ngrok config add-authtoken <masked>`: 등록 완료
+  - `powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start`: 통과
+  - `GET http://127.0.0.1:18111/api/external-access/status`: `enabled=true` 및 public URL 반환 확인
+  - 공개 프론트 URL 접속: HTTP 200 확인
+  - 공개 백엔드 `/health` 접속: HTTP 200 확인
+- 현재 실행 중:
+  - Backend local: `http://127.0.0.1:18111`
+  - Frontend local: `http://127.0.0.1:5199`
+  - Backend public: `https://1b14-118-216-124-59.ngrok-free.app`
+  - Frontend public: `https://0fa4-118-216-124-59.ngrok-free.app`
+
+## Additional Update (2026-06-07) - ngrok Token Setup And External Access Runtime Fix
+- Registered the user-provided ngrok authtoken in the local ngrok config.
+- Did not write the raw token to docs, status payloads, or API responses.
+- Fixed runtime issues found while starting `scripts/manage-ngrok.ps1`.
+  - Replaced unsupported ngrok 3.39.3 `--web-addr` usage with JSON log parsing for public URLs.
+  - Wrote `temp/ngrok.status.json` as UTF-8 without BOM so Python `json.loads()` can read it.
+  - Treated child processes of managed `py.exe`/`cmd.exe` launchers as managed listeners for restart/stop safety.
+- Verification:
+  - `ngrok config add-authtoken <masked>`: passed
+  - `powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start`: passed
+  - `GET http://127.0.0.1:18111/api/external-access/status`: returned `enabled=true` and public URLs
+  - public frontend URL: HTTP 200
+  - public backend `/health`: HTTP 200
+
+## 작업 기록 (2026-06-07) - API 키 설정 상태 재확인
+- 사용자 문의에 따라 `backend/.env`의 NARA/Gemini 키 설정 여부와 실행 중 백엔드 API 응답을 재확인했다.
+- 키 원문은 출력하지 않고 존재 여부, 길이, 마스킹 응답만 확인했다.
+- 확인 결과:
+  - `backend/.env`에 `NARA_API_SERVICE_KEY` 존재
+  - `backend/.env`에 `GEMINI_API_KEY` 존재
+  - `GET /api/settings/integrations/nara/status`: `configured=true`
+  - `GET /api/settings/ai-models`: Gemini `configured=true`
+  - 현재 Vite 프론트의 `VITE_API_BASE_URL`은 ngrok 백엔드 public URL을 가리킴
+- 판단:
+  - 설정 화면에서 키 미설정 문구가 보였다면 서버 재시작 전 상태 또는 브라우저 갱신 전 상태를 본 것으로 판단한다.
+
+## Additional Update (2026-06-07) - API Key Configuration Status Recheck
+- Rechecked local `backend/.env` key presence and runtime backend API responses after the user's question.
+- Did not print raw secrets; only checked existence, length, and masked API responses.
+- Results:
+  - `NARA_API_SERVICE_KEY` exists in `backend/.env`
+  - `GEMINI_API_KEY` exists in `backend/.env`
+  - `GET /api/settings/integrations/nara/status`: `configured=true`
+  - `GET /api/settings/ai-models`: Gemini `configured=true`
+  - current Vite frontend points to the ngrok backend public URL via `VITE_API_BASE_URL`
+- Assessment:
+  - If the UI still showed missing-key text, it was likely a pre-restart or stale browser state.
+
+## 작업 기록 (2026-06-07) - ngrok 공개 접속 CORS 오류 수정
+- 사용자 브라우저 콘솔에서 `No Access-Control-Allow-Origin` 및 `net::ERR_FAILED` 오류가 발생한 원인을 확인했다.
+- 확인 결과:
+  - 백엔드 Flask CORS 설정 자체는 정상 동작했다.
+  - `ngrok-skip-browser-warning` 헤더를 붙인 API 호출은 `Access-Control-Allow-Origin`이 포함된 HTTP 200을 반환했다.
+  - 브라우저 User-Agent만 붙인 호출은 ngrok 무료 플랜 browser warning 응답이 먼저 나오며 CORS 헤더가 빠졌다.
+- 수정:
+  - `frontend/src/app/api.ts`에서 API base URL이 `*.ngrok-free.app`이면 모든 API fetch에 `ngrok-skip-browser-warning: 1` 헤더를 자동 추가하도록 변경했다.
+  - 기존 `RequestInit.headers`를 보존하면서 런타임 헤더만 병합하도록 처리했다.
+  - `backend/tests/test_frontend_contracts.py`에 ngrok warning skip 헤더 유지 테스트를 추가했다.
+- 검증:
+  - ngrok preflight `OPTIONS` 응답에서 `Access-Control-Allow-Headers: ngrok-skip-browser-warning` 확인
+  - 브라우저 User-Agent + skip 헤더 API 호출에서 `Access-Control-Allow-Origin` 포함 HTTP 200 확인
+  - 공개 프론트가 제공하는 `/src/app/api.ts`에 skip 헤더 코드 포함 확인
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 4 tests OK
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-06-07) - ngrok Public Access CORS Fix
+- Investigated the browser console `No Access-Control-Allow-Origin` and `net::ERR_FAILED` errors.
+- Findings:
+  - Flask CORS itself was working.
+  - API calls with `ngrok-skip-browser-warning` returned HTTP 200 with `Access-Control-Allow-Origin`.
+  - Browser-like calls without that header were intercepted by the ngrok free-plan browser warning response, which omitted CORS headers.
+- Fix:
+  - Updated `frontend/src/app/api.ts` to add `ngrok-skip-browser-warning: 1` to every API request when `VITE_API_BASE_URL` points to `*.ngrok-free.app`.
+  - Preserved existing `RequestInit.headers` while merging the runtime header.
+  - Added a frontend source-contract test in `backend/tests/test_frontend_contracts.py`.
+- Verification:
+  - ngrok preflight `OPTIONS` allows `ngrok-skip-browser-warning`.
+  - Browser User-Agent + skip header API call returns HTTP 200 with `Access-Control-Allow-Origin`.
+  - Public frontend-served `/src/app/api.ts` includes the skip-header logic.
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 4 tests OK
+  - `npm run build`: passed
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-06-07) - 대시보드 문구 및 좌측 네비게이션 아이콘 정리
+- 사용자 요청에 따라 현재 제품 상태와 맞지 않는 대시보드 문구를 정리했다.
+  - 상단 히어로의 `Local PC`, `Phase 1.5`, `RAG Ready Next` 칩 제거
+  - 대시보드 `오늘 처리할 큐` 제목을 `우선 확인할 항목`으로 변경
+  - Phase 중심 설명 문장을 실제 큐 설명으로 변경
+- 좌측 네비게이션의 `OV`, `OP`, `NB` 같은 2글자 약어를 모두 제거했다.
+- `lucide-react`를 추가하고 메뉴 성격에 맞는 아이콘으로 교체했다.
+  - 대시보드: `LayoutDashboard`
+  - 운영: `Activity`, `History`, `DatabaseBackup`
+  - 공고: `Search`, `BookmarkCheck`, `Scale`, `ClipboardCheck`, `FilePenLine`, `RefreshCw`
+  - 문서/RAG/관리/설정: `FileText`, `Library`, `ListChecks`, `SearchCheck`, `Building2`, `FolderKanban`, `Plug`, `ExternalLink`
+- 테스트 보강:
+  - `backend/tests/test_frontend_contracts.py`에 오래된 Phase 칩 문구와 2글자 아이콘 약어가 재등장하지 않는지 확인하는 테스트 추가
+- 검증:
+  - `npm run build`: 통과
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 5 tests OK
+  - `rg`로 오래된 문구/2글자 아이콘 약어 미검출 확인
+  - Playwright 로컬 화면 검증: 네비 카드 18개, SVG 아이콘 18개, 아이콘 텍스트 없음, 오래된 문구 없음
+  - Playwright 스크린샷 저장: `temp/dashboard-nav-icons-check.png`
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-06-07) - Dashboard Copy And Sidebar Icon Cleanup
+- Cleaned up dashboard copy that no longer matched the current product state.
+  - Removed the hero chips `Local PC`, `Phase 1.5`, and `RAG Ready Next`.
+  - Renamed `오늘 처리할 큐` to `우선 확인할 항목`.
+  - Replaced phase-oriented queue copy with a concise operational queue description.
+- Replaced two-letter sidebar abbreviations such as `OV`, `OP`, and `NB` with real icons.
+- Added `lucide-react` and mapped each navigation item to a domain-appropriate icon.
+- Test coverage:
+  - Added a frontend source-contract test to prevent stale phase chips and two-letter icon abbreviations from returning.
+- Verification:
+  - `npm run build`: passed
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 5 tests OK
+  - `rg`: no stale hero/queue copy or two-letter nav icon abbreviations found
+  - Playwright local UI check: 18 nav cards, 18 SVG nav icons, no text inside icon slots, no stale copy
+  - Playwright screenshot saved to `temp/dashboard-nav-icons-check.png`
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-06-07) - 대시보드 상단 히어로 문구 제거 및 아이콘 마스트헤드 적용
+- 사용자 요청에 따라 대시보드 상단의 긴 설명 문구를 제거했다.
+  - `Operations Overview`
+  - `오늘 처리할 조달 업무를 한눈에`
+  - `공고, 문서, 분석 상태를 운영형 대시보드로 정리해 다음 액션을 빠르게 찾습니다.`
+- 상단 히어로를 텍스트 설명 영역 대신 아이콘형 마스트헤드로 교체했다.
+  - 중앙: `LayoutDashboard`
+  - 보조 아이콘: `Search`, `FileText`, `Library`, `ClipboardCheck`
+- 테스트 보강:
+  - `backend/tests/test_frontend_contracts.py`에서 해당 문구들이 다시 들어오지 않는지 확인
+  - 히어로 아이콘 구조(`hero-panel--mark`, `hero-logo__core`)가 유지되는지 확인
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 5 tests OK
+  - `npm run build`: 통과
+  - `rg`로 삭제 대상 문구 미검출 확인
+  - Playwright 화면 검증: 히어로 텍스트 없음, 히어로 SVG 5개 렌더링
+  - Playwright 스크린샷 저장: `temp/dashboard-hero-logo-check.png`
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## Additional Update (2026-06-07) - Dashboard Hero Copy Removal And Icon Masthead
+- Removed the long dashboard hero copy requested by the user:
+  - `Operations Overview`
+  - `오늘 처리할 조달 업무를 한눈에`
+  - `공고, 문서, 분석 상태를 운영형 대시보드로 정리해 다음 액션을 빠르게 찾습니다.`
+- Replaced the text hero with an icon masthead.
+  - Main icon: `LayoutDashboard`
+  - Supporting icons: `Search`, `FileText`, `Library`, `ClipboardCheck`
+- Test coverage:
+  - Extended `backend/tests/test_frontend_contracts.py` to block the removed copy from returning.
+  - Asserted the new hero icon structure remains present.
+- Verification:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 5 tests OK
+  - `npm run build`: passed
+  - `rg`: removed hero copy no longer found
+  - Playwright UI check: no hero text, 5 hero SVG icons rendered
+  - Playwright screenshot saved to `temp/dashboard-hero-logo-check.png`
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+## 작업 기록 (2026-06-07) - smoke-test 데이터 삭제
+- 사용자 요청에 따라 대시보드에 노출되던 smoke-test 데이터를 정리했다.
+- 삭제 대상:
+  - `SMOKE-*` / `Smoke Test Nara Notice` 저장 공고 19건
+  - `smoke-sample.pdf` 업로드 문서 10건
+  - `Smoke Test Project` 프로젝트 10건
+  - `Smoke Test Corporation` 법인 10건
+  - 연결 데이터: 나라장터 첨부 12건, 요구조건 후보 26건, 문서 분석 11건
+- 파일 정리:
+  - `backend/storage/uploads/15` ~ `backend/storage/uploads/24` 중 존재 디렉터리 삭제
+  - `backend/storage/nara-notices/<SMOKE notice id>` 중 존재 디렉터리 삭제
+  - 삭제 전 모든 경로가 `backend/storage` 하위 허용 루트에 있는지 검증했다.
+- 검증:
+  - DB 매칭 결과: smoke 공고/문서/프로젝트/법인 0건
+  - orphan attachment/analysis 0건
+  - `GET /api/dashboard/summary`: 법인/프로젝트/문서 count 0
+  - `GET /api/documents`: 0건
+  - `GET /api/corporations`: 0건
+  - `GET /api/projects`: 0건
+  - Playwright 대시보드 검증: `SMOKE-`, `Smoke Test`, `smoke-sample.pdf` 미노출
+  - API 요청 실패 없음, 나라장터 API 상태 `설정됨`, 테스트 `ok`
+  - 스크린샷 저장: `temp/dashboard-after-smoke-cleanup.png`
+
+## Additional Update (2026-06-07) - smoke-test Data Cleanup
+- Removed smoke-test data that was appearing on the dashboard.
+- Deleted:
+  - 19 saved notices matching `SMOKE-*` / `Smoke Test Nara Notice`
+  - 10 uploaded documents named `smoke-sample.pdf`
+  - 10 `Smoke Test Project` records
+  - 10 `Smoke Test Corporation` records
+  - related rows: 12 Nara attachments, 26 requirement candidates, 11 document analyses
+- File cleanup:
+  - Removed existing smoke upload directories under `backend/storage/uploads/15` through `24`.
+  - Removed existing smoke notice directories under `backend/storage/nara-notices/<SMOKE notice id>`.
+  - Verified all deleted paths were under allowed `backend/storage` roots before deletion.
+- Verification:
+  - DB match count for smoke notices/documents/projects/corporations is now 0.
+  - Orphan attachment/analysis count is 0.
+  - `GET /api/dashboard/summary`: corporation/project/document counts are 0.
+  - `GET /api/documents`: 0 rows.
+  - `GET /api/corporations`: 0 rows.
+  - `GET /api/projects`: 0 rows.
+  - Playwright dashboard check: no `SMOKE-`, `Smoke Test`, or `smoke-sample.pdf` text.
+  - No failed API requests; Nara API badge shows configured and test ok.
+  - Screenshot saved to `temp/dashboard-after-smoke-cleanup.png`.
+
+## 작업 기록 (2026-06-07) - 포탈 테마와 한글 폰트 교체
+- 사용자 요청에 따라 전체 포탈 테마를 추천안의 `Procurement Slate` 계열로 교체했다.
+  - 배경: `#f6f8fb`
+  - 본문: `#172033`
+  - 주 브랜드: `#1d4ed8`
+  - 강조 브랜드: `#1e3a8a`
+  - 보조 포인트: `#0f766e`
+- `frontend/src/styles.css`의 전역 토큰, 중복 테마 토큰, 버튼/입력/카드/사이드바/히어로/배지 계열 하드코딩 색상을 블루, 슬레이트, 틸 중심으로 정리했다.
+- 깨진 한글 fallback 문자열과 `Dotum`/`돋움` fallback을 제거하고, 포탈 전반 폰트 스택을 `Pretendard Variable`, `Pretendard`, `Noto Sans KR`, `Apple SD Gothic Neo`, `Malgun Gothic`, `system-ui`, `sans-serif` 순서로 교체했다.
+- 왼쪽 브랜드 설명 문구가 한 글자 단위로 어색하게 줄바꿈되는 문제를 발견해 `문서 분석 · 공고 저장 · 기준문서 확장`으로 짧게 정리했다.
+- 회귀 테스트를 보강했다.
+  - `backend/tests/test_frontend_contracts.py`에 Procurement Slate 토큰과 Pretendard 한글 폰트 스택 검증을 추가했다.
+  - 이전 핑크/크림 테마 토큰과 깨진 폰트 fallback이 다시 들어오지 않도록 assertion을 추가했다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: 통과
+  - `rg`로 이전 테마 토큰 및 깨진 폰트 fallback 미검출 확인
+  - Playwright 빌드 산출물 화면 검증: 테마 CSS 변수, Pretendard 스택, stale copy 미노출 확인
+  - Playwright 스크린샷 저장: `temp/portal-theme-check.png`
+
+## Additional Update (2026-06-07) - Portal Theme And Korean Font Refresh
+- Replaced the portal theme with the recommended `Procurement Slate` palette.
+  - Background: `#f6f8fb`
+  - Text: `#172033`
+  - Primary brand: `#1d4ed8`
+  - Deep brand: `#1e3a8a`
+  - Secondary accent: `#0f766e`
+- Updated global theme tokens, duplicate theme tokens, and major hard-coded UI colors in `frontend/src/styles.css` to blue, slate, and teal.
+- Replaced the broken Korean font fallback stack with `Pretendard Variable`, `Pretendard`, `Noto Sans KR`, `Apple SD Gothic Neo`, `Malgun Gothic`, `system-ui`, and `sans-serif`.
+- Shortened the sidebar brand copy to avoid awkward one-character wrapping.
+- Test coverage:
+  - Added frontend contract assertions for the Procurement Slate tokens and Korean font stack.
+  - Added assertions preventing the old pink/cream tokens and broken font fallbacks from returning.
+- Verification:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: passed
+  - `rg`: no stale theme tokens or broken font fallbacks found in `frontend/src/styles.css`
+  - Playwright production-build UI check: CSS variables, Pretendard stack, and stale copy checks passed
+  - Screenshot saved to `temp/portal-theme-check.png`
+
+## 작업 기록 (2026-06-07) - 상단 히어로 축소 및 워드마크 추가
+- 사용자 요청에 따라 `hero-panel hero-panel--mark` 상단 영역을 더 작게 축소했다.
+  - 실제 화면 검증 기준 히어로 높이: 약 84px
+  - 중앙 메인 아이콘 크기와 보조 아이콘 크기를 함께 축소
+  - 기존 넓은 빈 공간을 줄이고 운영 화면의 밀도를 높임
+- 상단 히어로에 워드마크를 추가했다.
+  - `SMART Procurement`
+  - `SMART 조달청 계산기`
+- 접근성 보강:
+  - 워드마크 텍스트는 실제 텍스트로 노출
+  - 장식 아이콘 그룹은 `aria-hidden`으로 처리
+- 모바일 보강:
+  - 640px 이하에서 워드마크와 아이콘이 겹치거나 밀리지 않도록 wrap 규칙 추가
+- 테스트 보강:
+  - `backend/tests/test_frontend_contracts.py`에 히어로 워드마크 구조와 축소된 히어로 크기 토큰 검증 추가
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: 통과
+  - Playwright 빌드 산출물 화면 검증: 히어로 높이 84px, 워드마크 2줄, 보조 아이콘 4개, stale copy 미노출 확인
+  - Playwright 스크린샷 저장: `temp/portal-hero-wordmark-check.png`
+
+## Additional Update (2026-06-07) - Compact Hero Wordmark
+- Reduced the `hero-panel hero-panel--mark` masthead size.
+  - Verified rendered hero height: about 84px
+  - Reduced the main icon and supporting icon sizes
+  - Removed visual emptiness from the top masthead
+- Added a visible masthead wordmark:
+  - `SMART Procurement`
+  - `SMART 조달청 계산기`
+- Accessibility:
+  - Kept the wordmark as real text.
+  - Marked decorative icon groups as `aria-hidden`.
+- Responsive behavior:
+  - Added a 640px breakpoint so the wordmark and icon nodes wrap cleanly on narrow screens.
+- Test coverage:
+  - Extended `backend/tests/test_frontend_contracts.py` to assert the hero wordmark structure and compact height token.
+- Verification:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: passed
+  - Playwright production-build UI check: 84px hero height, two-line wordmark, four supporting icons, no stale copy
+  - Screenshot saved to `temp/portal-hero-wordmark-check.png`
+
+## 작업 기록 (2026-06-07) - 사이드바 브랜드 카드 아이콘 전용 정리
+- 사용자 요청에 따라 왼쪽 상단 `brand-card`를 아이콘 전용 카드로 단순화했다.
+  - 기존 `SC` 텍스트와 `SMART Procurement` / `SMART 조달청 계산기` / 설명 문구 블록 제거
+  - 상단 히어로에 제품명이 이미 있으므로 사이드바는 장식성 브랜드 아이콘만 유지
+  - `LayoutDashboard` 아이콘을 사용하고 장식 아이콘에는 `aria-hidden` 적용
+  - `brand-card`에는 접근성 라벨 `SMART 조달청 계산기` 유지
+- 스타일 보정:
+  - `brand-card`를 한 칸짜리 `inline-grid` 카드로 변경
+  - 실제 화면 기준 약 70x70 크기의 간결한 아이콘 카드로 확인
+- 테스트 보강:
+  - `backend/tests/test_frontend_contracts.py`에 브랜드 카드가 아이콘 전용 구조인지 검증 추가
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: 통과
+  - Playwright 빌드 산출물 화면 검증: 브랜드 카드 텍스트 없음, SVG 1개, 약 70x70 크기 확인
+  - Playwright 스크린샷 저장: `temp/portal-brand-icon-only-check.png`
+
+## Additional Update (2026-06-07) - Sidebar Brand Card Icon-Only
+- Simplified the sidebar `brand-card` to an icon-only mark.
+  - Removed the previous `SC` text and the sidebar brand text block.
+  - Kept the product name in the top hero wordmark instead.
+  - Used the existing `LayoutDashboard` icon as the sidebar brand mark.
+  - Marked the decorative icon as `aria-hidden` and kept an accessible label on `brand-card`.
+- Styling:
+  - Changed `brand-card` to a compact one-cell `inline-grid` card.
+  - Verified rendered size: about 70x70.
+- Test coverage:
+  - Extended `backend/tests/test_frontend_contracts.py` to assert the icon-only brand-card structure.
+- Verification:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: passed
+  - Playwright production-build UI check: no brand-card text, one SVG icon, about 70x70 card size
+  - Screenshot saved to `temp/portal-brand-icon-only-check.png`
+
+## 작업 기록 (2026-06-07) - 사이드바 브랜드 카드 완전 제거
+- 사용자 피드백에 따라 왼쪽 상단 `brand-card` 자체를 완전히 제거했다.
+  - 사이드바는 별도 브랜드 카드 없이 바로 `업무 현황` 섹션부터 시작한다.
+  - 제품명과 브랜드 표식은 상단 히어로 워드마크에만 유지한다.
+- 정리 범위:
+  - `frontend/src/app/App.tsx`에서 `brand-card` JSX 삭제
+  - `frontend/src/styles.css`에서 `.brand-card`, `.brand-mark`, `.brand-copy` 관련 전용 스타일 제거
+  - `backend/tests/test_frontend_contracts.py`에서 `brand-card`/`brand-mark`가 앱과 스타일에 남지 않는지 검증하도록 수정
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: 통과
+  - `rg`: `brand-card`/`brand-mark`/`brand-copy`가 프론트 앱과 CSS에 남지 않음
+  - Playwright 빌드 산출물 화면 검증: `brand-card` 0개, `brand-mark` 0개, 사이드바 시작 텍스트 `업무 현황` 확인
+  - Playwright 스크린샷 저장: `temp/portal-brand-card-removed-check.png`
+
+## Additional Update (2026-06-07) - Sidebar Brand Card Removed
+- Removed the sidebar `brand-card` entirely after user feedback.
+  - The sidebar now starts directly with the `업무 현황` navigation section.
+  - Product branding remains only in the top hero wordmark.
+- Cleanup scope:
+  - Removed `brand-card` JSX from `frontend/src/app/App.tsx`.
+  - Removed `.brand-card`, `.brand-mark`, and `.brand-copy`-specific styles from `frontend/src/styles.css`.
+  - Updated `backend/tests/test_frontend_contracts.py` to assert that `brand-card` and `brand-mark` do not return.
+- Verification:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 6 tests OK
+  - `npm run build`: passed
+  - `rg`: no `brand-card`/`brand-mark`/`brand-copy` in frontend app or CSS
+  - Playwright production-build UI check: zero `brand-card`, zero `brand-mark`, sidebar starts with `업무 현황`
+  - Screenshot saved to `temp/portal-brand-card-removed-check.png`
+
+## 작업 기록 (2026-06-07) - 백엔드 디버깅 로그 추가 계획 작성
+- 사용자 요청에 따라 이슈 발생 시 백엔드 단에서 디버깅할 수 있도록 파일 로그를 추가하는 계획을 작성했다.
+- 현재 코드 분석 결과:
+  - `operation_runs`, `backup_runs`, `nara_collection_runs` 등 관리자용 이력 DB는 존재한다.
+  - 하지만 Flask 요청 단위 `request_id`, 예외 stacktrace, PDF/OCR/RAG/나라장터/계약서/백업 단계별 파일 로그는 부족하다.
+  - `backend/app/main.py`에는 JSON UTF-8 보정용 `after_request`만 있고, 요청 시작/종료/예외 로깅 훅은 없다.
+- 신규 계획 문서:
+  - `docs/backend-debug-logging-plan.md`
+- 계획 핵심:
+  - `backend/storage/logs/backend.log`
+  - `backend/storage/logs/backend-error.log`
+  - JSON Lines + RotatingFileHandler
+  - API 키, `serviceKey`, Authorization, 원문 OCR/LLM prompt 마스킹
+  - 문서 분석, PDF 리더, 기준문서 RAG, 나라장터 첨부, AI 요약, 계약서 생성, 백업 로직에 우선 로그 추가
+- 검증:
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- docs/backend-debug-logging-plan.md docs/work-log.md`: 공백 문제 없음
+
+## Additional Update (2026-06-07) - Backend Debug Logging Plan
+- Created a plan for backend file logging so failures can be debugged from local backend logs.
+- Current code review summary:
+  - User-facing operation history tables already exist.
+  - Detailed developer-facing request ids, exception stacktraces, and domain step logs are missing.
+  - `backend/app/main.py` currently has only the UTF-8 JSON `after_request` hook, not request lifecycle/error logging.
+- New document:
+  - `docs/backend-debug-logging-plan.md`
+- Plan highlights:
+  - `backend/storage/logs/backend.log`
+  - `backend/storage/logs/backend-error.log`
+  - JSON Lines + RotatingFileHandler
+  - Sanitization for API keys, `serviceKey`, Authorization, raw OCR text, and LLM prompts
+  - Priority logging for document analysis, PDF readers, basis RAG, Nara attachments, AI summary, contract generation, and backups
+- Verification:
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- docs/backend-debug-logging-plan.md docs/work-log.md`: no whitespace errors
+## 추가 업데이트 (2026-06-07) - 백엔드 디버깅 로그 구현
+
+### 한국어 기록
+- 작업 범위: 이슈 발생 시 백엔드에서 원인 추적이 가능하도록 공통 JSONL 로그, 요청 추적 ID, 예외 stacktrace 저장, 주요 실패 지점 이벤트 로그를 추가했다.
+- 추가/수정 파일:
+  - `backend/app/core/logging.py`: JSON Lines formatter, rotating file logger, 민감정보 마스킹, `log_event`, `log_exception`, `request_id` 유틸 추가.
+  - `backend/app/core/config.py`: `BACKEND_LOG_DIR`, `BACKEND_LOG_LEVEL`, `BACKEND_LOG_MAX_MB`, `BACKEND_LOG_BACKUPS`, `BACKEND_LOG_FORMAT`, `BACKEND_LOG_REQUEST_BODY` 설정 필드 추가.
+  - `backend/app/main.py`: Flask 요청 시작/완료 로그, `X-Request-ID` 응답 헤더, 전역 예외 로그, 문서 분석/AI 요약/나라장터 분석 실패 지점 로그 추가.
+  - `backend/app/pipelines/parser.py`, `backend/app/pipelines/pdf_readers.py`, `backend/app/pipelines/ocr.py`, `backend/app/pipelines/basis_document.py`: PDF/문서 추출, OCR, 기준문서 RAG 처리/검색/인덱스 검증 이벤트 로그 추가.
+  - `backend/app/services/nara_api.py`, `backend/app/services/contract_documents.py`, `backend/app/services/backups.py`: 나라장터 HTTP/첨부 다운로드, 계약서 생성, 백업 생성/검증/복원계획 로그 추가.
+  - `backend/tests/test_backend_logging.py`: 로그 파일 생성, JSONL 구조, 민감값 마스킹 테스트 추가.
+  - `backend/tests/test_api_flows.py`: API 응답의 `X-Request-ID` 계약 테스트 추가.
+  - `.gitignore`: `backend/storage/logs/` 운영 로그 산출물 제외 규칙 추가.
+- 로그 저장 정책:
+  - 기본 저장 위치: `backend/storage/logs/backend.log`, `backend/storage/logs/backend-error.log`
+  - 포맷: UTF-8 JSON Lines
+  - 기본 회전 정책: 20MB, 10개 보관
+  - 원문 API 키, Authorization, serviceKey/token 쿼리, 주민등록번호, 사업자등록번호는 마스킹한다.
+- 검증:
+  - AST 문법 검사: 통과
+  - `backend.tests.test_backend_logging`: 3건 통과
+  - `backend.tests.test_ocr`, `backend.tests.test_parser`, `backend.tests.test_nara_url_safety`: 12건 통과, 실 OCR 샘플 1건 skip
+  - `backend.tests.test_api_flows.ApiFlowTests.test_api_responses_include_request_id_for_debug_logs`: 1건 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check`: 공백 오류 없음, CRLF 변환 경고만 발생
+- 환경 메모:
+  - 현재 샌드박스에서 Python `tempfile`이 만든 임시 디렉터리와 SQLite 기본 파일 DB journaling이 간헐적으로 `PermissionError`/`disk I/O error`를 발생시켜 표준 `unittest` 직접 실행은 일부 막혔다.
+  - 로깅/문서/OCR/API 계약 검증은 프로젝트 하위 안전 임시 디렉터리와 테스트 프로세스 한정 SQLite journal 우회 러너로 실행했다.
+
+### AI / Engineering Version (English)
+- Implemented backend debug logging with JSONL rotating files, request correlation IDs, exception stack traces, and domain event logs.
+- Added sensitive-data masking for API keys, service keys, auth headers, token query parameters, RRNs, and business registration numbers.
+- Instrumented risky paths: Flask request lifecycle, document analysis, AI summary, parser, PDF readers, OCR, basis-document RAG/index validation/search, Nara API/downloads, contract generation, and backups.
+- Added `backend/tests/test_backend_logging.py` and an API response `X-Request-ID` contract assertion.
+- Added `.gitignore` coverage for `backend/storage/logs/`.
+- Verified with AST parse, logging/OCR/parser/Nara URL safety unit tests, the API request-id contract test, encoding check, and diff whitespace check. Standard direct unittest execution was partially blocked by sandbox-specific tempfile/SQLite file I/O restrictions, so sandbox-safe test runners were used.
+## 추가 업데이트 (2026-06-07) - 기준문서 청크 더보기 UI 적용
+
+### 한국어 기록
+- 작업 범위: 기준문서 관리 화면에서 생성된 청크 본문을 한 번에 모두 렌더링하지 않도록 기본 접힘 UI를 추가했다.
+- 변경 내용:
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+    - 청크 본문 기본 표시 길이를 `CHUNK_PREVIEW_LIMIT = 360`자로 제한했다.
+    - 긴 청크에는 `더보기` / `접기` 버튼을 표시한다.
+    - 사용자가 펼친 청크만 전체 본문을 렌더링한다.
+    - 기준문서 상세를 다시 불러오거나 다른 문서를 선택하면 펼침 상태를 초기화한다.
+  - `frontend/src/styles.css`
+    - `.chunk-row__body`, `.chunk-row__text`, `.chunk-row__toggle` 스타일을 추가했다.
+  - `backend/tests/test_frontend_contracts.py`
+    - 청크 본문이 다시 `<p>{chunk.chunk_text}</p>` 방식으로 전체 렌더링되지 않도록 계약 테스트를 추가했다.
+- 기대 효과:
+  - 청크 수가 많고 본문이 긴 기준문서에서도 초기 DOM 텍스트량이 줄어 기준문서 관리 페이지 렉을 줄인다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 7건 통과
+  - `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Added collapsed-by-default chunk rendering on `BasisDocumentsPage`.
+- Long chunks render only a 360-character preview until the user clicks `더보기`; expanded chunks can be collapsed with `접기`.
+- Added CSS for chunk body/toggle and a frontend contract test to prevent reintroducing full chunk text rendering.
+- Verified with frontend contract tests and production build.
+## 추가 업데이트 (2026-06-07) - 기준문서 목록 로딩바 추가
+
+### 한국어 기록
+- 작업 범위: 기준문서 관리 메뉴에서 기준문서 목록을 불러오는 동안 로딩 상태가 명확히 보이도록 로딩바를 추가했다.
+- 변경 내용:
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+    - `"기준문서를 불러오는 중입니다."` 로딩 상태에 `loading-state`와 `loading-bar`를 추가했다.
+    - `role="progressbar"`와 `aria-label="기준문서 로딩 진행 상태"`를 넣어 접근성 정보를 제공한다.
+  - `frontend/src/styles.css`
+    - `.loading-state`, `.loading-bar`, `.loading-bar span`, `@keyframes loadingBarSweep` 스타일을 추가했다.
+  - `backend/tests/test_frontend_contracts.py`
+    - 기준문서 로딩 상태에 로딩바와 접근성 속성이 유지되는지 확인하는 계약 테스트를 추가했다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 8건 통과
+  - `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Added an animated progress bar to the Basis Documents loading state.
+- The loading UI now includes `role="progressbar"` and an accessible Korean label.
+- Added frontend contract coverage and verified with tests plus production build.
+
+## 추가 업데이트 (2026-06-07) - 기준문서 청크 지연 로딩 보강
+
+### 한국어 기록
+- 작업 범위: 기준문서 관리 화면의 `surface-card` 청크 영역이 페이지 진입 시 모든 청크 목록과 본문을 렌더링해 렉을 유발하던 문제를 보강했다.
+- 변경 내용:
+  - `backend/app/main.py`
+    - 기준문서 상세 조회 API가 청크 목록을 기본 payload에 포함하지 않도록 변경했다.
+    - 청크 목록은 `/api/basis-documents/<id>/chunks` 전용 API에서만 반환하도록 분리했다.
+  - `frontend/src/app/api.ts`
+    - `listBasisDocumentChunks(id)` API 클라이언트 함수를 추가했다.
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+    - 기준문서 목록 로딩 후 첫 문서를 자동 선택하지 않도록 변경했다.
+    - 청크 영역은 기본적으로 "청크 본문은 숨겨져 있습니다." 안내만 보여주고, `청크 보기` 버튼을 눌렀을 때만 청크 API를 호출한다.
+    - 청크 로딩 중에는 별도 로딩바를 표시하고, 다른 문서를 선택하면 청크 표시/확장 상태를 초기화한다.
+  - `backend/tests/test_frontend_contracts.py`
+    - 기준문서 화면이 `selectedDoc.chunks.map`으로 즉시 렌더링하지 않는지, 첫 문서 자동 선택 fallback이 없는지, 청크 전용 API를 사용하는지 검증하는 계약 테스트를 보강했다.
+- 기대 효과:
+  - 기준문서 관리 페이지 진입 시 큰 기준문서의 청크 목록/본문 DOM이 생성되지 않아 초기 렌더링 렉을 줄인다.
+  - 사용자가 실제로 필요한 경우에만 청크 목록을 불러와 확인한다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 8건 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- frontend/src/pages/BasisDocumentsPage.tsx frontend/src/app/api.ts backend/app/main.py backend/tests/test_frontend_contracts.py docs/work-log.md frontend/src/styles.css`: 공백 오류 없음, CRLF 변환 경고만 발생
+
+### AI / Engineering Version (English)
+- Hardened the Basis Documents chunk UX from preview-only rendering to lazy loading.
+- `GET /api/basis-documents/<id>` no longer includes chunks by default; chunks are returned only by `GET /api/basis-documents/<id>/chunks`.
+- `BasisDocumentsPage` no longer auto-selects the first basis document after list load.
+- The chunk `surface-card` now renders a hidden-state message by default and fetches chunks only after the user clicks `청크 보기`.
+- Added frontend contract assertions to prevent immediate `selectedDoc.chunks.map` rendering and first-document fallback selection from returning.
+- Verified with frontend contract tests, production build, encoding check, and diff whitespace check.
+
+## 추가 업데이트 (2026-06-07) - 메뉴/액션 버튼 도움말 가이드 추가
+
+### 한국어 기록
+- 작업 범위: 왼쪽 메뉴와 주요 액션 버튼 오른쪽에 작은 원형 `?` 도움말 버튼을 추가하고, 클릭 시 해당 메뉴/버튼의 목적과 동작 설명을 보여주는 가이드 레이어를 구현했다.
+- 변경 내용:
+  - `frontend/src/app/helpGuides.tsx`
+    - 메뉴별 상세 설명 데이터와 액션 버튼별 설명 매핑을 추가했다.
+    - `ActionHelpProvider`를 추가해 화면의 일반 버튼과 `.link-button` 액션을 감지하고 오른쪽에 자동 `?` 도움말 버튼을 붙이도록 했다.
+    - `HelpGuideButton`을 추가해 메뉴 항목처럼 명시적으로 붙이는 도움말 버튼을 제공했다.
+    - 도움말 클릭 시 `role="dialog"` 모달로 요약과 상세 설명 목록을 표시한다.
+  - `frontend/src/app/App.tsx`
+    - 앱 전체를 `ActionHelpProvider`로 감쌌다.
+    - 왼쪽 메뉴 항목을 `nav-card-row`로 구성하고 각 메뉴 오른쪽에 `HelpGuideButton`을 추가했다.
+  - `frontend/src/styles.css`
+    - `.nav-card-row`, `.help-guide-trigger`, `.action-help-trigger`, `.help-guide-backdrop`, `.help-guide-dialog` 스타일을 추가했다.
+    - 전역 `button` 스타일에 덮이지 않도록 최종 override에서 `?` 아이콘을 16px 작은 원형 버튼으로 고정했다.
+  - `backend/tests/test_frontend_contracts.py`
+    - 메뉴/액션 도움말 provider 연결, 자동 버튼 감지 selector, dialog, 작은 아이콘 크기 계약 테스트를 추가했다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 9건 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- frontend/src/app/App.tsx frontend/src/app/helpGuides.tsx frontend/src/styles.css backend/tests/test_frontend_contracts.py docs/work-log.md`: 공백 오류 없음, CRLF 변환 경고만 발생
+
+### AI / Engineering Version (English)
+- Added a global help-guide layer for menu items and action buttons.
+- `ActionHelpProvider` decorates normal `button` elements and `.link-button` anchors with a small circular `?` trigger.
+- Menu rows now render an explicit `HelpGuideButton` next to each navigation card.
+- Help content opens in an accessible dialog with a summary and detailed bullet list.
+- Final CSS override keeps the `?` trigger at 16px so it does not inherit the primary action button treatment.
+- Added frontend contract coverage and verified with tests, production build, encoding check, and diff whitespace check.
+
+## 추가 업데이트 (2026-06-07) - OCR 기본 사용 설정 및 PaddleOCR 캐시 권한 복구
+
+### 한국어 기록
+- 작업 범위: 운영 대시보드에서 OCR이 `사용 불가`로 표시되고 실제 PaddleOCR 초기화도 실패하던 문제를 수정했다.
+- 원인:
+  - OCR 파이프라인 기본값은 `paddle`이었지만, 운영 상태 체크(`operations._ocr_health`)는 `OCR_ENGINE`이 없으면 `noop`으로 판단해 대시보드에 `사용 불가`를 표시했다.
+  - 현재 `backend/.env`에 `OCR_ENGINE`이 명시되어 있지 않았다.
+  - PaddleOCR 모델 캐시의 `korean_PP-OCRv5_mobile_rec/inference.yml` 파일 ACL이 깨져 실제 초기화 시 접근 거부가 발생했다.
+  - PDF OCR 렌더링 임시파일도 OS 임시폴더를 사용해 샌드박스/권한 환경에서 실패할 수 있었다.
+- 변경 내용:
+  - `backend/app/services/operations.py`
+    - OCR 상태 체크 기본 엔진을 `paddle`로 변경했다.
+    - `paddleocr`, `paddle`, `fitz` 의존성 존재 여부를 확인해 누락 시 명확한 `unavailable` 사유를 반환하도록 했다.
+    - 정상 설정 시 `configured`, `engine: paddle`, `language: kor+eng`로 표시되도록 했다.
+  - `backend/.env`
+    - 현재 PC 로컬 설정에 `OCR_ENGINE=paddle`, `OCR_MIN_TEXT_LENGTH=80`, `OCR_RENDER_DPI=220`, `OCR_TEMP_DIR=./storage/ocr-temp`, `PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True`를 추가했다.
+  - `backend/.env.example`
+    - 다른 PC 세팅에서도 OCR이 기본 paddle 엔진으로 잡히도록 같은 OCR 설정 예시를 추가했다.
+  - `backend/app/pipelines/ocr.py`
+    - PDF OCR 렌더링과 한글 경로 우회용 임시파일을 OS 임시폴더가 아니라 `OCR_TEMP_DIR` 하위에 생성하도록 변경했다.
+  - `backend/tests/test_operations_ocr_health.py`
+    - OCR 상태 체크가 기본 `paddle`로 동작하고, `noop` 명시와 의존성 누락을 정확히 보고하는 테스트를 추가했다.
+  - `backend/tests/test_ocr.py`
+    - OCR 테스트 임시파일을 프로젝트 내부 테스트 디렉터리에 생성하도록 변경해 Windows 임시폴더 권한 문제를 피했다.
+  - 로컬 환경 조치
+    - `C:\Users\HOONJAE\.paddlex\official_models\korean_PP-OCRv5_mobile_rec` 모델 캐시 ACL을 reset하고 현재 사용자 권한을 재부여했다.
+- 검증:
+  - `py -3.13 -c "from dotenv import load_dotenv; load_dotenv('.env'); from app.pipelines.ocr import get_ocr_engine; e=get_ocr_engine(); print(e.name); print(e.is_available())"`: `paddle`, `True`
+  - `py -3.13 -m unittest tests.test_operations_ocr_health tests.test_ocr -v`: 7건 통과, 실제 샘플 OCR 테스트 1건은 `RUN_REAL_OCR_TESTS=1` 미설정으로 skip
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- backend/app/services/operations.py backend/app/pipelines/ocr.py backend/.env backend/.env.example backend/tests/test_operations_ocr_health.py backend/tests/test_ocr.py docs/work-log.md`: 공백 오류 없음, CRLF 변환 경고만 발생
+- 운영 메모:
+  - 이미 실행 중인 백엔드 서버가 있다면 `.env` 변경을 반영하려면 서버 재시작이 필요하다.
+
+### AI / Engineering Version (English)
+- Fixed OCR health reporting so the operations dashboard no longer treats missing `OCR_ENGINE` as `noop`; default is now `paddle`, matching the OCR pipeline.
+- Added explicit local/env-example OCR settings for PaddleOCR, OCR threshold, render DPI, OCR temp dir, and PaddleX model-source check disabling.
+- Moved OCR rendering temp files from OS temp directories to `OCR_TEMP_DIR` to avoid Windows sandbox/temp ACL failures.
+- Added OCR health contract tests and stabilized OCR tests with project-local temp directories.
+- Repaired local PaddleOCR Korean recognition model cache ACL so `get_ocr_engine().is_available()` returns `True`.
+- Verified with OCR health tests, OCR pipeline tests, real PaddleOCR initialization, encoding check, and diff whitespace check.
+
+## 추가 업데이트 (2026-06-07) - 액션 도움말 버튼 간격 보정
+
+### 한국어 기록
+- 작업 범위: 자동으로 붙는 작은 `?` 도움말 버튼이 `section-heading` 안에서 액션 버튼과 멀리 떨어져 보이는 문제를 수정했다.
+- 원인:
+  - `section-heading`이 `justify-content: space-between`을 사용하고 있었고, 자동 삽입된 `?` 버튼이 액션 버튼과 같은 그룹이 아니라 별도 flex item으로 배치되었다.
+  - 그 결과 `새로고침` 같은 버튼은 가운데 쪽에, `?` 버튼은 오른쪽 끝에 가까운 위치에 놓여 간격이 크게 벌어졌다.
+- 변경 내용:
+  - `frontend/src/styles.css`
+    - `.section-heading`을 `justify-content: flex-start`, `column-gap: 6px`로 변경했다.
+    - `.section-heading > :first-child`에 `margin-right: auto`를 적용해 제목 영역만 왼쪽에 두고, 이후 액션 버튼과 `?`는 오른쪽에서 붙어 보이도록 했다.
+    - `.section-heading > .action-help-trigger`는 `margin-left: -2px`로 보정했다.
+    - `.toolbar`, `.form-actions`, `.row` 내부의 `.action-help-trigger`는 기존 flex gap을 감안해 `margin-left: -6px`로 보정했다.
+  - `backend/tests/test_frontend_contracts.py`
+    - `section-heading`이 더 이상 버튼과 `?`를 크게 벌리는 `space-between` 구조가 아닌지 확인하는 계약 테스트를 보강했다.
+- 기대 효과:
+  - `새로고침 ?`, `업로드 ?`, `검색 ?`처럼 액션 버튼과 도움말 아이콘이 하나의 작은 조합처럼 보인다.
+  - 여러 화면의 `section-heading`, `toolbar`, `form-actions`, `row` 영역에서 동일한 간격 규칙이 적용된다.
+- 검증:
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 9건 통과
+  - `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Fixed action help icon spacing by changing `.section-heading` away from `justify-content: space-between`.
+- The first heading child now owns the left side with `margin-right: auto`, while action buttons and generated `?` triggers stay adjacent on the right.
+- Added spacing overrides for `.section-heading`, `.toolbar`, `.form-actions`, and `.row` generated action help triggers.
+- Extended frontend contract tests to lock the layout behavior and prevent the large button/help gap from returning.
+
+## 추가 업데이트 (2026-06-07) - 기준문서 OCR 강제 실행 옵션 추가
+
+### 한국어 기록
+- 작업 범위: 기준문서 업로드 옵션과 기준문서 상세의 `재처리` 버튼 옆에 `OCR 강제 실행` 토글을 추가했다.
+- 변경 이유:
+  - 기준문서 PDF에 텍스트 레이어가 있더라도 표/문단 추출 품질을 비교하거나 스캔 품질을 확인해야 하는 경우가 있다.
+  - 기존 자동 OCR은 추출 텍스트가 짧을 때만 실행되므로, 운영자가 특정 문서를 의도적으로 OCR 경로로 재처리할 수 있는 옵션이 필요했다.
+- 변경 내용:
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+    - 업로드 폼에 `OCR 강제 실행` 토글을 추가했다.
+    - 선택된 기준문서 상세의 `재처리` 버튼 바로 옆에 작은 inline 토글을 추가했다.
+    - 업로드 요청은 `force_ocr=true/false` FormData를 전송한다.
+    - 재처리 요청은 `{ force_ocr: boolean }` JSON body를 전송한다.
+    - 문서 상세를 불러올 때 기존 `metadata.options.force_ocr` 값을 재처리 토글 초기값으로 반영한다.
+  - `frontend/src/app/api.ts`
+    - `reprocessBasisDocument(id, body)`가 JSON body를 받을 수 있게 변경했다.
+  - `frontend/src/styles.css`
+    - 업로드용 토글, 재처리 옆 inline 토글, 재처리 액션 그룹 스타일을 추가했다.
+  - `backend/app/main.py`
+    - 업로드 FormData의 `force_ocr` 값을 파싱하고 `metadata_json.options.force_ocr`로 저장한다.
+    - 재처리 API에서 JSON body의 `force_ocr` 값을 받아 처리 옵션으로 전달한다.
+    - operation run 요청 payload에도 실제 적용된 재처리 옵션을 기록한다.
+  - `backend/app/pipelines/ocr.py`
+    - `run_ocr_if_needed(..., force=True)` 옵션을 추가했다.
+    - `force=True`이면 텍스트 길이 기준을 무시하고 OCR 엔진을 호출한다.
+  - `backend/app/pipelines/basis_document.py`
+    - 기준문서 메타데이터의 `options.force_ocr`와 재처리 override를 병합해 처리 옵션으로 사용한다.
+    - 처리 결과 메타데이터에 `options.force_ocr`를 계속 남긴다.
+  - `backend/tests/test_ocr.py`
+    - 텍스트가 충분해도 `force=True`이면 OCR 엔진이 호출되는 테스트를 추가했다.
+  - `backend/tests/test_basis_force_ocr_contracts.py`
+    - 업로드/재처리 API, 기준문서 파이프라인, 프론트 토글 계약 테스트를 추가했다.
+  - `backend/tests/test_api_flows.py`
+    - 기준문서 업로드 시 강제 OCR 옵션이 저장되고, 재처리 시 옵션을 끌 수 있는 API flow 테스트를 추가했다.
+- 동작 정책:
+  - 토글 OFF: 기존과 동일하게 추출 텍스트가 충분하면 OCR을 건너뛴다.
+  - 토글 ON: 추출 텍스트가 충분해도 OCR을 실행한다.
+  - OCR이 실패하거나 엔진 설정이 없으면 기존 추출 텍스트를 fallback으로 사용하되, OCR 상태와 옵션은 메타데이터에 남긴다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_ocr tests.test_basis_force_ocr_contracts tests.test_api_flows.ApiFlowTests.test_basis_document_force_ocr_option_is_stored_and_reprocessable -v`: 9건 통과, 실제 OCR 샘플 1건 skip
+  - `py -3.13 -m unittest backend.tests.test_frontend_contracts -v`: 9건 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+  - `git diff --check -- backend/app/main.py backend/app/pipelines/basis_document.py backend/app/pipelines/ocr.py backend/tests/test_ocr.py backend/tests/test_basis_force_ocr_contracts.py backend/tests/test_api_flows.py frontend/src/app/api.ts frontend/src/pages/BasisDocumentsPage.tsx frontend/src/styles.css docs/work-log.md`: 공백 오류 없음, CRLF 변환 경고만 발생
+
+### AI / Engineering Version (English)
+- Added a force-OCR option for basis-document upload and basis-document reprocessing.
+- Upload sends `force_ocr` through multipart FormData; reprocess sends `{ force_ocr: boolean }` as JSON.
+- Backend stores the option under `metadata_json.options.force_ocr` and uses it as the processing option.
+- `run_ocr_if_needed(..., force=True)` now bypasses the text-length skip rule and invokes OCR even when extracted text is long enough.
+- Basis processing persists the selected option in processing metadata, including no-text/fallback paths.
+- Added OCR unit coverage, source contract coverage, and a real API flow test for upload/reprocess option persistence.
+
+## 추가 업데이트 (2026-06-07) - 기준문서 강제 OCR 재처리 skipped 원인 확인
+
+### 한국어 기록
+- 확인 대상:
+  - 기준문서: `전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)`
+  - 파일명: `전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- 증상:
+  - 사용자가 기존 기준문서에서 `OCR 강제 실행`을 선택하고 `재처리`를 실행했지만, 처리 후 `ocr skipped`로 표시됐다.
+- 확인 결과:
+  - `backend/app.db`의 해당 기준문서 row는 `ocr_status=skipped`, `metadata.options=null`, `metadata.ocr.status=skipped` 상태였다.
+  - `operation_runs`의 2026-06-07 23:24:24 재처리 이력 `request_json`에는 `options.force_ocr`가 없었다.
+  - 현재 코드라면 재처리 요청에 `force_ocr`가 없더라도 operation run에는 `options` 키가 기록된다.
+  - `temp/servers.status.json` 기준 서버 `updated_at`이 2026-06-07 18:37:04로, OCR 강제 실행 코드가 추가되기 전부터 백엔드가 떠 있었다.
+  - 따라서 원인은 코드 로직 실패가 아니라 실행 중이던 백엔드가 변경 전 코드를 계속 사용한 것이다.
+- 조치:
+  - `scripts/manage-servers.ps1 -Action restart`로 백엔드/프론트를 재시작했다.
+  - 재시작 후 상태:
+    - 백엔드: `http://127.0.0.1:18111`, PID 31600, 시작 시각 2026-06-07 23:32:31
+    - 프론트: `http://127.0.0.1:5199`, PID 20008, 시작 시각 2026-06-07 23:32:31
+    - `/health`: `{"status":"ok"}`
+- 테스트 보강:
+  - `backend/tests/test_api_flows.py`
+    - 기준문서 재처리 이력의 `operation_runs.request_json.options.force_ocr` 기록 검증을 추가했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_basis_document_force_ocr_option_is_stored_and_reprocessable -v`: 통과
+
+### AI / Engineering Version (English)
+- Investigated why force-OCR reprocess still produced `ocr skipped` for the real basis document.
+- The database row had no `metadata.options` and the latest operation run request had no `options.force_ocr`.
+- The managed server status showed the backend had been running since 18:37, before the force-OCR code was added.
+- Root cause: stale backend process, not the current code path.
+- Restarted managed backend/frontend servers so the current route and pipeline code are loaded.
+- Added API flow coverage to assert `operation_runs.request_json.options.force_ocr` is recorded during basis-document reprocess.
+
+## 추가 업데이트 (2026-06-08) - ngrok 외부 접속 실행
+
+### 한국어 기록
+- 작업 범위: 로컬 백엔드/프론트 서비스를 실행하고 ngrok 공개 URL을 생성했다.
+- 실행 명령:
+  - `powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 -Action start`
+- 실행 결과:
+  - 백엔드 로컬 URL: `http://127.0.0.1:18111`
+  - 프론트 로컬 URL: `http://127.0.0.1:5199`
+  - 백엔드 ngrok URL: `https://7295-118-216-124-59.ngrok-free.app`
+  - 프론트 ngrok URL: `https://69c9-118-216-124-59.ngrok-free.app`
+  - 백엔드 PID: 14256
+  - 프론트 PID: 24112
+  - 백엔드 ngrok PID: 24108
+  - 프론트 ngrok PID: 9640
+  - 실행 시각: 2026-06-08 19:50:21 +09:00
+- 검증:
+  - `curl.exe -L -H "ngrok-skip-browser-warning: 1" https://7295-118-216-124-59.ngrok-free.app/health`: HTTP 200
+  - `curl.exe -L -H "ngrok-skip-browser-warning: 1" https://69c9-118-216-124-59.ngrok-free.app`: HTTP 200
+  - 프론트 ngrok origin에서 백엔드 API CORS 확인: `Access-Control-Allow-Origin: https://69c9-118-216-124-59.ngrok-free.app`
+- 운영 메모:
+  - ngrok 터널이 켜져 있는 동안 로컬 앱이 외부에 노출된다.
+  - 종료할 때는 `powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 -Action stop`을 사용한다.
+
+### AI / Engineering Version (English)
+- Started local backend/frontend and ngrok tunnels through `scripts/manage-ngrok.ps1`.
+- Verified backend and frontend public ngrok URLs return HTTP 200.
+- Verified CORS allows the frontend ngrok origin when calling the backend public API.
+- Logged active local/public URLs and managed process ids for follow-up debugging.
+
+## 추가 업데이트 (2026-06-08) - 기준문서 강제 OCR 진행 상태 조사 및 표시 보강
+
+### 한국어 기록
+- 확인 대상:
+  - 기준문서: `전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)`
+  - 파일명: `전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf`
+- 사용자 증상:
+  - `OCR 강제 실행`을 체크하고 `재처리`를 눌렀는데 화면에는 계속 `ocr skipped`가 보였다.
+- 백엔드 로그 확인 결과:
+  - `2026-06-08T20:02:12+09:00`에 `/api/basis-documents/1/reprocess` 요청이 들어왔다.
+  - `basis.processing.options` 로그에 `force_ocr=true`가 찍혔다.
+  - OpenDataLoader PDF 리더가 489페이지, 700,988자, 테이블 1,566개를 추출했다.
+  - 이후 `ocr.force_required`, `ocr.run.started`, `ocr.pdf.started`가 찍혔고 OCR 엔진은 `paddle`이었다.
+  - 즉 강제 OCR 요청은 정상으로 들어왔고 PaddleOCR이 실제로 시작됐다.
+- 현재 진행 상태:
+  - `backend/storage/ocr-temp/wisdom_ocr_03376dafbb6147b8a8bd8f059a748710` 아래에 OCR 렌더링 이미지가 계속 생성되고 있다.
+  - 확인 시점 기준 `page_179.png`까지 생성됐다.
+  - 489페이지 전체 OCR이라 완료까지 오래 걸릴 수 있다.
+- 원인:
+  - 재처리 요청이 오래 실행되는 동안 `process_basis_document()` 내부 상태 변경이 같은 DB 트랜잭션에 묶여 커밋되지 않는다.
+  - 그래서 화면이나 별도 조회에서는 이전 완료 상태인 `ocr skipped`가 계속 보였다.
+  - 실제로는 강제 OCR이 진행 중이며, 표시만 이전 상태를 보고 있었다.
+- 코드 보강:
+  - `backend/app/main.py`
+    - 재처리 API가 실제 처리에 들어가기 전에 `processing_status='parsing'`, `parse_status='processing'`, `ocr_status='processing'`, `chunk_status='pending'`, `index_status='pending'`을 먼저 저장하고 즉시 `conn.commit()`하도록 수정했다.
+    - 다음 재처리부터 긴 OCR 중에도 화면/새로고침에서 이전 `ocr skipped`가 아니라 진행 상태를 볼 수 있다.
+  - `backend/tests/test_basis_force_ocr_contracts.py`
+    - 재처리 시작 상태 선커밋 계약을 테스트에 추가했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_basis_force_ocr_contracts -v`: 3건 통과
+- 운영 메모:
+  - 현재 진행 중인 489페이지 PaddleOCR 작업을 중단하지 않기 위해 서버 재시작은 하지 않았다.
+  - 이번 표시 보강 코드는 다음 백엔드 재시작 후 적용된다.
+
+### AI / Engineering Version (English)
+- Investigated the real basis-document force-OCR reprocess after the user still saw `ocr skipped`.
+- Logs show `force_ocr=true`, OpenDataLoader extraction completed for 489 pages, and PaddleOCR started.
+- The old `ocr skipped` display is stale persisted state while the long synchronous OCR request is still running.
+- Added a pre-processing status commit in the reprocess route so future long reprocess runs persist `ocr_status='processing'` before entering the long pipeline.
+- Did not restart the active backend because the current 489-page OCR job is still running.
+
+## 추가 업데이트 (2026-06-08) - 강제 OCR 재처리 진행 UI 추가
+
+### 한국어 기록
+- 작업 범위: 기준문서 상세 화면에서 강제 OCR 재처리 중임을 사용자가 명확히 볼 수 있도록 로딩바와 진행 안내를 추가했다.
+- 사용자 증상:
+  - 489페이지 기준문서가 PaddleOCR로 처리 중인데 화면에는 이전 상태인 `ocr skipped`가 계속 보여 혼란이 있었다.
+- 변경 내용:
+  - `frontend/src/pages/BasisDocumentsPage.tsx`
+    - 재처리 버튼 클릭 직후 선택 문서의 상태를 프론트에서 즉시 `processing`으로 표시하도록 했다.
+    - 재처리 중인 문서 상세 영역에 `basis-processing-panel`을 표시한다.
+    - `OCR 강제 실행 처리 중`, 처리 경과 시간, 전체 페이지 처리 안내, indeterminate 로딩바를 보여준다.
+    - 재처리 중에는 `OCR 강제 실행` 토글과 `재처리` 버튼을 비활성화해 중복 클릭을 막는다.
+    - OCR 강제 실행 시 전역 작업 오버레이 설명과 단계 문구를 대용량 OCR 흐름에 맞게 바꿨다.
+  - `frontend/src/app/workOverlay.tsx`
+    - 전역 작업 오버레이에도 로딩바를 추가했다.
+  - `frontend/src/styles.css`
+    - 기준문서 처리 패널, 오버레이 로딩바, 재처리 중 disabled 상태 스타일을 추가했다.
+  - `backend/tests/test_basis_force_ocr_contracts.py`
+    - 강제 OCR 재처리 진행 UI와 중복 클릭 방지 계약을 테스트에 추가했다.
+- 현재 운영 상태:
+  - 기존 489페이지 PaddleOCR 작업은 계속 진행 중이며 확인 시점 기준 `page_208.png`까지 생성됐다.
+  - 프론트 변경은 Vite 개발 서버에서 HMR로 반영될 수 있지만, 백엔드 선커밋 보강은 백엔드 재시작 후 적용된다.
+  - 현재 OCR 작업을 끊지 않기 위해 백엔드 재시작은 하지 않았다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_basis_force_ocr_contracts -v`: 3건 통과
+  - `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Added visible long-running reprocess feedback for basis-document force OCR.
+- The selected document is optimistically marked as `processing` immediately after reprocess starts.
+- Added an inline `basis-processing-panel` with elapsed time, forced-OCR copy, and an indeterminate progress bar.
+- Disabled the reprocess toggle/button while the selected document request is in flight.
+- Added a progress bar to the global work overlay and updated force-OCR step copy.
+- Verified with frontend contract tests and production build.
+
+## 추가 업데이트 (2026-06-08) - 전체 서버 강제 종료
+
+### 한국어 기록
+- 사용자 요청에 따라 백엔드, 프론트엔드, ngrok 터널을 모두 강제 종료했다.
+- 기존 상태 파일에 기록된 관리 프로세스와 포트 점유 프로세스를 기준으로 종료했다.
+- 남아 있던 Vite 개발 서버 관련 `node.exe`/`cmd.exe` 프로세스도 추가로 정리했다.
+- `temp/ngrok.status.json` 상태 파일은 일반 권한 삭제가 막혀 권한 상승으로 단일 파일 삭제를 수행했다.
+- 종료 후 확인 결과:
+  - `18111` 백엔드 포트: 리스너 없음
+  - `5199` 프론트엔드 포트: 리스너 없음
+  - `4040`, `4041` ngrok API 포트: 리스너 없음
+  - `py`, `python`, `node`, `ngrok`, `cmd` 서버성 프로세스: 남은 항목 없음
+
+### AI / Engineering Version (English)
+- Force-stopped all local service processes on user request: backend, frontend, and ngrok tunnels.
+- Cleaned up managed PIDs, port listeners, remaining Vite `node.exe`/`cmd.exe` processes, and the stale ngrok status file.
+- Verified that backend, frontend, and ngrok ports no longer have listeners and no server-like processes remain.
+
+## 추가 업데이트 (2026-06-08) - OCR 강제 실행 inline 경고 추가
+
+### 한국어 기록
+- 사용자 요청에 따라 기준문서 업로드와 기준문서 재처리의 `OCR 강제 실행` 선택 시 inline 경고 문구가 보이도록 수정했다.
+- 경고 문구:
+  - `OCR 강제 실행은 PDF 전체 페이지를 다시 판독하므로 대용량 기준문서는 오래 걸릴 수 있습니다.`
+- 업로드 폼에서는 체크박스 선택 직후 폼 내부에 경고가 표시된다.
+- 기존 기준문서 재처리 영역에서는 `OCR 강제 실행` 선택 후 `재처리`를 누르기 전에 버튼 아래 compact 경고가 표시된다.
+- 진행 중에는 기존 `basis-processing-panel`의 진행 안내와 로딩바가 담당하므로, 사전 선택 경고와 처리 진행 안내를 분리했다.
+- 회귀 방지를 위해 `backend/tests/test_basis_force_ocr_contracts.py`에 경고 문구와 스타일 class 확인을 추가했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_basis_force_ocr_contracts -v`: 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: 통과
+  - `git diff --check`: 공백 오류 없음
+
+### AI / Engineering Version (English)
+- Added inline warning copy when force OCR is selected in both basis-document upload and reprocess controls.
+- The upload form shows a full-width warning immediately after the force-OCR toggle.
+- The reprocess action area shows a compact warning before the user starts reprocessing.
+- Added CSS for `inline-warning` and `basis-reprocess-control`.
+- Updated the force-OCR contract test to assert the warning copy and classes.
+- Verified with the backend contract test, frontend production build, encoding check, and git whitespace check.

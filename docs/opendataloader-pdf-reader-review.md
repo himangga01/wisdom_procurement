@@ -1,5 +1,17 @@
 # OpenDataLoader PDF 리더 전환 검토
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+이 문서는 2026-06-05의 교체 전 검토 기록입니다. 당시 결론은 “전면 교체는 아직 이르고 기준문서/table-heavy PDF 보조 엔진으로 먼저 도입”이었지만, 이후 구현과 QA를 거쳐 현재 코드는 다음 상태로 변경되었습니다.
+
+- 기본 PDF 리더는 `PDF_READER_ENGINE=auto`입니다.
+- `auto`는 OpenDataLoader PDF를 먼저 사용하고, Java/패키지/timeout/변환 실패 시 PyMuPDF fallback을 사용합니다.
+- 기준문서뿐 아니라 일반 업로드 문서와 나라장터 공고문 PDF도 동일한 `extract_document()` 진입점을 통해 현재 reader 정책을 공유합니다.
+- PyMuPDF는 제거되지 않았고 fallback 및 OCR 렌더링 보조 엔진으로 유지됩니다.
+- 실제 기준문서 489쪽 OpenDataLoader QA와 fallback QA가 통과했고, 이후 PDF/RAG 보강 뒤 전체 backend 기준선은 `134 passed`, `8 skipped`입니다.
+- 따라서 아래의 “전면 교체는 아직 이르다”는 문장은 역사적 검토 결론으로 읽고, 현재 실행 기준은 `docs/opendataloader-pdf-replacement-test-plan.md`와 `README.md`를 우선합니다.
+
 ## 검토 목적
 현재 서비스의 PDF 추출기는 PyMuPDF 기반 평문 추출에 가깝습니다.
 최근 실제 기준문서 PDF를 Markdown으로 재생성하고 사용자 제공 기준 MD와 비교한 결과, 본문과 숫자 추출은 안정적이지만 표 구조 보존이 RAG 품질의 핵심 병목으로 확인되었습니다.
@@ -265,7 +277,21 @@ Do not fully replace PyMuPDF immediately.
 
 Introduce OpenDataLoader PDF as an optional adapter for basis documents and table-heavy PDFs, while keeping PyMuPDF as the fast fallback for simple Nara notice PDFs.
 
-## Current System
+## Current Code Update
+Last updated: 2026-06-07
+
+This document is the pre-replacement review from 2026-06-05. Its original conclusion recommended introducing OpenDataLoader first as a basis/table-heavy helper rather than fully replacing PyMuPDF. The implementation has since moved to:
+
+- default `PDF_READER_ENGINE=auto`
+- OpenDataLoader PDF first
+- PyMuPDF fallback on Java/package/timeout/conversion failures
+- shared `extract_document()` entrypoint for target documents, Nara PDFs, and basis PDFs
+- PyMuPDF retained as fallback and OCR rendering helper
+- latest backend baseline after PDF/RAG hardening: `134 passed`, `8 skipped`
+
+Treat the earlier conservative recommendation as historical context. Use `docs/opendataloader-pdf-replacement-test-plan.md` and `README.md` as the current operational references.
+
+## Historical System Before Replacement
 - Current entrypoint: `backend/app/pipelines/parser.py::extract_document()`
 - Current PDF engine: PyMuPDF `page.get_text("blocks")`
 - Current basis RAG pipeline chunks normalized plain text into paragraph-window chunks.
@@ -344,4 +370,3 @@ Promote ODL to the default basis-document engine only if:
 - all backend tests pass
 - Java-missing fallback works
 - Nara notice PDF QA does not regress
-

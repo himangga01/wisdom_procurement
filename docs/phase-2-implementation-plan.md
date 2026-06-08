@@ -449,9 +449,27 @@ Phase 2는 기준문서를 검색 가능한 지식 자산으로 만드는 단계
 - Phase 2.5 규칙 후보를 관리자가 승인하는 UX가 필요한가요?
 - Phase 3 전에 기준문서 검색 결과만 따로 확인하는 운영 화면이 필요한가요?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- Phase 2 기준문서 업로드/추출/OCR degrade/청킹/JSON basis index/RAG 검색/규칙 후보 관리 흐름은 구현되어 있습니다.
+- PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드이며 PyMuPDF는 fallback입니다.
+- 기준문서 검색 source는 `storage/basis-index/basis-index.json`입니다.
+- 손상/누락/불일치 JSON 인덱스는 검색, 규칙 후보 승인, 판단 citation 사용을 차단합니다.
+- 기준문서 재처리 실패 시 기존 completed/indexed 지식을 보존하는 보강이 적용되어 있습니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Phase 2 basis upload/extraction/OCR degrade/chunking/JSON basis index/RAG search/rule-candidate management flow is implemented.
+- Default PDF reader is OpenDataLoader-first `auto`; PyMuPDF is fallback.
+- Basis retrieval source is `storage/basis-index/basis-index.json`.
+- Missing/corrupt/inconsistent JSON index state blocks search, rule approval, and judgment citation usage.
+- Basis reprocessing hardening preserves existing completed/indexed knowledge on failure.
 
 ## Purpose
 This document breaks Phase 2 into implementation-ready milestones and separates Phase 2.5 as an experimental bridge before the final judgment engine.

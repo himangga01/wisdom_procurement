@@ -297,9 +297,25 @@ pytesseract
 - [Tesseract installation documentation](https://tesseract-ocr.github.io/tessdoc/Installation.html)
 - [Tesseract Korean traineddata](https://github.com/tesseract-ocr/tessdata/blob/main/kor.traineddata)
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- OCR은 모든 PDF에 무조건 적용하지 않고, 현재 PDF/DOCX 추출 결과가 부족할 때 fallback/degrade 경로로 사용합니다.
+- PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드이며, PyMuPDF는 fallback과 OCR 렌더링 보조 엔진으로 유지합니다.
+- OCR 엔진 의존성이 없는 환경에서도 업로드/분석 흐름은 `needs_ocr_setup` 또는 fallback 상태로 degrade해야 합니다.
+- 이 문서는 OCR 엔진 도입 계획서이며, 최신 PDF reader 정책은 `docs/opendataloader-pdf-replacement-test-plan.md`와 `README.md`를 우선합니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- OCR is not applied to every PDF; it remains a fallback/degrade path when current PDF/DOCX extraction is insufficient.
+- Default PDF reader is OpenDataLoader-first `auto`; PyMuPDF remains fallback and OCR rendering helper.
+- Upload/analysis flows must degrade to `needs_ocr_setup` or fallback states when OCR dependencies are unavailable.
+- Treat this as the OCR engine plan; use `docs/opendataloader-pdf-replacement-test-plan.md` and `README.md` for the current PDF reader policy.
 
 ## Purpose
 This document defines the OCR engine implementation plan for `SMART Procurement Calculator`.

@@ -3,7 +3,7 @@
 ## 한국어 버전
 
 ## 구현 상태
-최종 업데이트: 2026-05-31
+최종 업데이트: 2026-06-07
 
 - [x] JSON 인덱스 schema v2와 checksum 필드 도입
 - [x] `GET /api/basis-index/status`, `POST /api/basis-index/validate`, `POST /api/basis-index/rebuild` 추가
@@ -11,6 +11,9 @@
 - [x] 손상/불일치 인덱스에서 DB fallback 없이 409로 차단
 - [x] 백업 manifest와 검증에 `basis-index.json` checksum 포함
 - [x] 운영 대시보드 health에 기준문서 인덱스 상태 표시
+- [x] 검색 평가 저장 결과의 `result.index_source`를 `json_basis_index`로 정정
+- [x] 기준문서 삭제 전 JSON 인덱스 missing/inconsistent/corrupt 상태를 검증하고 409로 차단
+- [x] 기준문구 후보 승인과 Phase 3 판단 엔진이 검색과 동일한 JSON 인덱스 건강 상태 계약을 사용
 
 ## 문서 목적
 이 문서는 기준문서 RAG 코드리뷰 이후 남은 P2 리스크 2개를 보강하기 위한 수정계획입니다.
@@ -153,7 +156,8 @@ basis_document_chunks.chunk_hash = index.chunks[*].chunk_hash
 
 ### 검색 정책
 Phase 1 보강:
-- 현재처럼 DB 검색을 유지하되 `index_source: db_chunks_completed_indexed`를 명시한다.
+- 이 단계의 과거 계획은 DB 검색 기준이었으나, 현재 구현은 이미 JSON 인덱스 검색으로 전환되었다.
+- 현재 검색/평가 결과의 source는 `json_basis_index`로 기록한다.
 - 동시에 `basis-index/status`와 `validate`를 제공해 운영자가 JSON 인덱스 상태를 확인한다.
 
 Phase 2 보강:
@@ -196,7 +200,7 @@ Phase 2 보강:
 # AI / Engineering Version (English)
 
 ## Implementation Status
-Last updated: 2026-05-31
+Last updated: 2026-06-07
 
 - [x] Introduce JSON index schema v2 and checksum fields.
 - [x] Add `GET /api/basis-index/status`, `POST /api/basis-index/validate`, and `POST /api/basis-index/rebuild`.
@@ -204,11 +208,15 @@ Last updated: 2026-05-31
 - [x] Block retrieval with HTTP 409 when the JSON index is corrupt or inconsistent; no DB fallback.
 - [x] Include `basis-index.json` checksum in backup manifests and validation.
 - [x] Expose basis-index health in the operations dashboard.
+- [x] Store retrieval-evaluation source as `json_basis_index`.
+- [x] Validate missing/inconsistent/corrupt JSON index state before basis-document deletion.
+- [x] Make basis rule approval and Phase 3 judgment citations use the same JSON-index health contract as search.
 
 ## Purpose
-This document defines the remediation plan for two remaining P2 risks in the basis-document RAG flow:
-- manually edited `condition_text` is currently part of the re-extraction matching key
-- the JSON index is generated and deleted, but DB chunks are currently the actual retrieval source
+This document originally defined the remediation plan for two P2 risks in the basis-document RAG flow:
+- historical risk: manually edited `condition_text` was part of the re-extraction matching key
+- historical risk: the JSON index used to be generated/deleted while DB chunks were still the actual retrieval source
+- current implementation: stable `extraction_key` matching is implemented, and the JSON index is the operational retrieval source
 
 ## Decision
 Keep the JSON index as an operational artifact.
@@ -216,7 +224,7 @@ Keep the JSON index as an operational artifact.
 Separation of responsibilities:
 - SQLite DB: source of truth for basis documents, chunks, rule candidates, and review state
 - JSON index: local RAG retrieval index artifact
-- Search API: eventually prefer the JSON index; if index/DB consistency fails, stop retrieval or require operator rebuild
+- Search API: uses the JSON index; if index/DB consistency fails, stop retrieval or require operator rebuild
 
 ## Plan A: Stable Rule-Candidate Matching Key
 

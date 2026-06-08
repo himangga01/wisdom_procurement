@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import sqlite3
+import time
 import urllib.parse
 import urllib.request
 import uuid
@@ -14,11 +15,13 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, g, jsonify, request, send_file
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 
 from app.core.citations import expected_basis_citation_candidate_id
 from app.core.json_utils import parse_json_dict, parse_json_list
+from app.core.logging import configure_backend_logging, get_logger, log_event, log_exception, new_request_id
 from app.core.text import clean_text, parse_int
 from app.pipelines.corporation_evidence import (
     FIELD_LABELS,
@@ -56,6 +59,16 @@ from app.services.backups import (
     list_backup_runs_payload,
     restore_plan_for_backup,
     validate_backup_file,
+)
+from app.services.contract_documents import (
+    CONTRACT_REVIEW_STATUS_VALUES,
+    ContractInputError,
+    build_contract_input_snapshot,
+    create_contract_document,
+    delete_contract_document,
+    get_contract_document_payload,
+    list_contract_documents_payload,
+    resolve_contract_stored_path,
 )
 from app.services.nara_api import (
     attachment_extension,
@@ -97,6 +110,10 @@ def _resolve_local_path(raw_value: str) -> Path:
 
 STORAGE_ROOT = _resolve_local_path(os.getenv("STORAGE_ROOT", "./storage"))
 SQLITE_PATH = _resolve_local_path(os.getenv("SQLITE_PATH", "./app.db"))
+BACKEND_LOG_DIR = _resolve_local_path(os.getenv("BACKEND_LOG_DIR", "./storage/logs"))
+BACKEND_LOG_LEVEL = os.getenv("BACKEND_LOG_LEVEL", "INFO")
+BACKEND_LOG_MAX_MB = parse_int(os.getenv("BACKEND_LOG_MAX_MB", "20")) or 20
+BACKEND_LOG_BACKUPS = parse_int(os.getenv("BACKEND_LOG_BACKUPS", "10")) or 10
 AI_PROVIDER_DEFAULT = os.getenv("AI_PROVIDER_DEFAULT", "gemini").strip().lower()
 AI_MODEL_DEFAULT = os.getenv("AI_MODEL_DEFAULT", "gemini-2.5-flash").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -254,12 +271,76 @@ app.json.ensure_ascii = False
 app.config["JSON_AS_ASCII"] = False
 CORS(app)
 
+try:
+    configure_backend_logging(
+        BACKEND_LOG_DIR,
+        level=BACKEND_LOG_LEVEL,
+        max_mb=BACKEND_LOG_MAX_MB,
+        backups=BACKEND_LOG_BACKUPS,
+    )
+except Exception as exc:  # pragma: no cover - logging setup must not block app startup
+    print(f"Backend logging setup failed: {exc}")
+
+APP_LOGGER = get_logger("app")
+
+
+@app.before_request
+def start_request_logging() -> None:
+    g.request_id = request.headers.get("X-Request-ID") or new_request_id()
+    g.request_started_at = time.perf_counter()
+
+
+@app.after_request
+def log_request_response(response: Response) -> Response:
+    request_id = getattr(g, "request_id", new_request_id())
+    started_at = getattr(g, "request_started_at", None)
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 2) if started_at is not None else None
+    response.headers["X-Request-ID"] = request_id
+    if request.path != "/health":
+        log_event(
+            APP_LOGGER,
+            "http.request.completed",
+            request_id=request_id,
+            method=request.method,
+            path=request.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+            remote_addr=request.remote_addr or "",
+        )
+    return response
+
 
 @app.after_request
 def ensure_utf8_json_response(response: Response) -> Response:
     if response.mimetype == "application/json" and "charset=" not in response.content_type.lower():
         response.content_type = "application/json; charset=utf-8"
     return response
+
+
+@app.errorhandler(Exception)
+def log_unhandled_exception(exc: Exception):
+    if isinstance(exc, HTTPException):
+        log_event(
+            APP_LOGGER,
+            "http.request.http_exception",
+            level="warning" if exc.code and exc.code >= 400 else "info",
+            request_id=getattr(g, "request_id", ""),
+            method=request.method,
+            path=request.path,
+            status_code=exc.code,
+            message=exc.description,
+        )
+        return exc
+    log_exception(
+        APP_LOGGER,
+        "http.request.exception",
+        exc,
+        request_id=getattr(g, "request_id", ""),
+        method=request.method,
+        path=request.path,
+        remote_addr=request.remote_addr or "",
+    )
+    return jsonify({"detail": "Internal server error", "request_id": getattr(g, "request_id", "")}), 500
 
 
 SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -287,6 +368,14 @@ def now_iso() -> str:
 def get_json_payload() -> dict:
     payload = request.get_json(silent=True)
     return payload if isinstance(payload, dict) else {}
+
+
+def parse_bool_value(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return clean_text(value).lower() in {"1", "true", "yes", "on", "y"}
 
 
 def normalize_management_group_name(value) -> str:
@@ -1130,6 +1219,7 @@ def init_db() -> None:
     (STORAGE_ROOT / "uploads").mkdir(parents=True, exist_ok=True)
     (STORAGE_ROOT / "corporation-evidence").mkdir(parents=True, exist_ok=True)
     (STORAGE_ROOT / "basis").mkdir(parents=True, exist_ok=True)
+    (STORAGE_ROOT / "contracts").mkdir(parents=True, exist_ok=True)
     BASIS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
     with db_conn() as conn:
@@ -1439,6 +1529,33 @@ def init_db() -> None:
                 FOREIGN KEY(corporation_id) REFERENCES corporations(id)
             );
 
+            CREATE TABLE IF NOT EXISTS contract_documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nara_notice_id INTEGER NOT NULL,
+                corporation_id INTEGER NOT NULL,
+                judgment_run_id INTEGER,
+                status TEXT DEFAULT 'generated'
+                  CHECK(status IN ('generated', 'failed', 'deleted')),
+                review_status TEXT DEFAULT 'draft'
+                  CHECK(review_status IN ('draft', 'needs_review', 'approved', 'rejected', 'archived')),
+                contract_type TEXT DEFAULT 'standard_service_contract',
+                template_version TEXT DEFAULT 'contract_docx_template_v1',
+                title TEXT DEFAULT '',
+                file_name TEXT DEFAULT '',
+                stored_file_path TEXT DEFAULT '',
+                file_size_bytes INTEGER DEFAULT 0,
+                input_snapshot_json TEXT DEFAULT '{}',
+                generated_fields_json TEXT DEFAULT '{}',
+                validation_json TEXT DEFAULT '{}',
+                review_note TEXT DEFAULT '',
+                error_message TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(nara_notice_id) REFERENCES nara_notices(id),
+                FOREIGN KEY(corporation_id) REFERENCES corporations(id),
+                FOREIGN KEY(judgment_run_id) REFERENCES judgment_runs(id)
+            );
+
             CREATE TABLE IF NOT EXISTS nara_collection_runs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 status TEXT DEFAULT 'completed',
@@ -1512,6 +1629,12 @@ def init_db() -> None:
             ON judgment_runs(nara_notice_id, corporation_id);
             CREATE INDEX IF NOT EXISTS idx_judgment_runs_created_at
             ON judgment_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_contract_documents_notice_corporation
+            ON contract_documents(nara_notice_id, corporation_id);
+            CREATE INDEX IF NOT EXISTS idx_contract_documents_created_at
+            ON contract_documents(created_at);
+            CREATE INDEX IF NOT EXISTS idx_contract_documents_status
+            ON contract_documents(status, review_status);
             CREATE INDEX IF NOT EXISTS idx_nara_collection_runs_created_at
             ON nara_collection_runs(created_at);
             CREATE INDEX IF NOT EXISTS idx_nara_collection_runs_status
@@ -2561,6 +2684,12 @@ def approved_basis_rule_candidate_results(
     requirement: dict[str, Any],
     top_k: int = 3,
 ) -> list[dict[str, Any]]:
+    validation = validate_basis_index(conn)
+    if not validation["valid"]:
+        raise BasisIndexError("; ".join(validation["errors"]) or "Basis index validation failed.")
+    if not validation["can_search"]:
+        return []
+    index_chunks = validation["payload"].get("chunks", {})
     rows = conn.execute(
         """
         SELECT
@@ -2577,6 +2706,7 @@ def approved_basis_rule_candidate_results(
           rc.status,
           c.id AS chunk_id,
           c.chunk_index,
+          c.chunk_hash,
           c.chunk_text,
           c.chunk_text_normalized,
           c.page_start,
@@ -2609,6 +2739,15 @@ def approved_basis_rule_candidate_results(
     ).fetchall()
     scored: list[dict[str, Any]] = []
     for row in rows:
+        index_item = index_chunks.get(row["vector_id"]) if isinstance(index_chunks, dict) else None
+        if not isinstance(index_item, dict):
+            continue
+        if (
+            parse_int(index_item.get("basis_document_id"), 0) != row["basis_document_id"]
+            or parse_int(index_item.get("chunk_id"), 0) != row["basis_chunk_id"]
+            or clean_text(index_item.get("chunk_hash")) != row["chunk_hash"]
+        ):
+            continue
         candidate = {
             "rule_type": row["rule_type"],
             "condition_text": row["condition_text"],
@@ -2695,14 +2834,18 @@ def build_judgment_run(conn: sqlite3.Connection, notice_id: int, corporation_id:
                 " ".join(requirement.get("required_evidence_types") or []),
             ]
         )
-        approved_results = approved_basis_rule_candidate_results(conn, requirement, top_k=top_k)
-        approved_candidates = [citation_payload_from_search_result(result) for result in approved_results]
-        approved_review_ready = [candidate for candidate in approved_candidates if citation_candidate_review_ready(candidate)]
-        fallback_used = not approved_review_ready
         basis_index_error = ""
         try:
+            approved_results = approved_basis_rule_candidate_results(conn, requirement, top_k=top_k)
+            approved_candidates = [citation_payload_from_search_result(result) for result in approved_results]
+            approved_review_ready = [candidate for candidate in approved_candidates if citation_candidate_review_ready(candidate)]
+            fallback_used = not approved_review_ready
             fallback_results = basis_search_results(conn, citation_query, top_k=top_k) if fallback_used else []
         except BasisIndexError as exc:
+            approved_results = []
+            approved_candidates = []
+            approved_review_ready = []
+            fallback_used = True
             fallback_results = []
             basis_index_error = str(exc)
         citation_results = merge_citation_results(approved_results, fallback_results, top_k)
@@ -3814,17 +3957,68 @@ def summarize_with_gemini(text: str, model: str | None = None) -> tuple[dict, st
 def summarize_with_ai(text: str, selection: dict) -> tuple[dict, str, dict]:
     provider = selection["provider"]
     model = selection["model"]
+    log_event(
+        APP_LOGGER,
+        "ai.summary.started",
+        domain="ai",
+        provider=provider,
+        model=model,
+        configured=selection["configured"],
+        input_chars=len(text),
+    )
     if not selection["configured"]:
         payload, markdown, usage = summarize_with_fallback(text, provider, model)
         usage["fallback_reason"] = f"{provider.upper()} API key is not configured"
+        log_event(
+            APP_LOGGER,
+            "ai.summary.fallback_used",
+            level="warning",
+            domain="ai",
+            provider=provider,
+            model=model,
+            reason=usage["fallback_reason"],
+            input_chars=len(text),
+        )
         return payload, markdown, usage
-    if provider == "openai":
-        return summarize_with_openai(text, model)
-    if provider == "gemini":
-        return summarize_with_gemini(text, model)
-    payload, markdown, usage = summarize_with_fallback(text, provider, model)
-    usage["fallback_reason"] = f"Unsupported AI provider: {provider}"
-    return payload, markdown, usage
+    try:
+        if provider == "openai":
+            result = summarize_with_openai(text, model)
+        elif provider == "gemini":
+            result = summarize_with_gemini(text, model)
+        else:
+            payload, markdown, usage = summarize_with_fallback(text, provider, model)
+            usage["fallback_reason"] = f"Unsupported AI provider: {provider}"
+            log_event(
+                APP_LOGGER,
+                "ai.summary.fallback_used",
+                level="warning",
+                domain="ai",
+                provider=provider,
+                model=model,
+                reason=usage["fallback_reason"],
+                input_chars=len(text),
+            )
+            return payload, markdown, usage
+        log_event(
+            APP_LOGGER,
+            "ai.summary.completed",
+            domain="ai",
+            provider=provider,
+            model=model,
+            input_chars=len(text),
+        )
+        return result
+    except Exception as exc:
+        log_exception(
+            APP_LOGGER,
+            "ai.summary.failed",
+            exc,
+            domain="ai",
+            provider=provider,
+            model=model,
+            input_chars=len(text),
+        )
+        raise
 
 
 def run_analysis(
@@ -3833,13 +4027,38 @@ def run_analysis(
     ai_provider: str | None = None,
     ai_model: str | None = None,
 ) -> tuple[dict, int]:
+    log_event(
+        APP_LOGGER,
+        "document.analysis.started",
+        domain="document",
+        target_id=document_id,
+        force=force,
+        ai_provider=ai_provider or "",
+        ai_model=ai_model or "",
+    )
     with db_conn() as conn:
         doc = conn.execute("SELECT * FROM project_documents WHERE id=?", (document_id,)).fetchone()
         if not doc:
+            log_event(
+                APP_LOGGER,
+                "document.analysis.not_found",
+                level="warning",
+                domain="document",
+                target_id=document_id,
+            )
             return {"detail": "Document not found"}, 404
 
         file_path = Path(doc["stored_file_path"])
         if not file_path.exists():
+            log_event(
+                APP_LOGGER,
+                "document.analysis.storage_missing",
+                level="error",
+                domain="document",
+                target_id=document_id,
+                file_name=file_path.name,
+                file_path=str(file_path),
+            )
             conn.execute(
                 "UPDATE project_documents SET parsing_status=?, analysis_status=?, updated_at=? WHERE id=?",
                 ("failed", "failed", now_iso(), document_id),
@@ -3850,6 +4069,15 @@ def run_analysis(
         try:
             parsed = extract_document(file_path)
         except Exception as exc:
+            log_exception(
+                APP_LOGGER,
+                "document.parse.failed",
+                exc,
+                domain="document",
+                target_id=document_id,
+                file_name=file_path.name,
+                file_extension=file_path.suffix.lower(),
+            )
             conn.execute(
                 "UPDATE project_documents SET parsing_status=?, analysis_status=?, updated_at=? WHERE id=?",
                 ("failed", "failed", now_iso(), document_id),
@@ -3860,6 +4088,17 @@ def run_analysis(
         ocr_result = run_ocr_if_needed(parsed.text, file_path, parsed.kind, parsed.metadata)
         text = ocr_result.text or parsed.text
         ocr_status = ocr_result.status
+        if ocr_result.error_message:
+            log_event(
+                APP_LOGGER,
+                "document.ocr.warning",
+                level="warning" if ocr_status not in {"completed", "skipped"} else "info",
+                domain="ocr",
+                target_id=document_id,
+                file_name=file_path.name,
+                ocr_status=ocr_status,
+                message=ocr_result.error_message,
+            )
         input_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         selection = resolve_ai_model_selection(ai_provider, ai_model)
         cache_model_provider = selection["provider"] if selection["configured"] else "fallback"
@@ -3880,6 +4119,16 @@ def run_analysis(
                     ("completed", ocr_status, "cached", cached["id"], now_iso(), document_id),
                 )
                 conn.commit()
+                log_event(
+                    APP_LOGGER,
+                    "document.analysis.cached",
+                    domain="document",
+                    target_id=document_id,
+                    analysis_id=cached["id"],
+                    ocr_status=ocr_status,
+                    provider=cache_model_provider,
+                    model=cache_model_name,
+                )
                 return {"analysis_id": cached["id"], "status": "cached", "message": "Analysis reused from cache"}, 200
 
         try:
@@ -3887,6 +4136,16 @@ def run_analysis(
         except Exception as exc:
             output_json, output_md, usage = summarize_with_fallback(text, selection["provider"], selection["model"])
             usage["fallback_reason"] = str(exc)
+            log_event(
+                APP_LOGGER,
+                "document.analysis.ai_fallback_used",
+                level="warning",
+                domain="document",
+                target_id=document_id,
+                provider=selection["provider"],
+                model=selection["model"],
+                reason=str(exc),
+            )
 
         usage["extraction"] = parsed.metadata
         usage["ocr"] = ocr_result.to_dict()
@@ -3919,6 +4178,19 @@ def run_analysis(
             ("completed", ocr_status, "completed", analysis_id, now_iso(), document_id),
         )
         conn.commit()
+        log_event(
+            APP_LOGGER,
+            "document.analysis.completed",
+            domain="document",
+            target_id=document_id,
+            file_name=file_path.name,
+            parse_kind=parsed.kind,
+            char_count=len(text),
+            ocr_status=ocr_status,
+            analysis_id=analysis_id,
+            provider=usage.get("provider", ""),
+            model=usage.get("model", ""),
+        )
 
     return {"analysis_id": analysis_id, "status": "completed", "message": "Analysis completed"}, 200
 
@@ -4086,6 +4358,53 @@ def _backup_path_from_payload(conn: sqlite3.Connection, payload: dict[str, Any])
     return _resolve_allowed_backup_file_path(raw_path) if raw_path else None
 
 
+def external_access_status_payload() -> dict[str, Any]:
+    status_path = BASE_DIR / "temp" / "ngrok.status.json"
+    base_payload: dict[str, Any] = {
+        "enabled": False,
+        "provider": "ngrok",
+        "frontend_public_url": "",
+        "backend_public_url": "",
+        "frontend_local_url": "",
+        "backend_local_url": "",
+        "updated_at": "",
+        "warnings": [],
+    }
+    if not status_path.exists():
+        return base_payload
+    try:
+        parsed = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {**base_payload, "warnings": ["ngrok status file is unavailable or invalid."]}
+    if not isinstance(parsed, dict):
+        return {**base_payload, "warnings": ["ngrok status file has an invalid shape."]}
+    allowed_keys = {
+        "enabled",
+        "provider",
+        "frontend_public_url",
+        "backend_public_url",
+        "frontend_local_url",
+        "backend_local_url",
+        "backend_port",
+        "frontend_port",
+        "updated_at",
+        "warnings",
+    }
+    payload = {**base_payload}
+    for key in allowed_keys:
+        if key in parsed:
+            payload[key] = parsed[key]
+    payload["enabled"] = bool(payload.get("enabled"))
+    payload["provider"] = clean_text(payload.get("provider")) or "ngrok"
+    payload["warnings"] = payload["warnings"] if isinstance(payload.get("warnings"), list) else []
+    return payload
+
+
+@app.route("/api/external-access/status", methods=["GET"])
+def external_access_status():
+    return jsonify(external_access_status_payload())
+
+
 @app.route("/api/backups", methods=["GET"])
 def list_backups():
     with db_conn() as conn:
@@ -4183,6 +4502,153 @@ def backup_restore_api(backup_id: int):
             error_code="" if plan["can_restore"] else "validation_error",
         )
     return jsonify(plan)
+
+
+@app.route("/api/contracts", methods=["GET"])
+def list_contracts():
+    filters = {
+        "notice_id": request.args.get("notice_id"),
+        "corporation_id": request.args.get("corporation_id"),
+        "status": request.args.get("status"),
+        "review_status": request.args.get("review_status"),
+        "keyword": request.args.get("keyword"),
+    }
+    with db_conn() as conn:
+        return jsonify(list_contract_documents_payload(conn, filters))
+
+
+@app.route("/api/contracts/preview", methods=["POST"])
+def preview_contract():
+    payload = get_json_payload()
+    try:
+        with db_conn() as conn:
+            snapshot = build_contract_input_snapshot(
+                conn,
+                parse_int(payload.get("nara_notice_id")),
+                parse_int(payload.get("corporation_id")),
+                judgment_run_id=parse_int(payload.get("judgment_run_id")) or None,
+                custom_fields=payload.get("custom_fields") if isinstance(payload.get("custom_fields"), dict) else {},
+            )
+    except ContractInputError as exc:
+        return jsonify({"detail": exc.detail, "code": exc.code}), exc.status_code
+    validation = snapshot.get("validation") if isinstance(snapshot.get("validation"), dict) else {}
+    return jsonify(
+        {
+            "valid": bool(validation.get("valid")),
+            "errors": validation.get("errors", []),
+            "warnings": validation.get("warnings", []),
+            "snapshot": snapshot,
+        }
+    )
+
+
+@app.route("/api/contracts", methods=["POST"])
+def create_contract():
+    payload = get_json_payload()
+    try:
+        with db_conn() as conn:
+            contract = create_contract_document(conn, payload, STORAGE_ROOT)
+            operation_status = "failed" if contract.get("status") == "failed" else "completed"
+            record_operation_run(
+                conn,
+                operation_type="contract_create",
+                target_type="contract_document",
+                target_id=contract["id"],
+                status=operation_status,
+                request_payload={
+                    "nara_notice_id": payload.get("nara_notice_id"),
+                    "corporation_id": payload.get("corporation_id"),
+                    "judgment_run_id": payload.get("judgment_run_id"),
+                },
+                result_payload={"id": contract["id"], "status": contract.get("status")},
+                error_message=contract.get("error_message", "") if operation_status == "failed" else "",
+                error_code="contract_generation_failed" if operation_status == "failed" else "",
+            )
+            return jsonify(contract), 201
+    except ContractInputError as exc:
+        return jsonify({"detail": exc.detail, "code": exc.code}), exc.status_code
+
+
+@app.route("/api/contracts/<int:contract_id>", methods=["GET"])
+def get_contract(contract_id: int):
+    with db_conn() as conn:
+        payload = get_contract_document_payload(conn, contract_id)
+    if not payload:
+        return jsonify({"detail": "Not found"}), 404
+    return jsonify(payload)
+
+
+@app.route("/api/contracts/<int:contract_id>/download", methods=["GET"])
+def download_contract(contract_id: int):
+    with db_conn() as conn:
+        payload = get_contract_document_payload(conn, contract_id)
+    if not payload:
+        return jsonify({"detail": "Not found"}), 404
+    try:
+        path = resolve_contract_stored_path(STORAGE_ROOT, payload.get("stored_file_path", ""))
+    except ValueError as exc:
+        return jsonify({"detail": str(exc)}), 400
+    if not path or not path.exists():
+        return jsonify({"detail": "Contract DOCX file was not found."}), 404
+    response = send_file(
+        path,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        as_attachment=True,
+        download_name=payload.get("file_name") or path.name,
+    )
+    encoded_file_name = urllib.parse.quote(payload.get("file_name") or path.name)
+    response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_file_name}"
+    return response
+
+
+@app.route("/api/contracts/<int:contract_id>/review", methods=["PATCH"])
+def update_contract_review(contract_id: int):
+    payload = get_json_payload()
+    review_status = clean_text(payload.get("review_status"))
+    review_note = clean_text(payload.get("review_note"))
+    if review_status and review_status not in CONTRACT_REVIEW_STATUS_VALUES:
+        return jsonify({"detail": "Invalid review_status"}), 400
+    now = now_iso()
+    with db_conn() as conn:
+        current = get_contract_document_payload(conn, contract_id)
+        if not current:
+            return jsonify({"detail": "Not found"}), 404
+        assignments = ["review_note=?", "updated_at=?"]
+        values: list[Any] = [review_note, now]
+        if review_status:
+            assignments.insert(0, "review_status=?")
+            values.insert(0, review_status)
+        values.append(contract_id)
+        conn.execute(f"UPDATE contract_documents SET {', '.join(assignments)} WHERE id=?", values)
+        updated = get_contract_document_payload(conn, contract_id)
+        record_operation_run(
+            conn,
+            operation_type="contract_review_update",
+            target_type="contract_document",
+            target_id=contract_id,
+            status="completed",
+            request_payload={"review_status": review_status, "review_note": bool(review_note)},
+            result_payload={"id": contract_id, "review_status": updated.get("review_status") if updated else ""},
+        )
+    return jsonify(updated)
+
+
+@app.route("/api/contracts/<int:contract_id>", methods=["DELETE"])
+def delete_contract(contract_id: int):
+    with db_conn() as conn:
+        deleted = delete_contract_document(conn, contract_id, STORAGE_ROOT)
+        if not deleted:
+            return jsonify({"detail": "Not found"}), 404
+        record_operation_run(
+            conn,
+            operation_type="contract_delete",
+            target_type="contract_document",
+            target_id=contract_id,
+            status="completed",
+            request_payload={},
+            result_payload={"id": contract_id, "status": "deleted"},
+        )
+    return jsonify({"status": "deleted", "contract": deleted})
 
 
 @app.route("/api/corporations", methods=["GET"])
@@ -5282,6 +5748,8 @@ def upload_basis_document():
     effective_date = clean_text(request.form.get("effective_date"))
     source_url = clean_text(request.form.get("source_url"))
     memo = clean_text(request.form.get("memo"))
+    force_ocr = parse_bool_value(request.form.get("force_ocr"))
+    processing_options = {"force_ocr": force_ocr}
 
     target_dir = STORAGE_ROOT / "basis"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -5297,9 +5765,9 @@ def upload_basis_document():
             INSERT INTO basis_documents (
               title, category, document_version, issuing_agency, effective_date,
               source_url, original_file_name, stored_file_path, mime_type,
-              file_size, file_hash, memo, processing_status, parse_status,
+              file_size, file_hash, memo, metadata_json, processing_status, parse_status,
               ocr_status, chunk_status, index_status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending',
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending',
               'pending', 'pending', 'pending', ?, ?)
             """,
             (
@@ -5315,12 +5783,13 @@ def upload_basis_document():
                 file_size,
                 file_hash,
                 memo,
+                json.dumps({"options": processing_options}, ensure_ascii=False),
                 now,
                 now,
             ),
         )
         basis_document_id = cur.lastrowid
-        payload = process_basis_document(conn, basis_document_id)
+        payload = process_basis_document(conn, basis_document_id, processing_options)
     return jsonify(payload), 201
 
 
@@ -5330,7 +5799,7 @@ def get_basis_document(basis_document_id: int):
         row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
         if not row:
             return jsonify({"detail": "Basis document not found"}), 404
-        payload = basis_document_payload(conn, row, include_chunks=True)
+        payload = basis_document_payload(conn, row)
     return jsonify(payload)
 
 
@@ -5368,19 +5837,40 @@ def update_basis_document(basis_document_id: int):
 
 @app.route("/api/basis-documents/<int:basis_document_id>/reprocess", methods=["POST"])
 def reprocess_basis_document(basis_document_id: int):
+    request_payload = get_json_payload()
+    option_overrides = {}
+    if "force_ocr" in request_payload:
+        option_overrides["force_ocr"] = parse_bool_value(request_payload.get("force_ocr"))
     with db_conn() as conn:
         row = conn.execute("SELECT * FROM basis_documents WHERE id=?", (basis_document_id,)).fetchone()
         if not row:
             return jsonify({"detail": "Basis document not found"}), 404
-        payload = process_basis_document(conn, basis_document_id)
+        started_at = now_iso()
+        conn.execute(
+            """
+            UPDATE basis_documents
+            SET processing_status='parsing', parse_status='processing', ocr_status='processing',
+                chunk_status='pending', index_status='pending', error_message='', updated_at=?
+            WHERE id=?
+            """,
+            (started_at, basis_document_id),
+        )
+        conn.commit()
+        payload = process_basis_document(conn, basis_document_id, option_overrides or None)
         status = "completed" if payload.get("processing_status") == "completed" else payload.get("processing_status", "failed")
+        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+        effective_options = metadata.get("options") if isinstance(metadata.get("options"), dict) else option_overrides
         record_operation_run(
             conn,
             operation_type="basis_document_processing",
             target_type="basis_document",
             target_id=basis_document_id,
             status=status,
-            request_payload={"basis_document_id": basis_document_id, "action": "reprocess"},
+            request_payload={
+                "basis_document_id": basis_document_id,
+                "action": "reprocess",
+                "options": effective_options,
+            },
             result_payload={
                 "processing_status": payload.get("processing_status"),
                 "chunk_count": payload.get("chunk_count"),
@@ -5599,6 +6089,8 @@ def patch_basis_rule_candidate(candidate_id: int):
         updated, error = update_basis_rule_candidate(conn, candidate_id, payload)
     if error == "not_found":
         return jsonify({"detail": "Basis rule candidate not found"}), 404
+    if error.startswith("basis_index_unavailable:"):
+        return jsonify({"detail": error.split(":", 1)[1].strip(), "status": "basis_index_unavailable", "rebuild_required": True}), 409
     if error:
         return jsonify({"detail": error}), 400
     return jsonify(updated)
@@ -5611,6 +6103,8 @@ def approve_basis_rule_candidate(candidate_id: int):
         updated, error = update_basis_rule_candidate(conn, candidate_id, payload, forced_status="approved")
     if error == "not_found":
         return jsonify({"detail": "Basis rule candidate not found"}), 404
+    if error.startswith("basis_index_unavailable:"):
+        return jsonify({"detail": error.split(":", 1)[1].strip(), "status": "basis_index_unavailable", "rebuild_required": True}), 409
     if error:
         return jsonify({"detail": error}), 400
     return jsonify(updated)
@@ -5850,6 +6344,13 @@ def create_nara_notice_processing_placeholder(base_item: dict) -> tuple[dict, in
 
 
 def mark_nara_notice_job_failed(notice_id: int, exc: Exception) -> None:
+    log_exception(
+        APP_LOGGER,
+        "nara.notice.analysis.job_failed",
+        exc,
+        domain="nara",
+        target_id=notice_id,
+    )
     with db_conn() as conn:
         conn.execute(
             """
@@ -5869,6 +6370,12 @@ def run_nara_notice_analysis_job(
     ai_model: str | None = None,
 ) -> None:
     try:
+        log_event(
+            APP_LOGGER,
+            "nara.notice.analysis.job_started",
+            domain="nara",
+            target_id=notice_id,
+        )
         save_and_analyze_nara_notice_item(base_item, ai_provider=ai_provider, ai_model=ai_model)
     except Exception as exc:
         mark_nara_notice_job_failed(notice_id, exc)
@@ -5900,6 +6407,15 @@ def save_and_analyze_nara_notice_item(
     bid_ord = item_first(base_item, ["bidNtceOrd", "bid_ntce_ord"]) or "000"
     if not bid_no:
         return {"detail": "bidNtceNo is required"}, 400
+    log_event(
+        APP_LOGGER,
+        "nara.notice.save.started",
+        domain="nara",
+        bid_ntce_no=bid_no,
+        bid_ntce_ord=bid_ord,
+        ai_provider=ai_provider or "",
+        ai_model=ai_model or "",
+    )
 
     detail_bundle = fetch_nara_detail_bundle(bid_no, bid_ord)
     detail_items = detail_bundle.get("items", [])
@@ -6042,6 +6558,18 @@ def save_and_analyze_nara_notice_item(
                     download_status = "failed"
                     parse_status = "failed"
                     error_message = str(exc)
+                    log_exception(
+                        APP_LOGGER,
+                        "nara.attachment.processing_failed",
+                        exc,
+                        domain="nara",
+                        target_id=notice_id,
+                        bid_ntce_no=normalized["bid_ntce_no"],
+                        file_name=attachment["file_name"],
+                        file_extension=attachment["file_extension"],
+                        source_field=attachment["source_field"],
+                        source_url=attachment["source_url"],
+                    )
 
             attachment_records.append(
                 (
@@ -6075,6 +6603,16 @@ def save_and_analyze_nara_notice_item(
                 selection["model"],
             )
             _usage["fallback_reason"] = str(exc)
+            log_exception(
+                APP_LOGGER,
+                "nara.notice.ai_summary_failed",
+                exc,
+                domain="nara",
+                target_id=notice_id,
+                bid_ntce_no=normalized["bid_ntce_no"],
+                provider=selection["provider"],
+                model=selection["model"],
+            )
         summary_json["notice_requirements"] = notice_requirements
         summary_markdown = f"{summary_markdown}\n{render_notice_requirements_markdown(notice_requirements)}"
 
@@ -6094,6 +6632,18 @@ def save_and_analyze_nara_notice_item(
             preserve_existing_reason = "재분석이 부분 실패하여 기존 분석 결과를 유지했습니다." if previous_has_results else ""
         else:
             analysis_status = "completed"
+        if analysis_status == "partial_failed":
+            log_event(
+                APP_LOGGER,
+                "nara.notice.analysis.partial_failed",
+                level="warning",
+                domain="nara",
+                target_id=notice_id,
+                bid_ntce_no=normalized["bid_ntce_no"],
+                supported_count=supported_count,
+                failed_count=failed_count,
+                preserve_existing_reason=preserve_existing_reason,
+            )
 
         replace_existing_results = not previous_has_results or not preserve_existing_reason
         if replace_existing_results:
@@ -6153,6 +6703,18 @@ def save_and_analyze_nara_notice_item(
 
         result = get_nara_notice_with_attachments(conn, notice_id)
 
+    log_event(
+        APP_LOGGER,
+        "nara.notice.analysis.completed",
+        domain="nara",
+        target_id=notice_id,
+        bid_ntce_no=normalized["bid_ntce_no"],
+        attachment_count=len(attachments),
+        supported_count=supported_count,
+        failed_count=failed_count,
+        download_status=download_status,
+        analysis_status=analysis_status,
+    )
     return {"status": analysis_status, "notice": result}, 200
 
 

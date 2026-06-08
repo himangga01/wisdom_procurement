@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     pdf_reader_odl_enable_hybrid: bool = False
     pdf_reader_allow_pymupdf_fallback: bool = True
 
+    backend_log_dir: str = "./storage/logs"
+    backend_log_level: str = "INFO"
+    backend_log_max_mb: int = 20
+    backend_log_backups: int = 10
+    backend_log_format: str = "jsonl"
+    backend_log_request_body: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

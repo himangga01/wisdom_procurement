@@ -23,6 +23,7 @@ frontend/.env
 # Storage artifacts
 backend/storage/uploads/
 backend/storage/cache/
+backend/storage/logs/
 backend/storage/ocr-samples/
 backend/tests/nara-notice-pdf-samples/
 backend/tests/nara-pdf-samples/

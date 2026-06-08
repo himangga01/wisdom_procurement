@@ -478,9 +478,25 @@ POST /api/corporation-evidence-documents/{id}/apply-extracted-fields
 - HWP/HWPX 증빙자료가 많을 경우 PDF 변환 안내만으로 충분한가?
 - 이미지 증빙 OCR 품질이 부족할 경우 외부 Vision API 사용을 허용할 것인가?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 법인 증빙자료 업로드/분류/추출/후보 승인 흐름은 현재 코드에 구현되어 있습니다.
+- 추출 후보는 자동으로 법인 프로필에 반영되지 않고, 사용자가 선택/수정/승인한 값만 반영합니다.
+- DOCX 증빙자료는 현재 문단과 표 cell 텍스트를 함께 추출합니다.
+- 이 문서는 Phase 1.6 설계/이력 문서이며, 최신 전체 실행 기준은 `docs/current-code-documentation-audit.md`와 `docs/work-log.md`를 함께 봅니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Corporation evidence upload/classification/extraction/review flows are implemented.
+- Extracted candidates are not auto-applied; only selected/edited/approved values update the corporation profile.
+- DOCX evidence parsing currently includes paragraphs and table cells.
+- Treat this as a Phase 1.6 design/history document; use `docs/current-code-documentation-audit.md` and `docs/work-log.md` for the latest whole-service interpretation.
 
 ## Purpose
 This document defines the evidence-first corporation onboarding and evidence auto-extraction plan. The system should update corporation profiles from uploaded evidence documents instead of relying primarily on manual user input.

@@ -6,17 +6,22 @@ import type {
   BackupRun,
   BackupValidation,
   BasisDocument,
+  BasisDocumentChunk,
   BasisIndexStatus,
   BasisRuleCandidate,
   BasisRuleCandidateList,
   BasisRetrievalEvaluation,
   BasisSearchResponse,
+  ContractCustomFields,
+  ContractDocument,
+  ContractPreview,
   Corporation,
   CorporationEvidenceApplyResult,
   CorporationEvidenceDocument,
   CorporationReadiness,
   DashboardSummary,
   DocumentRecord,
+  ExternalAccessStatus,
   NaraNoticeSearchItem,
   NaraNoticeSearchResponse,
   NoticeCorporationComparison,
@@ -34,13 +39,29 @@ import type {
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:18000";
+const NEEDS_NGROK_SKIP_HEADER = (() => {
+  try {
+    return new URL(API_BASE).hostname.endsWith(".ngrok-free.app");
+  } catch {
+    return false;
+  }
+})();
 
-function buildApiUrl(path: string) {
+export function buildApiUrl(path: string) {
   return `${API_BASE}${path}`;
 }
 
+function withRuntimeHeaders(init?: RequestInit): RequestInit | undefined {
+  if (!NEEDS_NGROK_SKIP_HEADER) {
+    return init;
+  }
+  const headers = new Headers(init?.headers);
+  headers.set("ngrok-skip-browser-warning", "1");
+  return { ...init, headers };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init);
+  const res = await fetch(`${API_BASE}${path}`, withRuntimeHeaders(init));
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
     throw new Error(payload.detail || "Request failed");
@@ -54,6 +75,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   getDashboard: () => request<DashboardSummary>("/api/dashboard/summary"),
   getOperationsSummary: () => request<OperationsSummary>("/api/operations/summary"),
+  getExternalAccessStatus: () => request<ExternalAccessStatus>("/api/external-access/status"),
   listOperationRuns: (params: Record<string, string | undefined> = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -91,6 +113,50 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dry_run: true }),
     }),
+  listContracts: (params: Record<string, string | number | undefined> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") {
+        query.set(key, String(value));
+      }
+    });
+    return request<ContractDocument[]>(`/api/contracts?${query.toString()}`);
+  },
+  previewContract: (body: {
+    nara_notice_id: number;
+    corporation_id: number;
+    judgment_run_id?: number | null;
+    custom_fields?: ContractCustomFields;
+  }) =>
+    request<ContractPreview>("/api/contracts/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  createContract: (body: {
+    nara_notice_id: number;
+    corporation_id: number;
+    judgment_run_id?: number | null;
+    title?: string;
+    custom_fields?: ContractCustomFields;
+  }) =>
+    request<ContractDocument>("/api/contracts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  getContract: (id: number) => request<ContractDocument>(`/api/contracts/${id}`),
+  updateContractReview: (id: number, body: { review_status?: string; review_note?: string }) =>
+    request<ContractDocument>(`/api/contracts/${id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteContract: (id: number) =>
+    request<{ status: string; contract: ContractDocument }>(`/api/contracts/${id}`, {
+      method: "DELETE",
+    }),
+  getContractDownloadUrl: (id: number) => buildApiUrl(`/api/contracts/${id}/download`),
   getAiModelSettings: () => request<AiModelSettings>("/api/settings/ai-models"),
   getPdfReaderStatus: () => request<PdfReaderStatus>("/api/settings/pdf-reader/status"),
   listCorporations: () => request<Corporation[]>("/api/corporations"),
@@ -212,15 +278,18 @@ export const api = {
       body: formData,
     }),
   getBasisDocument: (id: number) => request<BasisDocument>(`/api/basis-documents/${id}`),
+  listBasisDocumentChunks: (id: number) => request<BasisDocumentChunk[]>(`/api/basis-documents/${id}/chunks`),
   updateBasisDocument: (id: number, body: Record<string, unknown>) =>
     request<BasisDocument>(`/api/basis-documents/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  reprocessBasisDocument: (id: number) =>
+  reprocessBasisDocument: (id: number, body: Record<string, unknown> = {}) =>
     request<BasisDocument>(`/api/basis-documents/${id}/reprocess`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     }),
   deleteBasisDocument: (id: number) =>
     request<{ status: string }>(`/api/basis-documents/${id}`, {

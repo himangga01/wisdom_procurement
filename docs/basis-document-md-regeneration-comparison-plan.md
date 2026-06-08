@@ -152,9 +152,35 @@ py -3.13 scripts/regenerate-real-basis-document-md.py `
 - 재생성 표 수가 기준 MD보다 많다. 이는 `find_tables()`가 짧은 제목/고시번호 조각을 표로 과검출하는 현상 때문이다.
 - 다음 보강은 표 후보 필터링, 표 bbox 병합, 표 header/row 품질 점수화가 핵심이다.
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+이 문서의 초기 구현은 PyMuPDF `find_tables()` 기반 Markdown 재생성 기준선을 만들기 위한 작업이었습니다.
+현재 서비스의 기본 기준문서 PDF reader는 OpenDataLoader 우선 `auto` 모드입니다.
+
+현재 해석:
+- `regenerated-basis-document.md`는 PyMuPDF 기반 역사적 baseline 산출물입니다.
+- `opendataloader-regenerated-basis-document.md`, `opendataloader-regenerated-basis-document-auto.md`, `opendataloader-regenerated-basis-document-fallback.md`는 OpenDataLoader 교체 이후 QA 산출물입니다.
+- 현재 RAG table 품질 판단은 exact row 문자열 일치보다 table-row token coverage를 우선합니다.
+- PyMuPDF는 fallback과 OCR 렌더링 보조 엔진으로 유지됩니다.
+- 최신 PDF/RAG 회귀 기준선은 전체 backend `134 passed`, `8 skipped`입니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Update
+Last updated: 2026-06-07
+
+The initial implementation in this document generated a PyMuPDF `find_tables()` Markdown baseline.
+The current service default basis PDF reader is OpenDataLoader-first `auto` mode.
+
+Interpretation:
+- `regenerated-basis-document.md` is a historical PyMuPDF baseline artifact.
+- `opendataloader-regenerated-basis-document.md`, `opendataloader-regenerated-basis-document-auto.md`, and `opendataloader-regenerated-basis-document-fallback.md` are post-replacement QA artifacts.
+- Current table-quality evaluation prioritizes table-row token coverage over exact row-string matching.
+- PyMuPDF remains fallback and OCR rendering helper.
+- Latest PDF/RAG backend baseline: `134 passed`, `8 skipped`.
 
 ## Purpose
 

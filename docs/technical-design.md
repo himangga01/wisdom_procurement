@@ -16,6 +16,17 @@
 - Phase 2 기준문서 자동 청킹과 로컬 인덱싱 준비
 - Phase 3 판단 엔진과 공고 수집 확장 가능 구조 확보
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+- 현재 PDF 추출은 OpenDataLoader 우선 `auto` 모드이며, PyMuPDF는 fallback과 OCR 렌더링 보조 엔진으로 유지한다.
+- 일반 문서, 나라장터 첨부 PDF, 기준문서 PDF는 `backend/app/pipelines/parser.py::extract_document()` 진입점을 공유한다.
+- DOCX 추출은 문단과 표 cell 텍스트를 모두 포함한다.
+- 기준문서 RAG 검색 source는 DB chunk 직접 검색이 아니라 `storage/basis-index/basis-index.json` JSON 운영 인덱스다.
+- JSON 기준문서 인덱스가 없거나 DB와 불일치하면 검색, 규칙 후보 승인, 판단 엔진 citation 사용을 차단하고 rebuild를 요구한다.
+- Phase 3 판단 엔진은 `지원 가능/불가`를 확정 판정처럼 보여주지 않고, 부족 조건, 필요 서류, 준비 가이드, citation 상태를 저장한다.
+- Phase 4 운영 기능은 운영 대시보드, 작업 이력/실패 관리, 백업/검증/복원계획 dry-run까지 포함한다.
+
 ## 부족조건 중심 판단 제품 원칙
 - 향후 판단 엔진의 핵심은 낙관적인 최종 판정 출력이 아니라 `현재 무엇이 부족한지`와 `지원하려면 무엇을 준비해야 하는지`를 설명하는 것이다.
 - Phase 3의 기본 결과는 `matched`, `missing`, `uncertain`, `needs_review`, `not_applicable`, `citation_missing` 같은 항목별 준비 상태로 설계한다.
@@ -56,7 +67,7 @@
 - 공고 상세/기초금액/면허제한/참가가능지역 API 재조회
 - 공고 메타데이터 저장
 - 공고 첨부 PDF/DOCX 자동 다운로드
-- 기존 PyMuPDF/DOCX 파싱 파이프라인 재사용
+- 기존 `extract_document()` 파싱 파이프라인 재사용(OpenDataLoader `auto` PDF + PyMuPDF fallback + DOCX 문단/표 cell)
 - 공고 단위 AI 요약 및 구조화 결과 저장
 - 설정 메뉴에서 나라장터 API 키 설정/연결 상태 확인
 
@@ -751,7 +762,7 @@ React Admin Portal
 9. 첨부파일 URL과 파일명을 정규화하여 `procurement_notice_attachments`에 upsert
 10. PDF/DOCX 첨부만 자동 다운로드
 11. 다운로드 파일을 로컬 저장소에 저장하고 해시 계산
-12. 기존 PyMuPDF/python-docx 파싱 파이프라인 실행
+12. 현재 `extract_document()` 파싱 파이프라인 실행(OpenDataLoader `auto` PDF + PyMuPDF fallback + python-docx 문단/표 cell)
 13. 공고 메타데이터와 추출 텍스트를 결합해 요약 입력 구성
 14. AI 요약 또는 fallback 요약 실행
 15. `procurement_notice_analyses`에 결과 저장
@@ -785,32 +796,33 @@ React Admin Portal
 
 ## 파싱 파이프라인
 - PDF
-  - Phase 1 개선 결정: 기존 `pypdf` 중심 추출에서 `PyMuPDF` 중심 추출로 교체한다.
-  - `PyMuPDF`로 페이지별 텍스트, 블록, 좌표, 읽기 순서 후보를 함께 추출한다.
+  - 현재 구현 결정: `OpenDataLoader PDF`를 우선 사용하고 실패 시 `PyMuPDF`로 fallback한다.
+  - `OpenDataLoader`는 Markdown/JSON/table metadata/page/bbox 정보를 추출한다.
+  - `PyMuPDF`는 fallback과 OCR 렌더링 보조 엔진으로 페이지별 텍스트, 블록, 좌표를 추출한다.
   - 텍스트 레이어가 충분하면 OCR 없이 정규화와 조달문서 후처리 단계로 이동한다.
   - 텍스트 양이 부족하거나 이미지형 페이지로 판단되면 OCR fallback 경로로 전환한다.
   - 기존 `pypdf`는 필요 시 비교/백업용 후보로만 남기고, 기본 엔진으로 사용하지 않는다.
 - DOCX
-  - 문단/표 텍스트 추출
+  - 문단과 표 cell 텍스트 추출
   - 줄바꿈 정규화
 - 공통
   - 문서 해시 생성
   - 추출 텍스트 저장
   - 페이지 번호, 블록 순서, 추출 엔진, 추출 문자 수, OCR 필요 여부를 메타데이터로 남긴다.
 
-### PDF 추출 엔진 교체 구현 계획
-1. 의존성에 `PyMuPDF`를 추가한다.
-2. `extract_text()`를 PDF/DOCX 분기만 처리하는 단순 함수에서 PDF 전용 추출 함수와 DOCX 추출 함수로 분리한다.
-3. PDF 추출 결과는 원문 텍스트 문자열뿐 아니라 페이지별 메타데이터를 함께 생성한다.
-4. 조달 공고문에서 자주 뭉개지는 표/항목을 보정하기 위해 공백, 항목 번호, 날짜/금액 주변 줄바꿈을 정규화한다.
-5. 추출 문자 수가 임계값 미만이면 `ocr_status=needs_ocr` 또는 OCR fallback으로 넘긴다.
-6. 기존 스모크 테스트에 실제 PDF 샘플 또는 텍스트 레이어가 있는 테스트 PDF를 추가해 회귀를 막는다.
-7. 이후 PaddleOCR 연결 시 `PyMuPDF`가 페이지 이미지를 렌더링하고 OCR 엔진이 해당 이미지를 읽는 구조로 확장한다.
+### PDF 추출 엔진 현재 구현
+1. 의존성에 `opendataloader-pdf==2.4.7`과 `PyMuPDF`가 포함되어 있다.
+2. `backend/app/pipelines/pdf_readers.py`가 `OpenDataLoaderPdfReader`, `PyMuPdfPdfReader`, `AutoPdfReader` adapter를 제공한다.
+3. `PDF_READER_ENGINE=auto`는 OpenDataLoader를 먼저 시도하고 Java/패키지/timeout/변환 실패 시 PyMuPDF로 fallback한다.
+4. PDF 추출 결과는 원문 텍스트뿐 아니라 page offset, table metadata, OCR 필요 여부, reader/fallback metadata를 함께 생성한다.
+5. 나라장터 첨부 분석과 일반 문서 분석, 기준문서 분석이 동일 parser 진입점을 사용한다.
+6. 기준문서 table metadata는 `table_row` chunk와 JSON basis index payload로 이어진다.
+7. PaddleOCR 연결 시 PyMuPDF 렌더링 경로는 OCR 보조 엔진으로 유지한다.
 
 ### 조달 PDF 샘플 기준 결정
 - 사용자 제공 샘플은 4페이지이며 기존 `pypdf`로도 약 5,414자 추출 가능했다.
-- 문제는 스캔 OCR이 아니라 표, 제목, 항목 번호, 본문 경계가 붙는 레이아웃 손실이다.
-- 따라서 Phase 1의 첫 개선은 OCR 엔진 교체가 아니라 `PyMuPDF` 기반 레이아웃 인식 추출로 한다.
+- 문제는 스캔 OCR이 아니라 표, 제목, 항목 번호, 본문 경계가 붙는 레이아웃/표 구조 손실이다.
+- 따라서 현재 개선 방향은 OpenDataLoader JSON/Markdown/table metadata를 우선 활용하고, PyMuPDF를 fallback으로 유지하는 것이다.
 - OCR은 텍스트 레이어가 부족한 PDF에만 fallback으로 적용한다.
 
 ## OCR 파이프라인
@@ -850,14 +862,14 @@ React Admin Portal
 ### PDF/DOCX 입력 처리
 - MVP는 파일 원본 자체보다 파싱/정규화된 텍스트를 주 입력으로 사용
 - 필요 시 파일 입력 지원은 별도 실험 가능
-- PDF 텍스트 추출 기본 엔진은 `PyMuPDF`로 한다.
-- DOCX는 `python-docx`를 유지한다.
+- PDF 텍스트 추출 기본 엔진은 OpenDataLoader 우선 `auto` 모드로 한다.
+- DOCX는 `python-docx`를 유지하되 문단과 표 cell 텍스트를 함께 추출한다.
 
 ### OCR 전략
 - 스캔 PDF는 로컬 OCR 우선
 - OCR 결과를 정규화 텍스트로 저장
 - 원본 추출 텍스트와 OCR 텍스트를 구분 보관
-- OCR은 모든 PDF에 무조건 적용하지 않고, `PyMuPDF` 추출 결과가 부족한 경우에만 fallback으로 적용한다.
+- OCR은 모든 PDF에 무조건 적용하지 않고, 현재 PDF reader 추출 결과가 부족한 경우에만 fallback으로 적용한다.
 
 ### 요약 프롬프트 전략
 - 역할: 조달문서 분석 보조관
@@ -1070,6 +1082,17 @@ wisdom_procurement/
 
 ## Summary
 Local-first admin portal for one administrator to manage corporations, projects, procurement documents, Nara Marketplace notice browsing, OCR, AI summarization, and later basis-document RAG and eligibility judgment.
+
+## Current Implementation Snapshot
+Last updated: 2026-06-07
+
+- PDF extraction defaults to OpenDataLoader-first `auto` mode with PyMuPDF fallback.
+- Target documents, Nara attachments, and basis PDFs share `extract_document()`.
+- DOCX extraction includes paragraphs and table cells.
+- Basis retrieval uses `storage/basis-index/basis-index.json` as the operational JSON index artifact.
+- Search, rule-candidate approval, and judgment citation usage require a valid JSON basis index.
+- Phase 3 judgment runs are gap-first outputs focused on missing requirements, required documents, preparation guidance, and citation status.
+- Phase 4 operations include dashboard, operation runs/failures, backups, validation, and restore dry-runs.
 
 ## Assumptions
 - single admin only in phase 1

@@ -1,5 +1,20 @@
 # 현재 서비스 전체 검증 보강 계획
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+이 문서는 전체 테스트, 빌드, UX, API 검증 중 발견한 테스트 인프라 이슈를 정리한 문서입니다.
+현재 기준으로 추가 반영해야 할 검증 포인트는 다음과 같습니다.
+
+- 전체 backend 최신 기준선: `134 passed`, `8 skipped`
+- PDF/RAG targeted tests: `22 passed`
+- 신규 PDF/RAG API regression tests: `4 passed`
+- 문서/인코딩 검증: `py -3.13 scripts/check-encoding.py`
+- whitespace 검증: `git diff --check`
+- 프론트엔드 빌드: `cd frontend; npm run build`
+- UX monkey는 `frontend/package.json`의 `ux:monkey` script와 Playwright Chromium으로 실행합니다.
+- 현재 PDF reader 운영 기본값은 OpenDataLoader 우선 `auto` 모드이며, 전체 backend tests는 빠른 회귀를 위해 일부 환경에서 PyMuPDF 기본값을 사용할 수 있습니다. OpenDataLoader 운영 경로는 별도 targeted/real-basis QA로 보완합니다.
+
 ## 한국어 버전
 
 ## 문서 목적
@@ -71,6 +86,22 @@ Playwright 의존성을 추가한 뒤 `npm audit`에서 Vite/esbuild 계열 mode
 
 ## Purpose
 Document the test-infrastructure gap found during full current-service verification and define the fix plan.
+
+## Current Code Update
+Last updated: 2026-06-07
+
+Current verification baseline:
+- full backend tests: `134 passed`, `8 skipped`
+- targeted PDF/RAG tests: `22 passed`
+- new PDF/RAG API regression tests: `4 passed`
+- encoding check: `py -3.13 scripts/check-encoding.py`
+- whitespace check: `git diff --check`
+- frontend build: `cd frontend; npm run build`
+- UX monkey: `frontend/package.json` `ux:monkey` script with Playwright Chromium
+
+Operational note:
+- Production PDF reader default is OpenDataLoader-first `auto` mode.
+- Some fast backend regression tests may set PyMuPDF as the default reader; OpenDataLoader paths remain covered by targeted and real-basis QA.
 
 ## Verification Scope
 - Backend tests: `py -3.13 -m pytest backend/tests -q`

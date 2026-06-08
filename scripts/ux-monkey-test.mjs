@@ -11,6 +11,7 @@ const DEFAULT_ROUTES = [
   "/nara-saved-notices",
   "/notice-comparison",
   "/judgment-runs",
+  "/contracts",
   "/nara-collection-runs",
   "/documents",
   "/basis-documents",
@@ -19,6 +20,7 @@ const DEFAULT_ROUTES = [
   "/corporations",
   "/projects",
   "/settings/integrations/nara",
+  "/settings/external-access",
 ];
 
 const HELP = `
@@ -89,7 +91,7 @@ function pick(items, random) {
 }
 
 function isDangerousLabel(label) {
-  return /delete|remove|restore|approve|reject|backup|retry|run|save|submit|삭제|제거|복원|승인|반려|백업|재시도|실행|저장|등록|생성/i.test(
+  return /delete|remove|restore|approve|reject|backup|retry|run|save|submit|download|copy|ngrok|external|삭제|제거|복원|승인|반려|백업|재시도|실행|저장|등록|생성|다운로드|복사|외부/i.test(
     label,
   );
 }
@@ -158,6 +160,11 @@ async function assertPageUsable(page) {
   }
 }
 
+async function gotoRoute(page, baseUrl, route, timeout) {
+  await page.goto(new URL(route, baseUrl).toString(), { timeout, waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle", { timeout: 1500 }).catch(() => {});
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -187,7 +194,7 @@ async function main() {
 
   try {
     for (const route of DEFAULT_ROUTES) {
-      await page.goto(new URL(route, args.baseUrl).toString(), { timeout: args.timeout, waitUntil: "networkidle" });
+      await gotoRoute(page, args.baseUrl, route, args.timeout);
       await assertPageUsable(page);
       visited.add(route);
     }
@@ -196,7 +203,7 @@ async function main() {
       const actionRoll = random();
       if (actionRoll < 0.25) {
         const route = pick(DEFAULT_ROUTES, random);
-        await page.goto(new URL(route, args.baseUrl).toString(), { timeout: args.timeout, waitUntil: "networkidle" });
+        await gotoRoute(page, args.baseUrl, route, args.timeout);
         visited.add(route);
       } else if (actionRoll < 0.65) {
         await randomSafeClick(page, random, args.allowDangerous);
@@ -210,7 +217,7 @@ async function main() {
       const fs = await import("node:fs/promises");
       await fs.mkdir(args.screenshotDir, { recursive: true });
       for (const route of visited) {
-        await page.goto(new URL(route, args.baseUrl).toString(), { timeout: args.timeout, waitUntil: "networkidle" });
+        await gotoRoute(page, args.baseUrl, route, args.timeout);
         const fileName = route === "/" ? "root.png" : `${route.slice(1).replaceAll("/", "__")}.png`;
         await page.screenshot({ path: `${args.screenshotDir}/${fileName}`, fullPage: true });
       }

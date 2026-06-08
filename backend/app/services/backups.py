@@ -6,7 +6,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from app.core.logging import get_logger, log_event, log_exception
+
 KST = timezone(timedelta(hours=9))
+LOGGER = get_logger("services.backups")
 BACKUP_VERSION = "phase4_backup_v1"
 REQUIRED_STORAGE_DIRS = [
     "uploads",
@@ -14,6 +17,7 @@ REQUIRED_STORAGE_DIRS = [
     "basis",
     "basis-index",
     "nara-notices",
+    "contracts",
 ]
 
 
@@ -40,10 +44,22 @@ def sha256_file(path: Path) -> str:
 def create_sqlite_snapshot(sqlite_path: Path, snapshot_path: Path) -> None:
     if snapshot_path.exists():
         snapshot_path.unlink()
+    log_event(
+        LOGGER,
+        "backup.sqlite_snapshot.started",
+        sqlite_path=str(sqlite_path),
+        snapshot_path=str(snapshot_path),
+    )
     source = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
     target = sqlite3.connect(str(snapshot_path))
     try:
         source.backup(target)
+        log_event(
+            LOGGER,
+            "backup.sqlite_snapshot.completed",
+            snapshot_path=str(snapshot_path),
+            file_size_bytes=snapshot_path.stat().st_size if snapshot_path.exists() else 0,
+        )
     finally:
         target.close()
         source.close()
@@ -81,6 +97,12 @@ def create_backup_run(conn: sqlite3.Connection, *, sqlite_path: Path, storage_ro
     backup_root = storage_root / "backups"
     backup_root.mkdir(parents=True, exist_ok=True)
     now = _now_iso()
+    log_event(
+        LOGGER,
+        "backup.create.started",
+        sqlite_path=str(sqlite_path),
+        storage_root=str(storage_root),
+    )
     cur = conn.execute(
         """
         INSERT INTO backup_runs (
@@ -138,6 +160,25 @@ def create_backup_run(conn: sqlite3.Connection, *, sqlite_path: Path, storage_ro
             included_files.append("manifest.json")
 
         validation = validate_backup_file(backup_path)
+        if validation["valid"]:
+            log_event(
+                LOGGER,
+                "backup.validation.completed",
+                backup_id=backup_id,
+                file_name=file_name,
+                file_size_bytes=backup_path.stat().st_size,
+                warning_count=len(validation.get("warnings", [])),
+            )
+        else:
+            log_event(
+                LOGGER,
+                "backup.validation.failed",
+                level="warning",
+                backup_id=backup_id,
+                file_name=file_name,
+                error_count=len(validation.get("errors", [])),
+                warning_count=len(validation.get("warnings", [])),
+            )
         completed_at = _now_iso()
         conn.execute(
             """
@@ -159,7 +200,24 @@ def create_backup_run(conn: sqlite3.Connection, *, sqlite_path: Path, storage_ro
                 backup_id,
             ),
         )
+        log_event(
+            LOGGER,
+            "backup.create.completed",
+            backup_id=backup_id,
+            status="completed" if validation["valid"] else "failed",
+            file_name=file_name,
+            included_file_count=len(included_files),
+        )
     except Exception as exc:
+        log_exception(
+            LOGGER,
+            "backup.create.failed",
+            exc,
+            backup_id=backup_id,
+            file_name=file_name,
+            sqlite_path=str(sqlite_path),
+            storage_root=str(storage_root),
+        )
         completed_at = _now_iso()
         validation = {
             "valid": False,
@@ -199,6 +257,7 @@ def create_backup_run(conn: sqlite3.Connection, *, sqlite_path: Path, storage_ro
 
 
 def validate_backup_file(path: Path) -> dict[str, Any]:
+    log_event(LOGGER, "backup.validate.started", file_path=str(path))
     result: dict[str, Any] = {
         "valid": False,
         "errors": [],
@@ -209,6 +268,7 @@ def validate_backup_file(path: Path) -> dict[str, Any]:
     }
     if not path.exists():
         result["errors"].append("Backup file does not exist.")
+        log_event(LOGGER, "backup.validate.failed", level="warning", file_path=str(path), error_count=1)
         return result
     try:
         with zipfile.ZipFile(path, "r") as zip_file:
@@ -246,13 +306,31 @@ def validate_backup_file(path: Path) -> dict[str, Any]:
                 if not any(name.startswith(prefix) for name in names):
                     result["warnings"].append(f"{prefix} has no files in this backup.")
     except (OSError, zipfile.BadZipFile, json.JSONDecodeError) as exc:
+        log_exception(LOGGER, "backup.validate.exception", exc, file_path=str(path))
         result["errors"].append(str(exc))
     result["valid"] = not result["errors"]
+    log_event(
+        LOGGER,
+        "backup.validate.completed" if result["valid"] else "backup.validate.failed",
+        level="info" if result["valid"] else "warning",
+        file_path=str(path),
+        valid=result["valid"],
+        error_count=len(result["errors"]),
+        warning_count=len(result["warnings"]),
+    )
     return result
 
 
 def restore_plan_for_backup(path: Path) -> dict[str, Any]:
+    log_event(LOGGER, "backup.restore_plan.started", file_path=str(path))
     validation = validate_backup_file(path)
+    log_event(
+        LOGGER,
+        "backup.restore_plan.completed",
+        file_path=str(path),
+        can_restore=bool(validation["valid"]),
+        error_count=len(validation.get("errors", [])),
+    )
     return {
         "dry_run": True,
         "can_restore": bool(validation["valid"]),

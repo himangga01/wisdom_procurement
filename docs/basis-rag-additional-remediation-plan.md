@@ -228,7 +228,7 @@ JSON 인덱스는 생성되지만 검색에 직접 사용되지 않습니다.
 단계적으로 JSON-index-first 검색으로 전환합니다.
 
 1단계:
-- `index_source: db_chunks_completed_indexed` 유지
+- 과거 계획은 DB source 노출이었지만, 현재 구현은 `index_source: json_basis_index`를 사용한다.
 - status/validate/rebuild API 추가
 
 2단계:
@@ -265,6 +265,16 @@ JSON 인덱스는 생성되지만 검색에 직접 사용되지 않습니다.
 - JSON 인덱스 상태를 API와 운영 화면에서 확인할 수 있다.
 - 검색이 JSON 인덱스를 운영 source로 사용하거나, 최소한 JSON 인덱스 불일치를 명시적으로 보고한다.
 
+## 현재 코드 기준 업데이트
+최종 갱신일: 2026-06-07
+
+- 이 문서의 주요 RAG 보강 항목은 구현 완료 상태로 유지됩니다.
+- 안정적인 `extraction_key` 기반 재추출 매칭이 적용되어 관리자가 수정한 `condition_text`가 매칭 key를 흔들지 않습니다.
+- JSON basis index는 운영 검색 산출물이며, 검색/승인/판단 citation은 인덱스 유효성을 요구합니다.
+- OpenDataLoader 전환 이후 기준문서 table metadata와 `table_row` chunk가 추가되었습니다.
+- 추가 PDF/RAG 보강으로 PyMuPDF fallback page offset, OpenDataLoader nested text, DOCX 표 cell 추출, 긴 문단 overlap이 수정되었습니다.
+- 최신 전체 backend 기준선은 `134 passed`, `8 skipped`입니다.
+
 ## Questions for Product Owner
 - 승인 후보의 citation 위치만 바뀐 경우 즉시 `needs_review`로 내리는 정책이 맞는가?
 - JSON 인덱스 손상 시 검색을 완전히 막을지, 운영 경고와 함께 DB fallback을 허용할지 최종 결정이 필요하다.
@@ -275,7 +285,7 @@ JSON 인덱스는 생성되지만 검색에 직접 사용되지 않습니다.
 # AI / Engineering Version (English)
 
 ## Implementation Status
-Last updated: 2026-05-31
+Last updated: 2026-06-07
 
 - [x] Preserve manually reviewed rule-candidate fields during re-extraction.
 - [x] Block rule-candidate extraction for failed/unindexed basis documents.
@@ -283,6 +293,11 @@ Last updated: 2026-05-31
 - [x] Prefer stable `extraction_key` matching instead of editable `condition_text`.
 - [x] Use the JSON basis index as the retrieval source.
 - [x] Add regression tests and verify backend/frontend builds.
+- [x] Add OpenDataLoader table metadata and `table_row` chunks.
+- [x] Fix PyMuPDF fallback page offsets.
+- [x] Preserve nested OpenDataLoader text/table-cell content.
+- [x] Include DOCX table-cell text in extraction.
+- [x] Fix long single-paragraph chunk overlap.
 
 ## Purpose
 This document defines the remediation plan for all remaining basis-document RAG issues identified in the additional code review.
@@ -389,7 +404,7 @@ Legacy migration:
 ## P2-4: Move Search To JSON-Index-First
 
 Stage 1:
-- keep DB source and expose `index_source`
+- historical plan was to keep DB source and expose `index_source`; current implementation uses `index_source: json_basis_index`
 - add status/validate/rebuild APIs
 
 Stage 2:

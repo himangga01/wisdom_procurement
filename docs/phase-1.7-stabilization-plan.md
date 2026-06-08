@@ -282,9 +282,25 @@ git diff --check
 - 비교 결과를 PDF/Excel로 내보내는 기능은 Phase 1.8로 넘겨도 될까요?
 - 법인 정보 변경 시 과거 비교 이력을 snapshot으로 유지할까요, 아니면 최신 법인 정보 기준으로만 다시 비교할까요?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- Phase 1.7의 공고 요구조건 추출/법인 비교 preview는 Phase 3 판단 엔진과 `judgment_runs`로 확장되었습니다.
+- 현재 판단 결과는 부족조건/필요서류/준비가이드/citation 상태 중심이며 확정 합격 판정이 아닙니다.
+- 나라장터 공고 첨부 PDF/DOCX 분석은 OpenDataLoader 우선 `auto` parser 정책을 공유합니다.
+- 이 문서는 안정화 계획 이력이며, 최신 판단/RAG 구현 상태는 `docs/eligibility-rag-implementation-plan.md`와 `docs/current-code-documentation-audit.md`를 우선합니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Phase 1.7 notice requirement extraction and corporation comparison preview have been extended into Phase 3 judgment runs.
+- Judgment output is gap/required-document/preparation-guidance/citation-status focused, not a final eligibility verdict.
+- Nara PDF/DOCX attachment analysis shares the OpenDataLoader-first `auto` parser policy.
+- This is a stabilization-plan history document; prefer `docs/eligibility-rag-implementation-plan.md` and `docs/current-code-documentation-audit.md` for current judgment/RAG state.
 
 ## Purpose
 This document defines the stabilization plan for Phase 1.7 `Gap Preview` in `SMART Procurement Calculator`.

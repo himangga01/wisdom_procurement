@@ -18,7 +18,7 @@
 -> 공고 메타데이터 저장
 -> 공고 첨부파일 URL 수집
 -> PDF/DOCX만 다운로드
--> 기존 PyMuPDF/DOCX 파싱
+-> 현재 `extract_document()` 파싱(OpenDataLoader `auto` PDF + PyMuPDF fallback + DOCX 문단/표 cell)
 -> 기존 AI 요약 파이프라인 재사용
 ```
 
@@ -229,7 +229,7 @@
    - URL, 파일명, 확장자, 지원 여부, 다운로드 상태
 6. PDF/DOCX만 다운로드
    - 기존 `project_documents` 또는 별도 `notice_documents`로 연결
-   - 기존 PyMuPDF/DOCX 파싱 및 AI 요약 재사용
+   - 현재 `extract_document()` 파싱 및 AI 요약 재사용
 7. 지원 제외 파일 처리
    - `hwp`, `hwpx`, `xlsx`는 자동 분석하지 않고 UI에 “지원 제외” 표시
 
@@ -249,9 +249,27 @@
   - HWP/HWPX 변환
   - 낙찰/계약 이력 분석
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 나라장터 연동은 공공데이터포털 API 기반 조회/저장/첨부 다운로드/분석 흐름으로 구현되어 있습니다.
+- 공고 첨부 PDF/DOCX 분석은 일반 문서와 동일한 `extract_document()` parser 정책을 사용합니다.
+- 현재 PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드입니다.
+- 첨부 URL DNS rebinding/shared address 보강은 기록-only 보안 이슈로 남아 있습니다.
+- API 키는 화면/로그/문서에 전체 값이 노출되지 않아야 합니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Nara integration is implemented through Public Data Portal API search/save/attachment download/analysis flows.
+- Nara PDF/DOCX attachments share the same `extract_document()` parser policy as normal documents.
+- Current PDF reader default is OpenDataLoader-first `auto` mode.
+- Attachment URL DNS rebinding/shared-address hardening remains a record-only security issue.
+- Full API keys must never be exposed in UI, logs, or docs.
 
 ## Purpose
 This document summarizes the Nara Marketplace API documents under `source/api_doc` and maps them to the next implementation step for SMART Procurement Calculator.

@@ -756,9 +756,27 @@ frontend/
 - 다운로드한 원본 PDF를 사용자가 로컬에서 다시 받을 수 있게 해야 하나요?
 - 저장된 공고 삭제 시 다운로드한 첨부파일도 함께 삭제할까요, 아니면 보관할까요?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 나라장터 게시판은 API 기반 검색, 상세 저장, 첨부 다운로드/분석, 저장 공고 상세 화면으로 구현되어 있습니다.
+- 저장 공고 요구조건 추출, 법인-공고 비교, 판단 실행, 나라장터 자동 수집 이력 화면이 Phase 3/4 범위로 확장되었습니다.
+- 첨부 PDF/DOCX는 현재 OpenDataLoader 우선 `auto` parser 정책을 공유합니다.
+- HTML 크롤링은 기본 범위가 아니며, API 기반 수집을 우선합니다.
+- 첨부 URL DNS rebinding/shared address 보강은 기록-only 보안 이슈로 남아 있습니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Nara board implements API search, notice save, attachment download/analysis, and saved notice detail views.
+- Saved notice requirements, corporation-notice comparison, judgment runs, and Nara collection runs are now part of Phase 3/4 scope.
+- PDF/DOCX attachments share the OpenDataLoader-first `auto` parser policy.
+- HTML crawling is not the default scope; API-based collection remains primary.
+- Attachment URL DNS rebinding/shared-address hardening remains record-only.
 
 ## Purpose
 This document defines the UX and implementation design for the `Nara Marketplace Board` feature.

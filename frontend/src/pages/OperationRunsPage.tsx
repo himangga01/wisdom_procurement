@@ -12,6 +12,9 @@ const operationTypeLabels: Record<string, string> = {
   basis_rule_candidate_extraction: "규칙 후보 추출",
   backup_create: "백업 생성",
   backup_restore: "복원 검증",
+  contract_create: "계약서 생성",
+  contract_review_update: "계약서 검토 변경",
+  contract_delete: "계약서 삭제",
 };
 
 function statusTone(status: string) {

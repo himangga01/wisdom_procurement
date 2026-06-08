@@ -199,6 +199,9 @@ export function NaraSavedNoticeDetailPage() {
           <Link to="/nara-saved-notices" className="link-button link-button--soft">
             목록
           </Link>
+          <Link to={`/contracts?notice_id=${notice.id}`} className="link-button link-button--soft">
+            계약서 초안 생성
+          </Link>
         </div>
       </div>
 

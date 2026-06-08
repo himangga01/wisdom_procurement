@@ -14,10 +14,13 @@ from typing import Any
 
 import fitz
 
+from app.core.logging import get_logger, log_event, log_exception
+
 
 ODL_ENGINE_NAME = "opendataloader-pdf"
 PYMUPDF_ENGINE_NAME = "PyMuPDF"
 DEFAULT_ODL_VERSION = "2.4.7"
+LOGGER = get_logger("pipelines.pdf_readers")
 
 
 class PdfReaderError(RuntimeError):
@@ -34,11 +37,53 @@ def read_pdf_document(file_path: str | Path) -> PdfReadResult:
     engine = _configured_engine()
 
     path = Path(file_path)
+    log_event(
+        LOGGER,
+        "pdf_reader.started",
+        domain="pdf_reader",
+        configured_engine=engine,
+        file_name=path.name,
+        file_size_bytes=path.stat().st_size if path.exists() else 0,
+    )
     if engine == "pymupdf":
-        return PyMuPdfPdfReader().read(path)
+        result = PyMuPdfPdfReader().read(path)
+        log_event(
+            LOGGER,
+            "pdf_reader.completed",
+            domain="pdf_reader",
+            engine=result.metadata.get("engine"),
+            file_name=path.name,
+            page_count=result.metadata.get("page_count"),
+            char_count=len(result.text),
+            table_count=result.metadata.get("table_count"),
+        )
+        return result
     if engine == "opendataloader":
-        return OpenDataLoaderPdfReader().read(path)
-    return AutoPdfReader().read(path)
+        result = OpenDataLoaderPdfReader().read(path)
+        log_event(
+            LOGGER,
+            "pdf_reader.completed",
+            domain="pdf_reader",
+            engine=result.metadata.get("engine"),
+            file_name=path.name,
+            page_count=result.metadata.get("page_count"),
+            char_count=len(result.text),
+            table_count=result.metadata.get("table_count"),
+        )
+        return result
+    result = AutoPdfReader().read(path)
+    log_event(
+        LOGGER,
+        "pdf_reader.completed",
+        domain="pdf_reader",
+        engine=result.metadata.get("engine"),
+        fallback_from=result.metadata.get("fallback_from", ""),
+        file_name=path.name,
+        page_count=result.metadata.get("page_count"),
+        char_count=len(result.text),
+        table_count=result.metadata.get("table_count"),
+    )
+    return result
 
 
 def pdf_reader_status() -> dict[str, Any]:
@@ -70,6 +115,20 @@ class PyMuPdfPdfReader:
                     }
                 )
 
+        text_cursor = 0
+        has_rendered_page = False
+        for page_text, metadata in zip(page_texts, page_metadata):
+            if page_text:
+                if has_rendered_page:
+                    text_cursor += 2
+                metadata["char_start"] = text_cursor
+                text_cursor += len(page_text)
+                metadata["char_end"] = text_cursor
+                has_rendered_page = True
+            else:
+                metadata["char_start"] = text_cursor
+                metadata["char_end"] = text_cursor
+
         text = _normalize_procurement_text("\n\n".join(x for x in page_texts if x))
         return PdfReadResult(
             text=text,
@@ -89,6 +148,14 @@ class OpenDataLoaderPdfReader:
     def read(self, path: Path) -> PdfReadResult:
         status = self.status()
         if not status["available"]:
+            log_event(
+                LOGGER,
+                "pdf_reader.opendataloader.unavailable",
+                level="warning",
+                domain="pdf_reader",
+                file_name=path.name,
+                errors=status["errors"],
+            )
             raise PdfReaderError("; ".join(status["errors"]) or "OpenDataLoader PDF is unavailable.")
 
         timeout_seconds = _int_env("PDF_READER_ODL_TIMEOUT_SECONDS", 180, minimum=1)
@@ -111,6 +178,19 @@ class OpenDataLoaderPdfReader:
                 "image_output": "off",
                 "threads": threads,
             }
+            log_event(
+                LOGGER,
+                "pdf_reader.opendataloader.started",
+                domain="pdf_reader",
+                file_name=path.name,
+                options={
+                    "table_method": table_method,
+                    "reading_order": reading_order,
+                    "format": output_format,
+                    "threads": threads,
+                    "timeout_seconds": timeout_seconds,
+                },
+            )
             self._run_convert(args, timeout_seconds)
             json_path = _first_output(output_dir, ".json")
             md_path = _first_output(output_dir, ".md")
@@ -133,6 +213,16 @@ class OpenDataLoaderPdfReader:
             table_count = len(tables)
             table_row_count = sum(int(table.get("row_count") or 0) for table in tables)
             page_count = _int_value(payload.get("number of pages"), len(pages))
+            log_event(
+                LOGGER,
+                "pdf_reader.opendataloader.completed",
+                domain="pdf_reader",
+                file_name=path.name,
+                page_count=page_count,
+                char_count=len(text),
+                table_count=table_count,
+                table_row_count=table_row_count,
+            )
 
             return PdfReadResult(
                 text=text,
@@ -196,11 +286,35 @@ class OpenDataLoaderPdfReader:
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
+            log_exception(
+                LOGGER,
+                "pdf_reader.opendataloader.timeout",
+                exc,
+                domain="pdf_reader",
+                file_name=Path(args.get("input_path", "")).name,
+                timeout_seconds=timeout_seconds,
+            )
             raise PdfReaderError(f"OpenDataLoader timed out after {timeout_seconds} seconds.") from exc
         except OSError as exc:
+            log_exception(
+                LOGGER,
+                "pdf_reader.opendataloader.process_failed",
+                exc,
+                domain="pdf_reader",
+                file_name=Path(args.get("input_path", "")).name,
+            )
             raise PdfReaderError(f"OpenDataLoader process failed: {exc}") from exc
         if process.returncode != 0:
             output = "\n".join(part.strip() for part in [process.stdout, process.stderr] if part.strip())
+            log_event(
+                LOGGER,
+                "pdf_reader.opendataloader.failed",
+                level="error",
+                domain="pdf_reader",
+                file_name=Path(args.get("input_path", "")).name,
+                returncode=process.returncode,
+                message=output[:1200] or f"OpenDataLoader exited with code {process.returncode}.",
+            )
             raise PdfReaderError(output[:1200] or f"OpenDataLoader exited with code {process.returncode}.")
 
 
@@ -211,7 +325,23 @@ class AutoPdfReader:
             return OpenDataLoaderPdfReader().read(path)
         except Exception as exc:
             if not fallback_enabled:
+                log_exception(
+                    LOGGER,
+                    "pdf_reader.auto.failed",
+                    exc,
+                    domain="pdf_reader",
+                    file_name=path.name,
+                    fallback_enabled=False,
+                )
                 raise
+            log_exception(
+                LOGGER,
+                "pdf_reader.fallback.pymupdf",
+                exc,
+                domain="pdf_reader",
+                file_name=path.name,
+                fallback_enabled=True,
+            )
             fallback = PyMuPdfPdfReader().read(path)
             fallback.metadata["engine"] = PYMUPDF_ENGINE_NAME
             fallback.metadata["fallback_from"] = ODL_ENGINE_NAME
@@ -336,10 +466,12 @@ def _collect_page_parts(
         if node_type in {"paragraph", "heading", "caption", "list item"}:
             text = _clean_text(node.get("content"))
             page_number = _int_value(node.get("page number") or node.get("page_number") or node.get("page"), 0)
+            if not text:
+                text = _clean_text(_extract_all_content(node))
             if text and page_number:
                 prefix = "# " if node_type == "heading" else ""
                 parts_by_page.setdefault(page_number, []).append(f"{prefix}{text}")
-            return
+                return
         for value in node.values():
             _collect_page_parts(value, parts_by_page, table_by_object_id, allowed_table_ids, table_ids_by_page)
     elif isinstance(node, list):
@@ -366,7 +498,7 @@ def _table_to_metadata(table: dict[str, Any], sequence: int) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for row_index, row in enumerate(table.get("rows", []) if isinstance(table.get("rows"), list) else [], start=1):
         cells = row.get("cells", []) if isinstance(row, dict) else []
-        cell_texts = [_cell_text(cell) for cell in cells if isinstance(cell, dict)]
+        cell_texts = [_cell_text(cell) if isinstance(cell, dict) else _clean_text(cell) for cell in cells]
         if any(cell_texts):
             rows.append(
                 {
@@ -398,7 +530,7 @@ def _cell_text(cell: dict[str, Any]) -> str:
                 text = _clean_text(node.get("content"))
                 if text:
                     parts.append(text)
-                return
+                    return
             for value in node.values():
                 walk(value)
         elif isinstance(node, list):
@@ -466,8 +598,7 @@ def _normalize_procurement_text(text: str) -> str:
     text = re.sub(r"(?<=[가-힣)])(?=\d{4}\.\s*\d{1,2}\.\s*\d{1,2})", "\n", text)
     text = re.sub(r"(?<=다)(?=\s*[-가-힣])", "\n", text)
 
-    lines = [line.strip() for line in text.splitlines()]
-    return "\n".join(line for line in lines if line).strip()
+    return _normalize_lines_preserving_paragraphs(text)
 
 
 def _normalize_odl_text(text: str) -> str:
@@ -476,8 +607,21 @@ def _normalize_odl_text(text: str) -> str:
     text = text.replace("\u2024", ".")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
+    return _normalize_lines_preserving_paragraphs(text)
+
+
+def _normalize_lines_preserving_paragraphs(text: str) -> str:
     lines = [line.strip() for line in text.splitlines()]
-    return "\n".join(line for line in lines if line).strip()
+    normalized: list[str] = []
+    blank_seen = False
+    for line in lines:
+        if line:
+            normalized.append(line)
+            blank_seen = False
+        elif normalized and not blank_seen:
+            normalized.append("")
+            blank_seen = True
+    return "\n".join(normalized).strip()
 
 
 def _clean_text(value: Any) -> str:

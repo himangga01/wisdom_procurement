@@ -76,6 +76,25 @@ class ParserTests(unittest.TestCase):
             self.assertIn("조달 테스트 사업", text)
             self.assertIn("61,864,000", text)
 
+    def test_docx_extraction_includes_table_cells(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            docx_path = Path(tmp) / "notice-table.docx"
+            doc = Document()
+            doc.add_paragraph("Procurement notice")
+            table = doc.add_table(rows=2, cols=2)
+            table.cell(0, 0).text = "Requirement"
+            table.cell(0, 1).text = "Value"
+            table.cell(1, 0).text = "License"
+            table.cell(1, 1).text = "Forest business license"
+            doc.save(docx_path)
+
+            text, kind = extract_text_from_file(docx_path)
+
+        self.assertEqual(kind, "docx")
+        self.assertIn("Procurement notice", text)
+        self.assertIn("Requirement | Value", text)
+        self.assertIn("License | Forest business license", text)
+
 
 if __name__ == "__main__":
     unittest.main()

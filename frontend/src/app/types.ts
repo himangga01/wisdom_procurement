@@ -156,6 +156,19 @@ export type PdfReaderStatus = {
   fallback_enabled: boolean;
 };
 
+export type ExternalAccessStatus = {
+  enabled: boolean;
+  provider: string;
+  frontend_public_url: string;
+  backend_public_url: string;
+  frontend_local_url: string;
+  backend_local_url: string;
+  backend_port?: number;
+  frontend_port?: number;
+  updated_at: string;
+  warnings: string[];
+};
+
 export type Corporation = {
   id: number;
   name: string;
@@ -783,6 +796,79 @@ export type JudgmentRun = {
   input_snapshot: Record<string, unknown>;
   notice: SavedNaraNotice | null;
   corporation: Corporation | null;
+};
+
+export type ContractCustomFields = {
+  contract_number?: string;
+  contract_amount?: string;
+  total_service_amount?: string;
+  contract_deposit?: string;
+  delay_penalty_rate?: string;
+  contract_period?: string;
+  delivery_location?: string;
+  other_terms?: string;
+  attachment_notes?: string;
+  buyer_name?: string;
+  buyer_representative_name?: string;
+  buyer_address?: string;
+  corporation_phone?: string;
+};
+
+export type ContractValidation = {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+};
+
+export type ContractInputSnapshot = {
+  snapshot_version: string;
+  template_version: string;
+  contract_type: string;
+  created_at: string;
+  source_ids: {
+    nara_notice_id: number;
+    corporation_id: number;
+    judgment_run_id: number | null;
+  };
+  notice: Partial<SavedNaraNotice>;
+  corporation: Partial<Corporation>;
+  judgment_run: Partial<JudgmentRun> | null;
+  custom_fields: ContractCustomFields;
+  generated_fields: Record<string, string>;
+  warnings: string[];
+  validation: ContractValidation;
+};
+
+export type ContractPreview = {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  snapshot: ContractInputSnapshot;
+};
+
+export type ContractDocument = {
+  id: number;
+  nara_notice_id: number;
+  corporation_id: number;
+  judgment_run_id: number | null;
+  status: string;
+  review_status: string;
+  contract_type: string;
+  template_version: string;
+  title: string;
+  file_name: string;
+  stored_file_path: string;
+  file_size_bytes: number;
+  input_snapshot: ContractInputSnapshot;
+  generated_fields: Record<string, string>;
+  validation: ContractValidation;
+  review_note: string;
+  error_message: string;
+  download_url: string;
+  notice: Pick<SavedNaraNotice, "id" | "bid_ntce_no" | "bid_ntce_ord" | "bid_ntce_nm"> | null;
+  corporation: Pick<Corporation, "id" | "name"> | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type NaraCollectionRun = {

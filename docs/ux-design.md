@@ -30,36 +30,55 @@
 - Basis PDF Detail
 - 나라장터 게시판
 - 나라장터 저장 공고 상세
+- 기준문구 후보 관리
+- 기준문서 검색 평가
+- 공고-법인 비교
+- 판단 실행/이력
+- 나라장터 자동 수집 이력
+- 운영 대시보드
+- 작업/실패 관리
+- 백업/복원
 - Settings
 - API Integrations
 
 ## 페이지 목록
-- `/dashboard`
+- `/`
+- `/operations`
+- `/operation-runs`
+- `/backups`
 - `/corporations`
-- `/corporations/:id`
 - `/projects`
-- `/projects/new`
-- `/projects/:id`
-- `/documents/:id/analysis`
+- `/documents`
+- `/documents/:documentId/analysis`
+- `/basis-documents`
+- `/basis-rule-candidates`
+- `/basis-retrieval-evaluations`
 - `/nara-board`
 - `/nara-saved-notices`
 - `/nara-saved-notices/:id`
-- `/nara-saved-notices/:id/analysis`
-- `/settings`
-- `/settings/integrations`
+- `/notice-comparison`
+- `/judgment-runs`
+- `/nara-collection-runs`
 - `/settings/integrations/nara`
-- `/basis-documents`
-- `/basis-documents/:id`
 
 ## 내비게이션 구조
 - 좌측 사이드바
   - Dashboard
+  - Operations
+  - Operation Runs
+  - Backups
   - Corporations
   - Projects
+  - Documents
   - Nara Board
   - Nara Board > 공고 검색
   - Nara Board > 저장한 공고
   - Basis PDFs
+  - Basis Rule Candidates
+  - Basis Retrieval Evaluations
+  - Notice Comparison
+  - Judgment Runs
+  - Nara Collection Runs
   - Settings
   - Settings > API 연동
 - 상단 바
@@ -519,6 +538,29 @@ frontend/
 ---
 
 # AI / Engineering Version (English)
+
+## Current Route Update
+Last updated: 2026-06-07
+
+Current React routes:
+- `/`
+- `/operations`
+- `/operation-runs`
+- `/backups`
+- `/corporations`
+- `/projects`
+- `/documents`
+- `/documents/:documentId/analysis`
+- `/basis-documents`
+- `/basis-rule-candidates`
+- `/basis-retrieval-evaluations`
+- `/nara-board`
+- `/nara-saved-notices`
+- `/nara-saved-notices/:id`
+- `/notice-comparison`
+- `/judgment-runs`
+- `/nara-collection-runs`
+- `/settings/integrations/nara`
 
 ## UX Mission
 Design a modern admin portal for a non-technical administrator who manages corporations and projects, uploads procurement files, monitors processing states, and reviews AI summaries with confidence.

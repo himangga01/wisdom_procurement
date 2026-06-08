@@ -432,9 +432,25 @@ git diff --check
 - 나라장터 수집 실행 결과가 `not_configured`일 때 HTTP 200/202로 업무 실패를 반환하는 정책을 확정해도 될까요?
 - 검색/citation 평가 결과 화면은 Phase 2 보강에 포함할까요, 아니면 Phase 2.5C의 운영 UX로 분리할까요?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- 이 문서의 P1/P2/문서 보강 항목 중 핵심 구현은 대부분 완료되었습니다.
+- 현재 추가로 기록-only로 남은 P1 이슈는 첨부 URL DNS rebinding/shared address 보강입니다.
+- PDF/RAG 관련 최신 보강은 `docs/pdf-rag-code-review-remediation-plan.md`와 `docs/current-code-documentation-audit.md`를 우선합니다.
+- 최신 전체 backend 기준선은 `134 passed`, `8 skipped`입니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Most core P1/P2/document remediation items in this plan are implemented.
+- The remaining record-only P1 issue is attachment URL DNS rebinding/shared-address hardening.
+- For latest PDF/RAG hardening, prefer `docs/pdf-rag-code-review-remediation-plan.md` and `docs/current-code-documentation-audit.md`.
+- Latest full backend baseline: `134 passed`, `8 skipped`.
 
 ## Purpose
 This document converts the latest review findings into an actionable remediation plan for priority P1, priority P2, and documentation gaps. Here, P1/P2 are priority levels, not product phase numbers.

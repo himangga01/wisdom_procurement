@@ -74,21 +74,23 @@ py -3.13 -m pip install -r requirements-ocr.txt
 
 ## 8. OCR 관련 안내
 Phase 1 코드에는 OCR 연결 지점이 준비되어 있습니다.
-- PDF 추출 기본 엔진은 `pypdf`에서 `PyMuPDF`로 교체하는 것으로 결정했습니다.
-- 현재 조달 PDF 샘플은 텍스트 레이어가 있어 OCR보다 레이아웃 기반 추출 품질이 더 중요합니다.
-- `PyMuPDF`로 페이지별 텍스트, 블록, 좌표 정보를 추출한 뒤 정규화 텍스트를 생성합니다.
+- 2026-06-07 현재 PDF 추출 기본 엔진은 `PDF_READER_ENGINE=auto`입니다.
+- `auto`는 `OpenDataLoader PDF`로 Markdown/JSON/table metadata를 먼저 추출하고, Java/패키지/timeout/변환 실패 시 `PyMuPDF`로 fallback합니다.
+- 현재 조달 PDF 샘플은 텍스트 레이어가 있어 OCR보다 레이아웃/표 구조 기반 추출 품질이 더 중요합니다.
+- `PyMuPDF`는 fallback과 OCR 렌더링 보조 엔진으로 유지합니다.
 - 추출 텍스트가 충분하면 OCR은 스킵합니다.
 - 텍스트가 부족하거나 이미지형 PDF로 판단되면 OCR fallback으로 전환합니다.
 - OCR fallback 후보는 `PaddleOCR`을 우선 검토하고, 경량 대안으로 `Tesseract(kor+eng)`를 둡니다.
 - Stirling PDF는 메인 reader 엔진이 아니라 향후 PDF 전처리/OCR 보조 서버로 선택 연동할 수 있습니다.
 
-## 9. PDF 추출 엔진 교체 구현 계획
-1. 백엔드 의존성에 `PyMuPDF`를 추가합니다.
-2. PDF 추출 로직을 `pypdf`에서 `PyMuPDF` 기반으로 교체합니다.
-3. 페이지별 추출 문자 수, 블록 수, OCR 필요 여부를 메타데이터로 남깁니다.
-4. 조달문서에서 자주 깨지는 항목 번호, 날짜, 금액, 표 헤더 주변 줄바꿈을 후처리합니다.
-5. 선택한 LLM에는 원본 파일이 아니라 정규화된 추출 텍스트와 핵심 메타데이터를 전달합니다.
-6. API 키가 없을 때는 기존 fallback 요약으로 동작하지만, 추출 텍스트 품질은 `PyMuPDF` 기준으로 개선합니다.
+## 9. PDF 추출 엔진 현재 구현
+1. 백엔드 의존성에 `opendataloader-pdf==2.4.7`과 `PyMuPDF`가 포함되어 있습니다.
+2. PDF 추출 로직은 `backend/app/pipelines/pdf_readers.py`의 adapter 구조로 분리되어 있습니다.
+3. `OpenDataLoaderPdfReader`, `PyMuPdfPdfReader`, `AutoPdfReader`가 엔진 선택과 fallback을 담당합니다.
+4. 페이지별 문자 offset, table metadata, OCR 필요 여부를 메타데이터로 남깁니다.
+5. DOCX는 `python-docx`로 문단과 표 cell 텍스트를 추출합니다.
+6. 선택한 LLM에는 원본 파일이 아니라 정규화된 추출 텍스트와 핵심 메타데이터를 전달합니다.
+7. API 키가 없을 때는 기존 fallback 요약으로 동작하지만, 추출 텍스트는 현재 PDF/DOCX parser 결과를 사용합니다.
 
 ## 10. 운영 시 주의사항
 - API 키는 Git에 커밋하지 않는다.
@@ -152,9 +154,10 @@ Current phase exposes OCR integration seam and status handling (`skipped`, `need
 Engine-level OCR implementation can be plugged in next without API contract changes.
 
 ## PDF Extraction Decision
-- Replace the current default PDF extractor from `pypdf` to `PyMuPDF`.
-- Use `PyMuPDF` for text, page, block, and coordinate-aware extraction.
-- Keep DOCX extraction on `python-docx`.
+- Current default PDF extractor is `PDF_READER_ENGINE=auto`.
+- Use OpenDataLoader PDF first for Markdown/JSON/table metadata extraction.
+- Keep `PyMuPDF` as fallback and OCR rendering helper.
+- Keep DOCX extraction on `python-docx`, including paragraphs and table cells.
 - Run OCR only when extracted text is insufficient or pages appear image-based.
 - Prefer `PaddleOCR` as the stronger OCR fallback candidate for Korean procurement documents.
 - Keep `Tesseract(kor+eng)` as a lighter fallback option.

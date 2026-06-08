@@ -215,9 +215,9 @@ export function DashboardPage() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Today Queue</p>
-            <h3>오늘 처리할 큐</h3>
+            <h3>우선 확인할 항목</h3>
             <p className="section-copy">
-              Phase 1.6 이후 운영 흐름에 맞춰 증빙 검토, 보정 필요 건, 낮은 준비도, 요구조건 추출 완료 공고를 먼저 보여줍니다.
+              검토 대기, 보정 필요, 준비도 낮은 법인, 요구조건 추출 공고를 한곳에서 확인합니다.
             </p>
           </div>
         </div>

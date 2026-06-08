@@ -285,9 +285,25 @@ OCR이 텍스트를 대략 읽더라도 업태/종목, 면허, 증빙 종류는 
 - OCR 품질이 부족한 이미지에 외부 Vision API 사용을 허용할지?
 - 스모크 테스트에 실제 OCR 경로를 포함할지, opt-in 선택 테스트로만 둘지?
 
+## 현재 코드 기준 메모
+최종 갱신일: 2026-06-07
+
+- Phase 1.6의 법인 증빙자료 업로드/추출/분류/검토 후보 반영 흐름은 구현되어 있습니다.
+- 증빙자료 후보는 자동 확정하지 않고 사용자 검토 후 선택한 값만 법인 프로필에 반영합니다.
+- DOCX 증빙자료는 문단과 표 cell 텍스트를 함께 추출합니다.
+- 이 문서는 안정화 계획 이력이며, 최신 전체 상태는 `docs/current-code-documentation-audit.md`와 `docs/work-log.md`를 우선합니다.
+
 ---
 
 # AI / Engineering Version (English)
+
+## Current Code Note
+Last updated: 2026-06-07
+
+- Phase 1.6 corporation evidence upload/extraction/classification/review-candidate application flow is implemented.
+- Evidence candidates are not auto-confirmed; only user-selected values update the corporation profile.
+- DOCX evidence extraction includes paragraphs and table cells.
+- This is a stabilization-plan history document; prefer `docs/current-code-documentation-audit.md` and `docs/work-log.md` for the latest whole-service state.
 
 ## Purpose
 This document defines the stabilization plan for Phase 1.6: corporation evidence auto-extraction and corporation profile enrichment.

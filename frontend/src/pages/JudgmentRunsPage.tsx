@@ -202,9 +202,17 @@ export function JudgmentRunsPage() {
                 {Math.round((activeRun.summary.citation_coverage || 0) * 100)}%
               </p>
             </div>
-            <span className={`status-badge status-badge--${statusTone(activeRun.review_status)}`}>
-              {activeRun.review_status}
-            </span>
+            <div className="row">
+              <span className={`status-badge status-badge--${statusTone(activeRun.review_status)}`}>
+                {activeRun.review_status}
+              </span>
+              <Link
+                to={`/contracts?notice_id=${activeRun.nara_notice_id}&corporation_id=${activeRun.corporation_id}&judgment_run_id=${activeRun.id}`}
+                className="link-button link-button--soft"
+              >
+                계약서 초안 생성
+              </Link>
+            </div>
           </div>
 
           <div className="comparison-metrics">

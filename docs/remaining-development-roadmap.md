@@ -225,6 +225,20 @@ Phase 4는 판단 엔진이 동작한 뒤의 운영 안정화 단계입니다.
 
 이 순서가 좋은 이유는 판단 엔진을 먼저 만들면 citation 품질이 낮은 상태에서 결과를 과신할 위험이 있기 때문입니다. 지금은 먼저 기준문서와 요구조건을 `검증 가능한 입력`으로 만드는 것이 더 중요합니다.
 
+## 현재 코드 기준 남은 개발 단계
+최종 갱신일: 2026-06-07
+
+현재 Phase 2.5/Phase 3/Phase 4의 핵심 MVP는 구현되어 있습니다. 따라서 “다음 개발 단계”는 새 판단 로직을 더 만드는 것보다 운영 안정성과 보안/검증 강화를 우선합니다.
+
+남은 우선순위:
+1. 첨부 URL DNS rebinding/shared address 보안 보강
+2. OpenDataLoader `auto` 경로를 포함한 full regression 운영 방식 결정
+3. 실제 기준문서 PDF fixture/manifest 정책 유지와 기준선 갱신
+4. 백업 복원 실제 실행 기능은 dry-run 이후 명시 승인 기반으로 별도 구현
+5. 운영 감사 로그와 review history 상세화
+6. 인증/권한/다중 사용자/배포 전략은 Phase 4.5 또는 Phase 5로 분리
+7. HWP/HWPX 지원 여부는 장기 backlog로 유지
+
 ## Questions for Product Owner
 - `open`: 실제 기준문서 PDF 샘플은 어떤 문서부터 넣을까요?
 - `decided`: 기준문서 규칙 후보는 관리자 승인/반려/수정 UX를 제공한다.
@@ -239,6 +253,20 @@ Phase 4는 판단 엔진이 동작한 뒤의 운영 안정화 단계입니다.
 
 ## Purpose
 This document restates the remaining roadmap as of 2026-05-22.
+
+## Current Remaining Work
+Last updated: 2026-06-07
+
+The core Phase 2.5, Phase 3, and Phase 4 MVP scope is implemented. The next work should focus less on adding new judgment logic and more on operational hardening.
+
+Remaining priorities:
+1. attachment URL DNS rebinding/shared-address hardening
+2. decide whether full regression should default to OpenDataLoader `auto` or stay fast with targeted ODL QA
+3. keep real basis PDF fixture/manifest policy and refresh baselines
+4. implement actual restore only after dry-run and explicit confirmation
+5. expand operational audit logs and review history
+6. split auth/permissions/multi-user/deployment into Phase 4.5 or Phase 5
+7. keep HWP/HWPX as long-term backlog
 
 The current baseline is:
 

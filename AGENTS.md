@@ -82,6 +82,15 @@
 - 기준문서 citation이 없는 조건은 확정 판단 근거로 사용하지 않는다.
 - AI 출력은 가능하면 구조화 스키마를 우선 사용한다.
 
+## 현재 구현 상태 메모
+최종 갱신일: 2026-06-07
+
+- Phase 2.5/Phase 3/Phase 4의 핵심 MVP는 현재 코드에 구현되어 있다.
+- 현재 PDF reader 기본값은 OpenDataLoader 우선 `auto` 모드이며 PyMuPDF는 fallback/OCR 보조 엔진이다.
+- 기준문서 검색 source는 JSON basis index 운영 산출물이다.
+- 문서/계획 최신 해석은 `README.md`, `docs/technical-design.md`, `docs/technology-summary.md`, `docs/current-code-documentation-audit.md`, `docs/work-log.md`를 우선한다.
+- 이 파일의 Phase guardrail은 새 기능을 추가할 때 도메인 경계를 지키기 위한 운영 규칙으로 유지한다.
+
 ## 구현 우선순위 원칙
 1. 데이터 모델 정확성
 2. 업로드/분석 파이프라인 안정성
@@ -162,3 +171,12 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 - Store HWP/HWPX/XLSX as unsupported attachment metadata.
 - Do not expose eligibility verdicts before the judgment engine phase.
 - Nara API settings screens may show configured status and masked keys only; never return full keys to the frontend.
+
+## Current Implementation Note
+Last updated: 2026-06-07
+
+- Core Phase 2.5, Phase 3, and Phase 4 MVP scope is implemented in the current code.
+- Default PDF reader is OpenDataLoader-first `auto` mode; PyMuPDF remains fallback/OCR helper.
+- Basis retrieval source is the operational JSON basis index.
+- Prefer `README.md`, `docs/technical-design.md`, `docs/technology-summary.md`, `docs/current-code-documentation-audit.md`, and `docs/work-log.md` for current interpretation.
+- The phase guardrails in this file remain architecture rules for future changes.

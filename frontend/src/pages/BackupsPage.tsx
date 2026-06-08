@@ -155,7 +155,7 @@ export function BackupsPage() {
         </div>
         <div className="empty-state empty-state--info">
           <strong>포함 항목</strong>
-          <p>SQLite DB, uploads, corporation-evidence, basis, basis-index, nara-notices를 포함합니다. .env 원문 API 키는 포함하지 않습니다.</p>
+          <p>SQLite DB, uploads, corporation-evidence, basis, basis-index, nara-notices, contracts를 포함합니다. .env 원문 API 키는 포함하지 않습니다.</p>
         </div>
       </div>
 

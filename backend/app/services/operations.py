@@ -1,3 +1,4 @@
+import importlib.util
 import os
 import json
 import shutil
@@ -156,17 +157,39 @@ def _storage_health(storage_root: Path) -> dict[str, Any]:
 
 
 def _ocr_health() -> dict[str, Any]:
-    engine = os.getenv("OCR_ENGINE", "noop").strip().lower()
+    engine = os.getenv("OCR_ENGINE", "paddle").strip().lower() or "paddle"
+    language = os.getenv("OCR_LANG", os.getenv("OCR_LANGUAGES", "kor+eng")).strip() or "kor+eng"
     if not engine or engine == "noop":
         return {
             "status": "unavailable",
             "engine": engine or "noop",
+            "language": language,
             "message": "OCR engine is not configured; text-first parsing still works.",
         }
+    if engine in {"paddle", "paddleocr"}:
+        missing = [module for module in ("paddleocr", "paddle", "fitz") if importlib.util.find_spec(module) is None]
+        if missing:
+            return {
+                "status": "unavailable",
+                "engine": engine,
+                "language": language,
+                "message": f"OCR engine is configured, but missing Python packages: {', '.join(missing)}.",
+                "missing_packages": missing,
+            }
+    elif engine in {"tesseract", "pytesseract"}:
+        if importlib.util.find_spec("pytesseract") is None:
+            return {
+                "status": "unavailable",
+                "engine": engine,
+                "language": language,
+                "message": "OCR engine is configured, but pytesseract is not installed.",
+                "missing_packages": ["pytesseract"],
+            }
     return {
         "status": "configured",
         "engine": engine,
-        "message": "OCR engine is configured.",
+        "language": language,
+        "message": "OCR engine is configured and available.",
     }
 
 

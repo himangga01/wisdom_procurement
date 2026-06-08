@@ -2,7 +2,8 @@ import sqlite3
 from typing import Any
 
 from app.core.citations import parse_basis_citation_candidate_id
-from app.core.text import basis_tokenize, basis_vector_for_text, clean_text
+from app.core.text import basis_tokenize, basis_vector_for_text, clean_text, parse_int
+from app.pipelines.basis_document import validate_basis_index
 
 
 BASIS_RULE_CANDIDATE_STATUSES = {"needs_review", "approved", "rejected", "archived"}
@@ -36,7 +37,7 @@ def validate_basis_rule_candidate_approval(conn: sqlite3.Connection, values: dic
         return "basis document must be completed and indexed before approval"
     chunk = conn.execute(
         """
-        SELECT id, vector_status, vector_id
+        SELECT id, vector_status, vector_id, chunk_hash
         FROM basis_document_chunks
         WHERE id=? AND basis_document_id=?
         """,
@@ -46,6 +47,20 @@ def validate_basis_rule_candidate_approval(conn: sqlite3.Connection, values: dic
         return "basis chunk does not exist"
     if chunk["vector_status"] != "indexed" or not clean_text(chunk["vector_id"]):
         return "basis chunk must be indexed before approval"
+    validation = validate_basis_index(conn)
+    if not validation["valid"]:
+        detail = "; ".join(validation.get("errors") or []) or "Basis index validation failed."
+        return f"basis_index_unavailable: {detail}"
+    index_chunks = validation.get("payload", {}).get("chunks", {})
+    index_item = index_chunks.get(chunk["vector_id"]) if isinstance(index_chunks, dict) else None
+    if not isinstance(index_item, dict):
+        return "basis_index_unavailable: basis chunk is missing from basis-index.json"
+    if (
+        parse_int(index_item.get("basis_document_id"), 0) != int(values.get("basis_document_id") or 0)
+        or parse_int(index_item.get("chunk_id"), 0) != int(values.get("basis_chunk_id") or 0)
+        or clean_text(index_item.get("chunk_hash")) != chunk["chunk_hash"]
+    ):
+        return "basis_index_unavailable: basis-index.json chunk metadata does not match this candidate"
     return ""
 
 

@@ -1,12 +1,14 @@
 import os
 import shutil
-import tempfile
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import fitz
+
+from app.core.logging import get_logger, log_event, log_exception
 
 
 OCR_STATUS_SKIPPED = "skipped"
@@ -18,6 +20,7 @@ OCR_STATUS_FAILED = "failed"
 
 SUPPORTED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 SUPPORTED_OCR_EXTENSIONS = SUPPORTED_IMAGE_EXTENSIONS | {".pdf"}
+LOGGER = get_logger("pipelines.ocr")
 
 
 @dataclass(frozen=True)
@@ -230,8 +233,9 @@ def maybe_run_ocr(
     source_path: str | Path | None = None,
     kind: str = "",
     metadata: dict[str, Any] | None = None,
+    force: bool = False,
 ) -> tuple[str, str]:
-    result = run_ocr_if_needed(extracted_text, source_path, kind, metadata)
+    result = run_ocr_if_needed(extracted_text, source_path, kind, metadata, force=force)
     return result.text or extracted_text, result.status
 
 
@@ -240,8 +244,9 @@ def run_ocr_if_needed(
     source_path: str | Path | None = None,
     kind: str = "",
     metadata: dict[str, Any] | None = None,
+    force: bool = False,
 ) -> OcrResult:
-    if not should_run_ocr(extracted_text):
+    if not force and not should_run_ocr(extracted_text):
         return OcrResult(
             text=extracted_text,
             status=OCR_STATUS_SKIPPED,
@@ -251,6 +256,13 @@ def run_ocr_if_needed(
         )
 
     if source_path is None:
+        log_event(
+            LOGGER,
+            "ocr.required_without_source",
+            level="warning",
+            extracted_length=len((extracted_text or "").strip()),
+            kind=kind,
+        )
         return OcrResult(
             text=extracted_text,
             status=OCR_STATUS_NEEDS_OCR,
@@ -259,10 +271,29 @@ def run_ocr_if_needed(
             warnings=["OCR is required, but source_path was not provided."],
         )
 
+    log_event(
+        LOGGER,
+        "ocr.force_required" if force else "ocr.required",
+        source_path=str(source_path),
+        kind=kind or (metadata or {}).get("kind", ""),
+        extracted_length=len((extracted_text or "").strip()),
+        force=force,
+    )
     result = run_ocr(source_path, kind=kind or (metadata or {}).get("kind", ""))
     if result.text:
         return result
 
+    log_event(
+        LOGGER,
+        "ocr.fallback_to_original_text",
+        level="warning",
+        source_path=str(source_path),
+        status=result.status,
+        engine=result.engine,
+        page_count=result.page_count,
+        warning_count=len(result.warnings),
+        error_message=result.error_message,
+    )
     return OcrResult(
         text=extracted_text,
         status=result.status,
@@ -280,23 +311,66 @@ def run_ocr(file_path: str | Path, kind: str = "") -> OcrResult:
     path = Path(file_path)
     suffix = path.suffix.lower()
     language = _ocr_language()
+    engine_name = _ocr_engine_name()
+
+    log_event(
+        LOGGER,
+        "ocr.run.started",
+        file_path=str(path),
+        suffix=suffix or "unknown",
+        kind=kind,
+        engine=engine_name,
+        language=language,
+    )
 
     if suffix not in SUPPORTED_OCR_EXTENSIONS:
+        log_event(
+            LOGGER,
+            "ocr.unsupported_file_type",
+            level="warning",
+            file_path=str(path),
+            suffix=suffix or "unknown",
+            kind=kind,
+            engine=engine_name,
+        )
         return OcrResult(
             text="",
             status=OCR_STATUS_UNAVAILABLE,
-            engine=_ocr_engine_name(),
+            engine=engine_name,
             language=language,
             error_message=f"Unsupported OCR file type: {suffix or 'unknown'}",
         )
 
     engine = get_ocr_engine()
     if not engine.is_available():
+        log_event(
+            LOGGER,
+            "ocr.engine_unavailable",
+            level="warning",
+            file_path=str(path),
+            engine=engine.name,
+            language=language,
+            reason=engine.unavailable_reason(),
+        )
         return _unavailable_result(engine.name, language, engine.unavailable_reason())
 
     if suffix == ".pdf" or kind == "pdf":
-        return _run_pdf_ocr(path, engine)
-    return engine.recognize_image(path, page_number=None)
+        result = _run_pdf_ocr(path, engine)
+    else:
+        result = engine.recognize_image(path, page_number=None)
+    log_event(
+        LOGGER,
+        "ocr.run.completed" if result.status == OCR_STATUS_COMPLETED else "ocr.run.failed",
+        level="info" if result.status == OCR_STATUS_COMPLETED else "warning",
+        file_path=str(path),
+        status=result.status,
+        engine=result.engine,
+        page_count=result.page_count,
+        average_confidence=result.average_confidence,
+        warning_count=len(result.warnings),
+        error_message=result.error_message,
+    )
+    return result
 
 
 def get_ocr_engine() -> OcrEngine:
@@ -316,35 +390,61 @@ def _run_pdf_ocr(path: Path, engine: OcrEngine) -> OcrResult:
     warnings: list[str] = []
     errors: list[str] = []
 
-    with tempfile.TemporaryDirectory(prefix="wisdom_ocr_") as tmp:
-        tmp_dir = Path(tmp)
-        with fitz.open(path) as pdf:
-            for page_index, page in enumerate(pdf, start=1):
-                image_path = tmp_dir / f"page_{page_index}.png"
-                matrix = fitz.Matrix(zoom, zoom)
-                pixmap = page.get_pixmap(matrix=matrix, alpha=False)
-                pixmap.save(image_path)
+    log_event(LOGGER, "ocr.pdf.started", file_path=str(path), engine=engine.name, dpi=dpi)
+    try:
+        with _ocr_work_dir("wisdom_ocr_") as tmp_dir:
+            with fitz.open(path) as pdf:
+                for page_index, page in enumerate(pdf, start=1):
+                    image_path = tmp_dir / f"page_{page_index}.png"
+                    matrix = fitz.Matrix(zoom, zoom)
+                    pixmap = page.get_pixmap(matrix=matrix, alpha=False)
+                    pixmap.save(image_path)
 
-                page_result = engine.recognize_image(image_path, page_number=page_index)
-                if page_result.status == OCR_STATUS_COMPLETED:
-                    if page_result.pages:
-                        page_results.extend(page_result.pages)
-                    else:
-                        page_results.append(
-                            OcrPageResult(
-                                page_number=page_index,
-                                text=page_result.text,
-                                confidence=page_result.average_confidence,
+                    page_result = engine.recognize_image(image_path, page_number=page_index)
+                    if page_result.status == OCR_STATUS_COMPLETED:
+                        if page_result.pages:
+                            page_results.extend(page_result.pages)
+                        else:
+                            page_results.append(
+                                OcrPageResult(
+                                    page_number=page_index,
+                                    text=page_result.text,
+                                    confidence=page_result.average_confidence,
+                                )
                             )
+                    else:
+                        log_event(
+                            LOGGER,
+                            "ocr.pdf.page_failed",
+                            level="warning",
+                            file_path=str(path),
+                            engine=engine.name,
+                            page_number=page_index,
+                            status=page_result.status,
+                            error_message=page_result.error_message,
+                            warning_count=len(page_result.warnings),
                         )
-                else:
-                    warnings.extend(page_result.warnings)
-                    if page_result.error_message:
-                        errors.append(f"page {page_index}: {page_result.error_message}")
+                        warnings.extend(page_result.warnings)
+                        if page_result.error_message:
+                            errors.append(f"page {page_index}: {page_result.error_message}")
+    except Exception as exc:
+        log_exception(LOGGER, "ocr.pdf.failed", exc, file_path=str(path), engine=engine.name)
+        raise
 
     text = "\n\n".join(page.text for page in page_results if page.text).strip()
     confidence = _average([page.confidence for page in page_results if page.confidence is not None])
     status = OCR_STATUS_COMPLETED if text else OCR_STATUS_FAILED
+    log_event(
+        LOGGER,
+        "ocr.pdf.completed" if status == OCR_STATUS_COMPLETED else "ocr.pdf.failed_no_text",
+        level="info" if status == OCR_STATUS_COMPLETED else "warning",
+        file_path=str(path),
+        engine=engine.name,
+        page_count=len(page_results),
+        warning_count=len(warnings),
+        error_count=len(errors),
+        average_confidence=confidence,
+    )
     return OcrResult(
         text=text,
         status=status,
@@ -378,10 +478,22 @@ def _ascii_safe_image_path(image_path: Path):
     except UnicodeEncodeError:
         pass
 
-    with tempfile.TemporaryDirectory(prefix="wisdom_ocr_path_") as tmp:
-        safe_path = Path(tmp) / f"ocr_input{image_path.suffix.lower() or '.png'}"
+    with _ocr_work_dir("wisdom_ocr_path_") as tmp:
+        safe_path = tmp / f"ocr_input{image_path.suffix.lower() or '.png'}"
         shutil.copy2(image_path, safe_path)
         yield safe_path
+
+
+@contextmanager
+def _ocr_work_dir(prefix: str):
+    root = Path(os.getenv("OCR_TEMP_DIR", "./storage/ocr-temp")).expanduser()
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{prefix}{uuid.uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=False)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def _parse_paddle_output(raw: Any) -> tuple[list[str], list[float], list[dict[str, Any]]]:
