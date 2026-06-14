@@ -58,7 +58,7 @@ export function ExternalAccessPage() {
     <section className="content-stack">
       <div className="surface-card analysis-hero">
         <div>
-          <p className="eyebrow">External Access</p>
+          <p className="eyebrow">외부 접속</p>
           <h3>ngrok 외부 접속</h3>
           <p className="section-copy">로컬 PC에서 실행 중인 서비스의 외부 접속 URL 상태를 확인합니다.</p>
         </div>
@@ -99,7 +99,7 @@ export function ExternalAccessPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Public URLs</p>
+            <p className="eyebrow">접속 URL</p>
             <h3>접속 URL</h3>
           </div>
         </div>
@@ -146,7 +146,7 @@ export function ExternalAccessPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Local Commands</p>
+            <p className="eyebrow">로컬 명령</p>
             <h3>PowerShell 명령</h3>
           </div>
         </div>

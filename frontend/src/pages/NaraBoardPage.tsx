@@ -20,6 +20,21 @@ type SortRule = {
   direction: SortDirection;
 };
 
+type NaraBusinessType = "all" | "construction" | "service" | "goods" | "etc";
+
+const naraBusinessTypeOptions: Array<{ value: NaraBusinessType; label: string }> = [
+  { value: "all", label: "전체" },
+  { value: "construction", label: "공사" },
+  { value: "service", label: "용역" },
+  { value: "goods", label: "물품" },
+  { value: "etc", label: "기타" },
+];
+
+function businessTypeLabel(value?: string, label?: string) {
+  if (label) return label;
+  return naraBusinessTypeOptions.find((option) => option.value === value)?.label ?? value ?? "전체";
+}
+
 function toDateInput(value: Date) {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
@@ -109,6 +124,7 @@ function previewRows(item: NaraNoticeSearchItem) {
   return [
     { label: "공고명", value: item.bid_ntce_nm },
     { label: "공고번호/차수", value: `${item.bid_ntce_no || "-"}-${item.bid_ntce_ord || "-"}` },
+    { label: "업무유형", value: businessTypeLabel(item.business_type, item.business_type_label) },
     { label: "공고기관", value: item.ntce_instt_nm },
     { label: "수요기관", value: item.dminstt_nm },
     { label: "등록 날짜", value: formatDateTime(item.bid_ntce_dt) },
@@ -131,6 +147,7 @@ export function NaraBoardPage() {
   const { runWithOverlay } = useWorkOverlay();
   const range = defaultRange();
   const [keyword, setKeyword] = useState("");
+  const [businessType, setBusinessType] = useState<NaraBusinessType>("all");
   const [startDate, setStartDate] = useState(range.start);
   const [endDate, setEndDate] = useState(range.end);
   const [pageSize, setPageSize] = useState(20);
@@ -154,6 +171,7 @@ export function NaraBoardPage() {
         keyword,
         start_date: startDate,
         end_date: endDate,
+        business_type: businessType,
         page_size: pageSize,
         page_no: nextPageNo,
       });
@@ -265,6 +283,18 @@ export function NaraBoardPage() {
   };
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total_count / result.page_size)) : 1;
+  const isMergedAllPagination = result?.pagination_mode === "merged_all";
+  const canGoNext = result ? (isMergedAllPagination ? Boolean(result.has_next_page) : pageNo < totalPages) : false;
+  const showPagination = result
+    ? isMergedAllPagination
+      ? pageNo > 1 || Boolean(result.has_next_page)
+      : result.total_count > result.page_size
+    : false;
+  const resultCountText = result
+    ? isMergedAllPagination
+      ? `총 ${result.total_count.toLocaleString("ko-KR")}건 추정 중 ${sortedItems.length}건 표시 · ${pageNo}페이지`
+      : `총 ${result.total_count.toLocaleString("ko-KR")}건 중 ${sortedItems.length}건 표시 · ${pageNo}/${totalPages}페이지`
+    : "조회 결과가 여기에 표시됩니다.";
   const pageWindowStart = Math.max(1, Math.min(pageNo - 2, Math.max(1, totalPages - 4)));
   const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => pageWindowStart + index).filter(
     (page) => page <= totalPages,
@@ -302,11 +332,11 @@ export function NaraBoardPage() {
   };
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-nara-board-page">
       <form className="surface-card form-card" onSubmit={onSubmit}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Nara Board</p>
+            <p className="eyebrow">나라장터 공고 검색</p>
             <h3>나라장터 공고 검색</h3>
             <p className="section-copy">
               기본 조회 기간은 오늘 기준 최근 3일입니다. 공고 1개를 선택한 뒤 저장하면 첨부 다운로드와 요약 파이프라인이 이어집니다.
@@ -320,7 +350,12 @@ export function NaraBoardPage() {
         <div className="form-grid">
           <label className="field">
             <span>검색어</span>
-            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="공고명 기준 검색" />
+            <input
+              value={keyword}
+              data-demo-id="demo-nara-search-keyword"
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="공고명 기준 검색"
+            />
           </label>
           <label className="field">
             <span>페이지 크기</span>
@@ -332,12 +367,36 @@ export function NaraBoardPage() {
             </select>
           </label>
           <label className="field">
+            <span>업무유형</span>
+            <select
+              value={businessType}
+              data-demo-id="demo-nara-business-type"
+              onChange={(e) => setBusinessType(e.target.value as NaraBusinessType)}
+            >
+              {naraBusinessTypeOptions.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>조회 시작일</span>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input
+              type="date"
+              value={startDate}
+              data-demo-id="demo-nara-search-start-date"
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </label>
           <label className="field">
             <span>조회 종료일</span>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <input
+              type="date"
+              value={endDate}
+              data-demo-id="demo-nara-search-end-date"
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </label>
           <label className="field">
             <span>AI 분석 모델</span>
@@ -354,7 +413,7 @@ export function NaraBoardPage() {
         </div>
 
         <div className="form-actions">
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading} data-demo-id="demo-nara-search-submit">
             {loading ? "조회 중..." : "공고 조회"}
           </button>
         </div>
@@ -380,17 +439,23 @@ export function NaraBoardPage() {
         </div>
       ) : null}
 
+      {result?.partial_errors?.length ? (
+        <div className="empty-state empty-state--warning nara-partial-warning" data-demo-id="demo-nara-partial-error">
+          <strong>일부 업무유형 조회에 실패했습니다.</strong>
+          <p>
+            조회 가능한 공고는 표시했습니다. 실패 업무유형:{" "}
+            {result.partial_errors.map((item) => businessTypeLabel(item.business_type)).join(", ")}
+          </p>
+        </div>
+      ) : null}
+
       <div className="two-column-grid two-column-grid--wide-left">
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Search Results</p>
+              <p className="eyebrow">검색 결과</p>
               <h3>공고 목록</h3>
-              <p className="section-copy">
-                {result
-                  ? `총 ${result.total_count.toLocaleString("ko-KR")}건 중 ${sortedItems.length}건 표시 · ${pageNo}/${totalPages}페이지`
-                  : "조회 결과가 여기에 표시됩니다."}
-              </p>
+              <p className="section-copy">{resultCountText}</p>
             </div>
           </div>
 
@@ -405,7 +470,7 @@ export function NaraBoardPage() {
               <p>검색어 또는 조회 기간을 조정해보세요.</p>
             </div>
           ) : (
-            <div className="nara-table-shell">
+            <div className="nara-table-shell" data-demo-id="demo-nara-result-list">
               <div className="sticky-action-bar">
                 <div>
                   <strong>{selectedNotice ? selectedNotice.bid_ntce_nm || "선택한 공고" : "공고를 1개 선택하세요"}</strong>
@@ -415,7 +480,7 @@ export function NaraBoardPage() {
                       : "라디오 버튼으로 선택한 공고만 저장/분석됩니다."}
                   </span>
                 </div>
-                <button type="button" disabled={!selectedNotice || saving} onClick={onSave}>
+                <button type="button" disabled={!selectedNotice || saving} onClick={onSave} data-demo-id="demo-nara-save-analyze">
                   {saving ? "작업 등록 중..." : "공고 상세 저장"}
                 </button>
               </div>
@@ -426,6 +491,7 @@ export function NaraBoardPage() {
                     <th>No.</th>
                     <th>선택</th>
                     <th>공고명</th>
+                    <th>업무유형</th>
                     <th>기관</th>
                     <th>
                       <button type="button" className="table-sort-button" onClick={() => toggleSort("postedAt")}>
@@ -461,7 +527,7 @@ export function NaraBoardPage() {
                   {sortedItems.map((item, index) => {
                     const key = `${item.bid_ntce_no}:${item.bid_ntce_ord}`;
                     return (
-                      <tr key={key} onClick={() => setSelectedKey(key)}>
+                      <tr key={key} onClick={() => setSelectedKey(key)} data-demo-id="demo-nara-result-row" data-demo-row-id={key}>
                         <td>{index + 1}</td>
                         <td>
                           <input
@@ -476,6 +542,11 @@ export function NaraBoardPage() {
                           <div className="table-subcopy">
                             {item.bid_ntce_no}-{item.bid_ntce_ord}
                           </div>
+                        </td>
+                        <td>
+                          <span className="status-badge status-badge--muted">
+                            {businessTypeLabel(item.business_type, item.business_type_label)}
+                          </span>
                         </td>
                         <td>
                           {item.ntce_instt_nm || "-"}
@@ -498,7 +569,7 @@ export function NaraBoardPage() {
             </div>
           )}
 
-          {result && result.total_count > result.page_size ? (
+          {showPagination ? (
             <div className="pagination-bar">
               <button type="button" className="button-secondary" disabled={loading || pageNo <= 1} onClick={() => search(1, true)}>
                 처음
@@ -511,42 +582,48 @@ export function NaraBoardPage() {
               >
                 이전
               </button>
-              <div className="pagination-pages" aria-label="공고 목록 페이지">
-                {pageNumbers.map((page) => (
-                  <button
-                    type="button"
-                    key={page}
-                    className={`pagination-page ${page === pageNo ? "pagination-page--active" : ""}`}
-                    disabled={loading || page === pageNo}
-                    onClick={() => search(page, true)}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
+              {isMergedAllPagination ? (
+                <span className="pagination-current">{pageNo}페이지</span>
+              ) : (
+                <div className="pagination-pages" aria-label="공고 목록 페이지">
+                  {pageNumbers.map((page) => (
+                    <button
+                      type="button"
+                      key={page}
+                      className={`pagination-page ${page === pageNo ? "pagination-page--active" : ""}`}
+                      disabled={loading || page === pageNo}
+                      onClick={() => search(page, true)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 className="button-secondary"
-                disabled={loading || pageNo >= totalPages}
+                disabled={loading || !canGoNext}
                 onClick={() => search(pageNo + 1, true)}
               >
                 다음
               </button>
-              <button
-                type="button"
-                className="button-secondary"
-                disabled={loading || pageNo >= totalPages}
-                onClick={() => search(totalPages, true)}
-              >
-                마지막
-              </button>
+              {!isMergedAllPagination ? (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={loading || pageNo >= totalPages}
+                  onClick={() => search(totalPages, true)}
+                >
+                  마지막
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
 
         <aside className="surface-card accent-card--petal notice-preview-panel">
           <div className="notice-preview-panel__header">
-            <p className="eyebrow">Selected Notice</p>
+            <p className="eyebrow">선택한 공고</p>
             <h3>상세 미리보기</h3>
           </div>
           {selectedNotice ? <div key={`${selectedKey}:loader`} className="notice-preview-loader" aria-hidden="true" /> : null}

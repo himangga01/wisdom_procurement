@@ -1090,3 +1090,54 @@ Rules:
 - Should all supported attachments be analyzed, or only the PDF that looks like the main notice?
 - Should users be able to download locally stored original PDFs?
 - When deleting a saved notice, should local files also be deleted?
+
+## 추가 업데이트 (2026-06-14) - 업무유형 선택 UX
+
+### 한국어 버전
+- 나라장터 공고 검색 화면에 업무유형 선택을 추가했습니다.
+  - 선택값: `전체`, `공사`, `용역`, `물품`, `기타`
+  - 기본값: `전체`
+- 검색 결과 테이블과 상세 미리보기에는 업무유형 배지를 표시합니다.
+- 나라장터 자동 수집 관리 화면에도 같은 업무유형 선택을 추가했습니다.
+- 자동수집 실행 이력에는 `criteria.business_type`, `result.business_type`, `result.business_type_label`, `result.items[].business_type`을 기록합니다.
+- 저장 공고 상세의 기본정보 영역에는 업무유형을 표시합니다.
+
+사용자 흐름:
+```text
+나라장터 공고 검색
+-> 업무유형 전체/공사/용역/물품/기타 선택
+-> 검색 결과에서 업무유형 배지 확인
+-> 공고 저장/분석
+-> 저장 공고 상세에서 업무유형과 처리 상태 확인
+```
+
+자동수집 흐름:
+```text
+나라장터 자동 수집 관리
+-> 업무유형 선택
+-> 수집 실행
+-> 실행 이력에서 업무유형과 조회/저장/스킵 수 확인
+-> 저장된 공고 상세로 이동
+```
+
+### AI / Engineering Version (English)
+- Added a Nara business-type selector to search and collection-run screens.
+- Default frontend selection is `all`.
+- Search requests include `business_type`.
+- Collection-run create requests include `business_type`.
+- Search rows, preview, collection results, and saved notice detail show business type labels.
+
+## 추가 업데이트 (2026-06-14) - `전체` 검색 결과 표시 정책
+
+### 한국어 버전
+- `전체` 검색은 여러 업무유형 API를 병합하므로 전체 건수와 마지막 페이지를 단일 API처럼 확정적으로 보여주지 않습니다.
+- 공고 검색 화면은 `pagination_mode=merged_all`일 때 `총 N건 추정` 문구를 사용합니다.
+- `전체` 검색에서는 마지막 페이지 버튼을 숨기고, 이전/다음 중심으로 이동합니다.
+- 일부 업무유형 조회가 실패하면 결과 상단에 경고를 표시하되, 성공적으로 조회된 공고는 선택/저장/분석할 수 있습니다.
+- 공사/용역/물품/기타 단일 검색에서는 기존 페이지 번호와 마지막 페이지 이동 UX를 유지합니다.
+
+### AI / Engineering Version (English)
+- Merged `all` search is displayed as estimated-count pagination.
+- The frontend hides the last-page jump for `pagination_mode=merged_all` and uses previous/next navigation.
+- Partial business-type failures show a warning while preserving usable successful results.
+- Single business-type searches keep the existing numbered pagination UX.

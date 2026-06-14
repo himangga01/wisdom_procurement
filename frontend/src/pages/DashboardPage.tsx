@@ -163,7 +163,7 @@ export function DashboardPage() {
     <section className="content-stack">
       <div className="workboard-grid">
         <article className="surface-card work-card work-card--primary">
-          <p className="eyebrow">Next Action</p>
+          <p className="eyebrow">다음 작업</p>
           <h3>{nextAction.title}</h3>
           <p className="section-copy">{nextAction.description}</p>
           <div className="form-actions">
@@ -174,7 +174,7 @@ export function DashboardPage() {
         </article>
 
         <article className="surface-card work-card">
-          <p className="eyebrow">Processing Queue</p>
+          <p className="eyebrow">처리 현황</p>
           <h3>처리 대기/주의</h3>
           <div className="task-list">
             <div className="task-item">
@@ -197,7 +197,7 @@ export function DashboardPage() {
         </article>
 
         <article className="surface-card work-card">
-          <p className="eyebrow">System</p>
+          <p className="eyebrow">연동 상태</p>
           <h3>연동 상태</h3>
           <div className="status-stack">
             <span className={`status-badge status-badge--${naraStatus?.configured ? "active" : "pending"}`}>
@@ -214,7 +214,7 @@ export function DashboardPage() {
       <section className="surface-card today-queue-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Today Queue</p>
+            <p className="eyebrow">우선 확인</p>
             <h3>우선 확인할 항목</h3>
             <p className="section-copy">
               검토 대기, 보정 필요, 준비도 낮은 법인, 요구조건 추출 공고를 한곳에서 확인합니다.
@@ -290,7 +290,7 @@ export function DashboardPage() {
         <article className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Recent Notices</p>
+              <p className="eyebrow">최근 공고</p>
               <h3>최근 저장한 공고</h3>
             </div>
             <Link to="/nara-saved-notices" className="link-button link-button--soft">
@@ -340,7 +340,7 @@ export function DashboardPage() {
         <article className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Recent Documents</p>
+              <p className="eyebrow">최근 문서</p>
               <h3>최근 업로드 문서</h3>
             </div>
             <Link to="/documents" className="link-button link-button--soft">

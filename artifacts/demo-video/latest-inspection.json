@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "seed": "20260614111559",
+  "input": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\service-demo-20260614111559.mp4",
+  "duration_seconds": 58,
+  "width": 1440,
+  "height": 900,
+  "codec": "h264",
+  "errors": [],
+  "inspected_at": "2026-06-14T11:17:52.208Z"
+}

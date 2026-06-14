@@ -44,6 +44,10 @@ function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function businessTypeLabel(notice: SavedNaraNotice) {
+  return notice.business_type_label || notice.business_type || "-";
+}
+
 function isPipelineRunning(notice: SavedNaraNotice | null) {
   if (!notice) return false;
   return [notice.save_status, notice.download_status, notice.analysis_status].some((status) =>
@@ -169,10 +173,10 @@ export function NaraSavedNoticeDetailPage() {
   const pipelineRunning = isPipelineRunning(notice);
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-saved-notice-detail-page">
       <div className="surface-card analysis-hero">
         <div>
-          <p className="eyebrow">Saved Notice Detail</p>
+          <p className="eyebrow">저장 공고 상세</p>
           <h3>{notice.bid_ntce_nm || "저장 공고"}</h3>
           <p className="analysis-copy">
             {notice.bid_ntce_no}-{notice.bid_ntce_ord} / {notice.ntce_instt_nm || "-"} / {notice.dminstt_nm || "-"}
@@ -221,9 +225,13 @@ export function NaraSavedNoticeDetailPage() {
 
       <div className="analysis-grid">
         <div className="surface-card">
-          <p className="eyebrow">Metadata</p>
+          <p className="eyebrow">기본정보</p>
           <h3>공고 기본정보</h3>
           <dl className="detail-list">
+            <div>
+              <dt>업무유형</dt>
+              <dd>{businessTypeLabel(notice)}</dd>
+            </div>
             <div>
               <dt>공고일시</dt>
               <dd>{notice.bid_ntce_dt || "-"}</dd>
@@ -248,7 +256,7 @@ export function NaraSavedNoticeDetailPage() {
         </div>
 
         <div className="surface-card">
-          <p className="eyebrow">Pipeline</p>
+          <p className="eyebrow">처리 상태</p>
           <h3>처리 상태</h3>
           <div className="status-stack">
             <span className={`status-badge status-badge--${statusTone(notice.save_status)}`}>
@@ -264,10 +272,10 @@ export function NaraSavedNoticeDetailPage() {
         </div>
       </div>
 
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-notice-attachment-status">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Attachments</p>
+            <p className="eyebrow">첨부파일</p>
             <h3>첨부파일 처리 결과</h3>
           </div>
         </div>
@@ -291,7 +299,7 @@ export function NaraSavedNoticeDetailPage() {
               </thead>
               <tbody>
                 {notice.attachments.map((attachment) => (
-                  <tr key={attachment.id}>
+                  <tr key={attachment.id} data-demo-id="demo-notice-attachment-row" data-demo-row-id={attachment.id}>
                     <td>
                       <strong>{attachment.file_name || "-"}</strong>
                       <div className="table-subcopy">{attachment.source_field}</div>
@@ -309,8 +317,8 @@ export function NaraSavedNoticeDetailPage() {
         )}
       </div>
 
-      <div className="surface-card">
-        <p className="eyebrow">AI Summary</p>
+      <div className="surface-card" data-demo-id="demo-notice-requirements">
+        <p className="eyebrow">분석 요약</p>
         <h3>공고 분석 요약</h3>
         <pre className="analysis-pre">{notice.analysis_summary_markdown || "아직 분석 결과가 없습니다."}</pre>
       </div>
@@ -319,7 +327,7 @@ export function NaraSavedNoticeDetailPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Requirement Candidates</p>
+              <p className="eyebrow">요구조건 후보</p>
               <h3>요구조건 구조화 후보</h3>
               <p className="section-copy">
                 최종 자격 판단이 아니라 향후 비교에 필요한 요구조건 후보만 정리합니다.

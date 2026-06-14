@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { api } from "../app/api";
 import type { Corporation, CorporationEvidenceDocument, CorporationReadiness } from "../app/types";
@@ -52,6 +52,28 @@ const evidenceDocumentTypeOptions = [
   { value: "credit_rating_certificate", label: "기업신용평가등급확인서" },
   { value: "performance_certificate", label: "실적증명서" },
   { value: "financial_statement_certificate", label: "재무/매출 증빙" },
+  { value: "gpass_company_certificate", label: "G-PASS기업 지정서" },
+  { value: "iso_quality_certificate", label: "ISO9001 인증서" },
+  { value: "venture_business_confirmation", label: "벤처기업확인서" },
+  { value: "innobiz_confirmation", label: "기술혁신형 중소기업(Inno-Biz) 확인서" },
+  { value: "factory_registration_certificate", label: "공장등록증명서" },
+  { value: "research_institute_certificate", label: "기업부설연구소 인정서" },
+  { value: "software_business_certificate", label: "소프트웨어사업자확인서" },
+  { value: "software_quality_certificate", label: "소프트웨어품질인증서" },
+  { value: "green_technology_certificate", label: "녹색기술인증서" },
+  { value: "green_product_confirmation", label: "녹색기술제품확인서" },
+  { value: "excellent_product_certificate", label: "우수제품지정증서" },
+  { value: "patent_certificate", label: "특허증" },
+  { value: "copyright_registration_certificate", label: "저작권등록증" },
+  { value: "outdoor_advertising_business_registration", label: "옥외광고사업 등록증" },
+  { value: "online_sales_business_registration", label: "통신판매업신고증" },
+  { value: "industry_association_membership", label: "조합원증" },
+  { value: "investment_share_certificate", label: "출자증권" },
+  { value: "employment_support_approval", label: "고용안정장려금 승인서" },
+  { value: "insurance_policy_certificate", label: "책임보험가입증명서" },
+  { value: "special_business_license", label: "특수 영업/등록/신고증" },
+  { value: "technology_grade_confirmation", label: "기술등급확인서" },
+  { value: "technology_evaluation_excellent_certificate", label: "기술평가우수기업인증서" },
   { value: "unknown", label: "기타/확인 필요" },
 ];
 
@@ -62,11 +84,21 @@ const corporationWorkspaceTabs: Array<{
   label: string;
   description: string;
 }> = [
-  { id: "upload", label: "증빙 업로드", description: "파일을 먼저 올리고 자동 추출을 시작" },
+  { id: "upload", label: "증빙 업로드", description: "사업자등록증, 인증서, 면허 등 여러 파일 업로드" },
   { id: "review", label: "추출값 검토", description: "기존값과 비교 후 선택 반영" },
   { id: "library", label: "증빙자료 관리", description: "업로드 이력, 상태, 재처리 관리" },
   { id: "directory", label: "법인 목록/준비도", description: "법인 프로필과 준비도 확인" },
 ];
+
+function corporationTabDemoId(tabId: CorporationWorkspaceTab) {
+  const demoIds: Record<CorporationWorkspaceTab, string> = {
+    upload: "demo-corporation-upload-tab",
+    review: "demo-corporation-review-tab",
+    library: "demo-corporation-library-tab",
+    directory: "demo-corporation-directory-tab",
+  };
+  return demoIds[tabId];
+}
 
 const statusLabels: Record<string, string> = {
   approved: "승인 완료",
@@ -99,6 +131,60 @@ function statusTone(status?: string) {
   return "pending";
 }
 
+function evidencePendingCandidateCount(item: CorporationEvidenceDocument) {
+  return item.pending_candidate_count ?? item.candidates.filter((candidate) => candidate.status === "pending").length;
+}
+
+function evidenceApprovedCandidateCount(item: CorporationEvidenceDocument) {
+  return item.approved_candidate_count ?? item.candidates.filter((candidate) => candidate.status === "approved").length;
+}
+
+function evidenceCandidateCount(item: CorporationEvidenceDocument) {
+  return item.candidate_count ?? item.candidates.length;
+}
+
+function evidenceReviewLabel(item: CorporationEvidenceDocument) {
+  if (item.extraction_status === "failed" || item.ocr_status === "failed") {
+    return "처리 실패";
+  }
+
+  const pendingCount = evidencePendingCandidateCount(item);
+  if (pendingCount > 0) {
+    return `승인 대기 ${pendingCount}개`;
+  }
+
+  if (item.review_status === "approved" || evidenceApprovedCandidateCount(item) > 0) {
+    return "승인 완료";
+  }
+
+  if (item.review_status === "rejected") {
+    return "제외";
+  }
+
+  if (item.review_status === "needs_review") {
+    return "확인 필요";
+  }
+
+  if (evidenceCandidateCount(item) === 0) {
+    return "후보 없음";
+  }
+
+  return statusLabel(item.review_status);
+}
+
+function evidenceReviewTone(item: CorporationEvidenceDocument) {
+  if (item.extraction_status === "failed" || item.ocr_status === "failed") {
+    return "muted";
+  }
+  if (evidencePendingCandidateCount(item) > 0) {
+    return "pending";
+  }
+  if (item.review_status === "approved" || evidenceApprovedCandidateCount(item) > 0) {
+    return "active";
+  }
+  return statusTone(item.review_status);
+}
+
 function evidenceDocumentTypeLabel(value?: string) {
   if (!value) return "-";
   return evidenceDocumentTypeOptions.find((option) => option.value === value)?.label ?? value;
@@ -129,6 +215,8 @@ function serializeCertifications(value: string) {
 
 export function CorporationsPage() {
   const { runWithOverlay } = useWorkOverlay();
+  const editSectionRef = useRef<HTMLFormElement | null>(null);
+  const directorySectionRef = useRef<HTMLDivElement | null>(null);
   const [list, setList] = useState<Corporation[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -137,7 +225,8 @@ export function CorporationsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [evidenceForm, setEvidenceForm] = useState(emptyEvidenceForm);
-  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
+  const [evidenceInputResetKey, setEvidenceInputResetKey] = useState(0);
   const [evidenceDocuments, setEvidenceDocuments] = useState<CorporationEvidenceDocument[]>([]);
   const [readinessList, setReadinessList] = useState<CorporationReadiness[]>([]);
   const [latestEvidence, setLatestEvidence] = useState<CorporationEvidenceDocument | null>(null);
@@ -257,37 +346,55 @@ export function CorporationsPage() {
 
   const onEvidenceUpload = async (e: FormEvent) => {
     e.preventDefault();
-    if (!evidenceFile) {
-      setError("먼저 사업자등록증명, 사업자등록증 또는 증빙자료 파일을 선택하세요.");
+    const filesToUpload = evidenceFiles;
+    if (filesToUpload.length === 0) {
+      setError("먼저 사업자등록증명, 사업자등록증, 인증서, 면허, 확인서 등 법인 증빙자료 파일을 선택하세요.");
       return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", evidenceFile);
-    formData.append("document_type", evidenceForm.document_type);
-    formData.append("management_group_name", evidenceForm.management_group_name);
-    formData.append("memo", evidenceForm.memo);
-    if (evidenceForm.corporation_id) {
-      formData.append("corporation_id", evidenceForm.corporation_id);
     }
 
     try {
       setEvidenceBusy(true);
       await runWithOverlay(
         {
-          title: "증빙자료 OCR 분석 중",
-          description: "파일을 업로드한 뒤 OCR, 문서 분류, AI 정리, 후보값 생성을 진행합니다.",
-          steps: ["증빙자료 업로드", "OCR/텍스트 추출", "문서 유형 분류", "AI 후보값 정리", "검토 화면 준비"],
-          successMessage: "증빙자료 분석이 완료되었습니다. 추출값을 검토해 주세요.",
+          title: filesToUpload.length > 1 ? "여러 증빙자료 OCR 분석 중" : "증빙자료 OCR 분석 중",
+          description:
+            filesToUpload.length > 1
+              ? `${filesToUpload.length}개 파일을 순서대로 업로드하고 OCR, 문서 분류, 후보값 생성을 진행합니다.`
+              : "파일을 업로드한 뒤 OCR, 문서 분류, AI 정리, 후보값 생성을 진행합니다.",
+          steps:
+            filesToUpload.length > 1
+              ? ["증빙자료 순차 업로드", "OCR/텍스트 추출", "문서 유형 분류", "AI 후보값 정리", "증빙자료 관리 목록 갱신"]
+              : ["증빙자료 업로드", "OCR/텍스트 추출", "문서 유형 분류", "AI 후보값 정리", "검토 화면 준비"],
+          successMessage:
+            filesToUpload.length > 1
+              ? "여러 증빙자료 분석이 완료되었습니다. 증빙자료 관리에서 문서별 후보를 검토해 주세요."
+              : "증빙자료 분석이 완료되었습니다. 추출값을 검토해 주세요.",
           failureMessage: "증빙자료 분석을 완료하지 못했습니다.",
           minVisibleMs: 700,
         },
         async () => {
-          const evidence = await api.uploadCorporationEvidenceDocument(formData);
-          setLatestEvidence(evidence);
-          setWorkspaceTab("review");
+          let latestUploadedEvidence: CorporationEvidenceDocument | null = null;
+          for (const file of filesToUpload) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("document_type", evidenceForm.document_type);
+            formData.append("management_group_name", evidenceForm.management_group_name);
+            formData.append("memo", evidenceForm.memo);
+            if (evidenceForm.corporation_id) {
+              formData.append("corporation_id", evidenceForm.corporation_id);
+            }
+            latestUploadedEvidence = await api.uploadCorporationEvidenceDocument(formData);
+          }
+          setLatestEvidence(latestUploadedEvidence);
+          setEvidenceFiles([]);
+          setEvidenceInputResetKey((value) => value + 1);
+          setWorkspaceTab(filesToUpload.length > 1 ? "library" : "review");
           setError("");
-          setNotice("");
+          setNotice(
+            filesToUpload.length > 1
+              ? `${filesToUpload.length}개 증빙자료를 업로드했습니다. 증빙자료 관리에서 각 문서의 검토 버튼을 눌러 후보값을 확인하세요.`
+              : "",
+          );
           await Promise.all([refresh(), refreshEvidenceDocuments(), refreshReadiness()]);
         },
       );
@@ -332,7 +439,8 @@ export function CorporationsPage() {
             field_values: fieldValues,
           });
           setLatestEvidence(result.evidence);
-          setEvidenceFile(null);
+          setEvidenceFiles([]);
+          setEvidenceInputResetKey((value) => value + 1);
           setEvidenceForm(emptyEvidenceForm);
           setError("");
           setNotice(result.warnings?.join(" ") || "");
@@ -511,6 +619,12 @@ export function CorporationsPage() {
     );
   };
 
+  const scrollToEditForm = () => {
+    window.setTimeout(() => {
+      editSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
   const startEdit = (item: Corporation) => {
     setEditingId(item.id);
     setEditForm({
@@ -535,6 +649,21 @@ export function CorporationsPage() {
       procurement_registration_status: item.procurement_registration_status || "",
       evidence_expiry_summary: item.evidence_expiry_summary || "",
     });
+    scrollToEditForm();
+  };
+
+  const openCorporationFromReadiness = (item: CorporationReadiness) => {
+    const corporation = list.find((corporationItem) => corporationItem.id === item.corporation_id);
+    if (corporation) {
+      startEdit(corporation);
+      return;
+    }
+
+    setSearch(item.corporation_name);
+    setNotice("준비도 카드의 법인을 목록에서 찾도록 검색어를 적용했습니다. 목록이 오래되었다면 새로고침해 주세요.");
+    window.setTimeout(() => {
+      directorySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const onUpdate = async (e: FormEvent) => {
@@ -638,7 +767,7 @@ export function CorporationsPage() {
   };
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-corporations-page">
       <datalist id="management-group-options">
         {groupOptions.map((groupName) => (
           <option key={groupName} value={groupName} />
@@ -647,11 +776,9 @@ export function CorporationsPage() {
 
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Corporation Setup</p>
-          <h3>증빙자료로 법인 정보를 먼저 정리</h3>
-          <p className="section-copy">
-            Phase 1.6A/B부터는 법인명을 먼저 타이핑하기보다 사업자등록증명/사업자등록증과 주요 증빙서류를 올리고, 자동 추출값을 확인한 뒤 법인 프로필에 반영합니다.
-          </p>
+          <p className="eyebrow">법인 관리</p>
+          <h3>법인 정보와 증빙자료 관리</h3>
+          <p className="section-copy">법인 기본정보, 증빙자료 업로드, 추출값 검토, 준비도 상태를 관리합니다.</p>
         </div>
       </div>
 
@@ -660,6 +787,7 @@ export function CorporationsPage() {
           <button
             type="button"
             key={tab.id}
+            data-demo-id={corporationTabDemoId(tab.id)}
             className={`workspace-tab ${workspaceTab === tab.id ? "workspace-tab--active" : ""}`}
             onClick={() => setWorkspaceTab(tab.id)}
             role="tab"
@@ -672,18 +800,19 @@ export function CorporationsPage() {
       </div>
 
       {workspaceTab === "upload" || workspaceTab === "review" ? (
-      <form className="surface-card form-card evidence-uploader" onSubmit={onEvidenceUpload}>
+      <form className="surface-card form-card evidence-uploader" onSubmit={onEvidenceUpload} data-demo-id="demo-corporation-evidence-upload-form">
         {workspaceTab === "upload" ? (
         <>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Evidence First</p>
-            <h3>사업자등록증명 또는 사업자등록증 업로드</h3>
+          <p className="eyebrow">증빙 업로드</p>
+            <h3>법인 증빙자료 업로드</h3>
             <p className="section-copy">
-              PDF/DOCX/JPG/PNG 파일을 올리면 법인명, 사업자등록번호, 대표자, 주소, 업태/종목 후보를 자동으로 추출합니다.
+              사업자등록증명, 사업자등록증, 인증서, 면허, 확인서, 특허/저작권 문서 등 법인이 보유한 증빙자료를 이곳에서 업로드합니다.
+              여러 파일을 한 번에 선택하면 순서대로 분석하고 증빙자료 관리 목록에서 문서별로 검토합니다.
             </p>
           </div>
-          <span className="status-badge status-badge--pending">Phase 1.6A/B</span>
+          <span className="status-badge status-badge--active">전체 증빙 지원</span>
         </div>
 
         <div className="form-grid">
@@ -701,7 +830,7 @@ export function CorporationsPage() {
                 }));
               }}
             >
-              <option value="">새 법인으로 생성 예정</option>
+              <option value="">새로운 법인 생성 및 추가</option>
               {list.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -738,27 +867,42 @@ export function CorporationsPage() {
           </label>
 
           <label className="field field--full">
-            <span>파일 업로드</span>
+            <span>증빙자료 파일 업로드</span>
             <input
+              key={evidenceInputResetKey}
               type="file"
               accept=".pdf,.docx,.jpg,.jpeg,.png"
-              onChange={(e) => setEvidenceFile(e.target.files?.[0] ?? null)}
+              multiple
+              data-demo-id="demo-evidence-file-input"
+              onChange={(e) => setEvidenceFiles(Array.from(e.target.files ?? []))}
             />
+            <small>여러 파일을 동시에 선택할 수 있습니다. 선택한 파일은 순서대로 업로드/분석됩니다.</small>
           </label>
+
+          {evidenceFiles.length > 0 ? (
+            <div className="selected-file-list field--full" aria-label="선택된 증빙자료 파일">
+              <strong>선택된 파일 {evidenceFiles.length}개</strong>
+              <ul>
+                {evidenceFiles.map((file) => (
+                  <li key={`${file.name}-${file.size}`}>{file.name}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <label className="field field--full">
             <span>메모</span>
             <textarea
               value={evidenceForm.memo}
               onChange={(e) => setEvidenceForm((prev) => ({ ...prev, memo: e.target.value }))}
-              placeholder="예: 온세이엔씨 사업자등록증 2022년 발급본"
+              placeholder="예: 사업자등록증, ISO 인증서, 직접생산확인증명서, 특허증 일괄 업로드"
               rows={3}
             />
           </label>
         </div>
 
         <div className="form-actions">
-          <button type="submit" disabled={evidenceBusy}>
+          <button type="submit" disabled={evidenceBusy} data-demo-id="demo-evidence-upload-submit">
             {evidenceBusy ? "처리 중..." : "증빙자료 업로드 및 추출"}
           </button>
         </div>
@@ -766,26 +910,28 @@ export function CorporationsPage() {
         ) : null}
 
         {workspaceTab === "review" && latestEvidence ? (
-          <div className="evidence-result">
+          <div className="evidence-result" data-demo-id="demo-latest-evidence-result">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Extraction Review</p>
+                <p className="eyebrow">추출값 검토</p>
                 <h3>자동 추출 후보 확인</h3>
                 <p className="section-copy">
                   아래 후보값은 아직 확정값이 아닙니다. 반영할 항목만 선택하고, 틀린 값은 수정한 뒤 승인하세요.
                 </p>
               </div>
-              <div className="row">
-                <button type="button" className="button-secondary" onClick={() => toggleAllCandidates(true)} disabled={pendingCandidates.length === 0}>
-                  전체 선택
-                </button>
-                <button type="button" className="button-secondary" onClick={() => toggleAllCandidates(false)} disabled={pendingCandidates.length === 0}>
-                  선택 해제
-                </button>
-                <button type="button" onClick={approveEvidence} disabled={evidenceBusy || selectedCandidateCount === 0}>
-                  {selectedCandidateCount}개 선택 반영
-                </button>
-              </div>
+              {pendingCandidates.length > 0 ? (
+                <div className="row evidence-review-actions">
+                  <button type="button" className="button-secondary" onClick={() => toggleAllCandidates(true)}>
+                    승인 대기 후보 전체 선택
+                  </button>
+                  <button type="button" className="button-secondary" onClick={() => toggleAllCandidates(false)}>
+                    후보 선택 해제
+                  </button>
+                  <button type="button" onClick={approveEvidence} disabled={evidenceBusy || selectedCandidateCount === 0}>
+                    {selectedCandidateCount > 0 ? `${selectedCandidateCount}개 후보 반영` : "선택한 후보 반영"}
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <dl className="detail-list">
@@ -816,13 +962,23 @@ export function CorporationsPage() {
                     <span className={`status-badge status-badge--${statusTone(latestEvidence.ocr_status)}`}>
                       OCR {statusLabel(latestEvidence.ocr_status)}
                     </span>
-                    <span className={`status-badge status-badge--${statusTone(latestEvidence.review_status)}`}>
-                      검토 {statusLabel(latestEvidence.review_status)}
+                    <span className={`status-badge status-badge--${evidenceReviewTone(latestEvidence)}`}>
+                      검토 {evidenceReviewLabel(latestEvidence)}
                     </span>
                   </span>
                 </dd>
               </div>
             </dl>
+
+            {latestEvidence.candidates.length > 0 && pendingCandidates.length === 0 ? (
+              <div className="empty-state empty-state--info evidence-candidate-notice">
+                <strong>승인 대기 후보가 없습니다.</strong>
+                <p>
+                  현재 문서에는 이미 승인됐거나 제외된 후보만 남아 있습니다. 새 값을 반영하려면 재처리하거나
+                  OCR/파싱 텍스트를 보정한 뒤 다시 분석해 주세요.
+                </p>
+              </div>
+            ) : null}
 
             <div className="action-help-grid">
               <article>
@@ -906,7 +1062,7 @@ export function CorporationsPage() {
 
             <div className="evidence-text-editor">
               <div>
-                <p className="eyebrow">OCR Correction</p>
+                <p className="eyebrow">텍스트 보정</p>
                 <h4>OCR/파싱 텍스트 보정</h4>
                 <p className="section-copy">
                   스캔본 OCR이 틀렸거나 표 형식이 어긋나면 아래 텍스트를 직접 고친 뒤 다시 분석하세요.
@@ -937,6 +1093,7 @@ export function CorporationsPage() {
                     <label className="candidate-check">
                       <input
                         type="checkbox"
+                        aria-label={`${candidate.field_label} 승인 후보 선택`}
                         checked={Boolean(selectedCandidateIds[candidate.id])}
                         disabled={candidate.status !== "pending"}
                         onChange={(e) =>
@@ -980,8 +1137,11 @@ export function CorporationsPage() {
               </div>
             ) : (
               <div className="empty-state empty-state--warning">
-                <strong>자동 추출 후보가 없습니다.</strong>
-                <p>문서 유형을 수동으로 지정하거나 원본 품질을 확인하세요.</p>
+                <strong>승인할 자동 추출 후보가 없습니다.</strong>
+                <p>
+                  OCR/파싱은 끝났지만 법인 프로필에 반영할 값이 추출되지 않았습니다. 문서 유형을 수동으로 지정하거나
+                  추출 텍스트를 보정한 뒤 다시 분석해 주세요.
+                </p>
               </div>
             )}
           </div>
@@ -1003,10 +1163,10 @@ export function CorporationsPage() {
       ) : null}
 
       {workspaceTab === "library" ? (
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-evidence-document-list">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Evidence Library</p>
+            <p className="eyebrow">증빙자료 목록</p>
             <h3>증빙자료 관리</h3>
             <p className="section-copy">
               업로드한 증빙자료를 법인그룹/법인 기준으로 확인하고, 상세 검토/재처리/삭제를 진행합니다.
@@ -1038,7 +1198,12 @@ export function CorporationsPage() {
               </thead>
               <tbody>
                 {evidenceDocuments.map((item) => (
-                  <tr key={item.id} className={latestEvidence?.id === item.id ? "table-row--selected" : ""}>
+                  <tr
+                    key={item.id}
+                    className={latestEvidence?.id === item.id ? "table-row--selected" : ""}
+                    data-demo-id="demo-evidence-document-row"
+                    data-demo-row-id={item.id}
+                  >
                     <td>
                       <strong>{item.original_file_name}</strong>
                       {item.memo ? <small>{item.memo}</small> : null}
@@ -1049,18 +1214,18 @@ export function CorporationsPage() {
                     <td>{evidenceDocumentTypeLabel(item.document_type)}</td>
                     <td>
                       <span className="status-badge status-badge--pending">
-                        대기 {item.pending_candidate_count ?? 0}
+                        대기 {evidencePendingCandidateCount(item)}
                       </span>
                       <span className="status-badge status-badge--active">
-                        승인 {item.approved_candidate_count ?? 0}
+                        승인 {evidenceApprovedCandidateCount(item)}
                       </span>
                     </td>
                     <td>
-                      <span className={`status-badge status-badge--${statusTone(item.review_status)}`}>
-                        {statusLabel(item.review_status)}
+                      <span className={`status-badge status-badge--${evidenceReviewTone(item)}`}>
+                        {evidenceReviewLabel(item)}
                       </span>
                       <small>
-                        추출 {statusLabel(item.extraction_status)} / OCR {statusLabel(item.ocr_status)}
+                        원본 검토값 {statusLabel(item.review_status)} · 추출 {statusLabel(item.extraction_status)} / OCR {statusLabel(item.ocr_status)}
                       </small>
                     </td>
                     <td>{new Date(item.updated_at).toLocaleString("ko-KR")}</td>
@@ -1088,10 +1253,10 @@ export function CorporationsPage() {
 
       {workspaceTab === "directory" ? (
       <>
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-corporation-list">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Profile Readiness</p>
+            <p className="eyebrow">준비도</p>
             <h3>법인 프로필 준비도</h3>
             <p className="section-copy">
               적격/부적격 판정이 아니라, 향후 공고 요구조건 비교를 위해 법인 정보와 증빙이 어느 정도 준비됐는지 보여줍니다.
@@ -1110,7 +1275,14 @@ export function CorporationsPage() {
         ) : (
           <div className="readiness-grid">
             {readinessList.map((item) => (
-              <article className="readiness-card" key={item.corporation_id}>
+              <button
+                type="button"
+                className="readiness-card readiness-card--button"
+                data-help-ignore="true"
+                key={item.corporation_id}
+                onClick={() => openCorporationFromReadiness(item)}
+                aria-label={`${item.corporation_name} 법인 상세 편집 열기`}
+              >
                 <div className="readiness-card__header">
                   <div>
                     <strong>{item.corporation_name}</strong>
@@ -1141,7 +1313,8 @@ export function CorporationsPage() {
                     <span>기초 입력 항목 완료</span>
                   </div>
                 )}
-              </article>
+                <span className="readiness-card__hint">클릭해서 법인 정보 편집</span>
+              </button>
             ))}
           </div>
         )}
@@ -1151,8 +1324,8 @@ export function CorporationsPage() {
         <form className="surface-card form-card" onSubmit={onSubmit}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Manual Fallback</p>
-              <h3>증빙자료가 없을 때만 직접 등록</h3>
+              <p className="eyebrow">직접 등록</p>
+              <h3>법인 기본정보 직접 입력</h3>
             </div>
           </div>
 
@@ -1250,15 +1423,12 @@ export function CorporationsPage() {
         </form>
 
         <aside className="surface-card accent-card">
-          <p className="eyebrow">Why It Matters</p>
-          <h3>왜 법인 정보부터 정리하나</h3>
-          <p className="section-copy">
-            직접 입력은 빠르지만 오타와 누락이 생기기 쉽습니다. 가능하면 증빙자료를 먼저 올리고, 사용자는 틀린 값만 수정하는 방식으로 운영합니다.
-          </p>
+          <p className="eyebrow">관리 항목</p>
+          <h3>법인 프로필에 반영되는 정보</h3>
           <ul className="feature-list">
-            <li>사업자등록번호/대표자/주소 자동 추출</li>
-            <li>승인된 후보값만 법인 프로필에 반영</li>
-            <li>향후 부족 조건 판단을 위한 증빙 이력 확보</li>
+            <li>사업자등록번호, 대표자, 주소</li>
+            <li>인증, 면허, 직접생산 품목</li>
+            <li>승인된 증빙 후보와 검토 이력</li>
           </ul>
         </aside>
       </div>
@@ -1277,10 +1447,10 @@ export function CorporationsPage() {
         </div>
       ) : null}
 
-      <div className="surface-card">
+      <div className="surface-card" ref={directorySectionRef}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Directory</p>
+            <p className="eyebrow">법인 목록</p>
             <h3>등록된 법인 목록</h3>
           </div>
           <input
@@ -1318,7 +1488,7 @@ export function CorporationsPage() {
                 {filtered.map((item) => {
                   const readiness = readinessByCorporationId.get(item.id);
                   return (
-                    <tr key={item.id}>
+                    <tr key={item.id} data-demo-id="demo-corporation-row" data-demo-row-id={item.id}>
                       <td>
                         <strong>{item.name}</strong>
                       </td>
@@ -1355,10 +1525,10 @@ export function CorporationsPage() {
       </div>
 
       {editingId ? (
-        <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
+        <form className="surface-card form-card inline-editor" onSubmit={onUpdate} ref={editSectionRef}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Edit Corporation</p>
+              <p className="eyebrow">법인 정보 편집</p>
               <h3>법인 정보 편집</h3>
               <p className="section-copy">선택한 법인의 기본 정보를 바로 수정합니다.</p>
             </div>

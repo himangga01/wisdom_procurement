@@ -24,6 +24,28 @@ CORE_EVIDENCE_TYPES = {
     "credit_rating_certificate",
     "performance_certificate",
     "financial_statement_certificate",
+    "gpass_company_certificate",
+    "iso_quality_certificate",
+    "venture_business_confirmation",
+    "innobiz_confirmation",
+    "factory_registration_certificate",
+    "research_institute_certificate",
+    "software_business_certificate",
+    "software_quality_certificate",
+    "green_technology_certificate",
+    "green_product_confirmation",
+    "excellent_product_certificate",
+    "patent_certificate",
+    "copyright_registration_certificate",
+    "outdoor_advertising_business_registration",
+    "online_sales_business_registration",
+    "industry_association_membership",
+    "investment_share_certificate",
+    "employment_support_approval",
+    "insurance_policy_certificate",
+    "special_business_license",
+    "technology_grade_confirmation",
+    "technology_evaluation_excellent_certificate",
 }
 
 DOCUMENT_TYPE_CERTIFICATION_LABELS = {
@@ -44,6 +66,119 @@ DOCUMENT_TYPE_PREFERENCE_TAGS = {
     "small_business_confirmation": "중소기업",
     "women_owned_business_confirmation": "여성기업",
     "disabled_owned_business_confirmation": "장애인기업",
+}
+
+DOCUMENT_TYPE_CERTIFICATION_LABELS.update(
+    {
+        "gpass_company_certificate": "G-PASS기업 지정",
+        "iso_quality_certificate": "ISO9001 인증",
+        "venture_business_confirmation": "벤처기업확인서",
+        "innobiz_confirmation": "기술혁신형중소기업(Inno-Biz) 확인서",
+        "factory_registration_certificate": "공장등록증명서",
+        "research_institute_certificate": "기업부설연구소 인정서",
+        "software_business_certificate": "소프트웨어사업자확인서",
+        "software_quality_certificate": "소프트웨어품질인증서",
+        "green_technology_certificate": "녹색기술인증서",
+        "green_product_confirmation": "녹색기술제품확인서",
+        "excellent_product_certificate": "우수제품지정증서",
+        "patent_certificate": "특허증",
+        "copyright_registration_certificate": "저작권등록증",
+        "outdoor_advertising_business_registration": "옥외광고사업 등록증",
+        "online_sales_business_registration": "통신판매업신고증",
+        "industry_association_membership": "조합원증",
+        "investment_share_certificate": "출자증권",
+        "employment_support_approval": "고용안정장려금 승인",
+        "insurance_policy_certificate": "책임보험가입증명서",
+        "special_business_license": "특수 영업/등록/신고증",
+        "technology_grade_confirmation": "기술등급확인서",
+        "technology_evaluation_excellent_certificate": "기술평가우수기업인증서",
+    }
+)
+
+DOCUMENT_TYPE_PREFERENCE_TAGS.update(
+    {
+        "gpass_company_certificate": "G-PASS",
+        "venture_business_confirmation": "벤처기업",
+        "innobiz_confirmation": "Inno-Biz",
+        "green_technology_certificate": "녹색기술",
+        "green_product_confirmation": "녹색기술제품",
+        "excellent_product_certificate": "우수제품",
+        "software_quality_certificate": "소프트웨어품질인증",
+        "technology_grade_confirmation": "기술등급",
+        "technology_evaluation_excellent_certificate": "기술평가우수기업",
+    }
+)
+
+EXTENDED_EVIDENCE_CLASSIFICATION_RULES = [
+    ("gpass_company_certificate", 0.9, ["g-pass", "gpass", "g-pass기업", "g-pass 기업", "해외조달시장 진출유망기업"]),
+    ("iso_quality_certificate", 0.88, ["iso9001", "iso 9001", "품질경영시스템 인증서", "quality management system"]),
+    ("venture_business_confirmation", 0.9, ["벤처기업확인서", "벤처기업 확인서"]),
+    ("innobiz_confirmation", 0.9, ["기술혁신형중소기업", "기술혁신형 중소기업 확인서", "기술혁신형중소기업확인서", "이노비즈", "inno-biz", "inno biz", "innobiz"]),
+    ("factory_registration_certificate", 0.88, ["공장등록증명서", "공장 등록 증명서"]),
+    ("research_institute_certificate", 0.88, ["기업부설연구소", "연구소 인정서", "기업부설 연구소"]),
+    ("software_business_certificate", 0.88, ["소프트웨어사업자일반현황관리확인서", "소프트웨어사업자 일반현황 관리확인서", "소프트웨어사업자확인서", "소프트웨어사업자", "소프트웨어 사업자", "sw사업자"]),
+    ("software_quality_certificate", 0.88, ["소프트웨어품질인증서", "소프트웨어 품질인증", "gs인증", "gs 인증"]),
+    ("green_technology_certificate", 0.88, ["녹색기술인증서", "녹색기술 인증"]),
+    ("green_product_confirmation", 0.88, ["녹색기술제품확인서", "녹색기술제품 확인"]),
+    ("excellent_product_certificate", 0.88, ["우수제품지정증서", "우수제품 지정증서", "조달청장 우수제품"]),
+    ("patent_certificate", 0.88, ["특허증", "특허 제", "patent"]),
+    ("copyright_registration_certificate", 0.88, ["저작권등록증", "저작권 등록증", "프로그램 등록증"]),
+    ("investment_share_certificate", 0.82, ["출자증권", "출자 증권"]),
+    ("insurance_policy_certificate", 0.82, ["책임보험가입증명서", "보험가입증명서", "책임보험", "옥외광고업책임보험"]),
+    ("outdoor_advertising_business_registration", 0.86, ["옥외광고사업 등록증", "옥외광고업", "옥외광고사업"]),
+    ("online_sales_business_registration", 0.86, ["통신판매업신고증", "통신판매업 신고증", "통신판매업"]),
+    ("industry_association_membership", 0.82, ["조합원증", "협동조합 조합원", "한국전자산업협동조합"]),
+    ("employment_support_approval", 0.82, ["고용안정장려금", "승인통지서"]),
+    ("special_business_license", 0.8, ["영업신고증", "등록필증", "건강기능식품영업", "화장품책임판매업"]),
+    ("technology_grade_confirmation", 0.84, ["기술등급확인서", "기술 등급 확인서"]),
+    ("technology_evaluation_excellent_certificate", 0.84, ["기술평가우수기업인증서", "기술평가 우수기업 인증서", "기술평가우수기업"]),
+]
+
+EXTENDED_EVIDENCE_SUBJECT_LABELS = {
+    "gpass_company_certificate": ["지정번호", "등급", "기업명"],
+    "iso_quality_certificate": ["인증범위", "인증규격", "인증번호"],
+    "venture_business_confirmation": ["확인번호", "유형", "기업명"],
+    "innobiz_confirmation": ["확인번호", "등급", "기업명"],
+    "factory_registration_certificate": ["공장소재지", "업종", "공장명"],
+    "research_institute_certificate": ["연구소명", "인정번호", "소재지"],
+    "software_business_certificate": ["사업분야", "기업명", "신고번호"],
+    "software_quality_certificate": ["제품명", "인증번호", "등급"],
+    "green_technology_certificate": ["기술명", "인증번호", "인증명"],
+    "green_product_confirmation": ["제품명", "확인번호", "모델명"],
+    "excellent_product_certificate": ["제품명", "지정번호", "품명"],
+    "patent_certificate": ["발명의 명칭", "특허번호", "등록번호"],
+    "copyright_registration_certificate": ["저작물의 명칭", "프로그램 명칭", "등록번호"],
+    "outdoor_advertising_business_registration": ["업종", "등록번호", "사업장소재지"],
+    "online_sales_business_registration": ["신고번호", "판매방식", "인터넷 도메인"],
+    "industry_association_membership": ["조합원명", "회원명", "가입일"],
+    "investment_share_certificate": ["출자좌수", "금액", "조합원명"],
+    "employment_support_approval": ["지원금", "승인번호", "사업명"],
+    "insurance_policy_certificate": ["보험종목", "증권번호", "보험기간"],
+    "special_business_license": ["영업의 종류", "업종", "신고번호"],
+    "technology_grade_confirmation": ["기술등급", "기술분류", "유효일"],
+    "technology_evaluation_excellent_certificate": ["기술명칭", "기술명", "기술등급"],
+}
+
+BUSINESS_ITEM_SUBJECT_DOCUMENT_TYPES = {
+    "patent_certificate",
+    "copyright_registration_certificate",
+    "software_business_certificate",
+    "software_quality_certificate",
+    "green_technology_certificate",
+    "green_product_confirmation",
+    "excellent_product_certificate",
+    "technology_evaluation_excellent_certificate",
+}
+
+BUSINESS_ITEM_SUBJECT_LABELS = {
+    "patent_certificate": ["발명의 명칭"],
+    "copyright_registration_certificate": ["저작물의 명칭", "프로그램 명칭"],
+    "software_business_certificate": ["사업분야"],
+    "software_quality_certificate": ["제품명", "소프트웨어명"],
+    "green_technology_certificate": ["기술명", "인증명"],
+    "green_product_confirmation": ["제품명", "모델명"],
+    "excellent_product_certificate": ["제품명", "품명"],
+    "technology_evaluation_excellent_certificate": ["기술명칭", "기술명"],
 }
 
 BUSINESS_TYPE_TOKENS = [
@@ -233,20 +368,23 @@ def classify_evidence_document(text: str, file_name: str = "") -> tuple[str, flo
         return "business_registration_proof", 0.96
     if "사업자등록증" in compact and ("등록번호" in compact or "사업자등록번호" in compact):
         return "business_registration_certificate", 0.94
+    for document_type, rule_confidence, tokens in EXTENDED_EVIDENCE_CLASSIFICATION_RULES:
+        if any(token.lower() in haystack for token in tokens):
+            return document_type, rule_confidence
+    if "직접생산확인증명서" in compact or ("직접생산" in compact and ("세부품명" in compact or "제품명" in compact)):
+        return "direct_production_confirmation", 0.9
+    if "기업신용평가" in compact or "신용평가등급" in compact or "신용등급확인서" in compact:
+        return "credit_rating_certificate", 0.86
     if "중소기업확인서" in compact or ("소기업" in compact and "유효기간" in compact):
         return "small_business_confirmation", 0.92
     if "여성기업확인서" in compact or ("여성기업" in compact and "확인번호" in compact):
         return "women_owned_business_confirmation", 0.92
     if "장애인기업확인서" in compact or ("장애인기업" in compact and "확인번호" in compact):
         return "disabled_owned_business_confirmation", 0.92
-    if "직접생산확인증명서" in compact or ("직접생산" in compact and ("세부품명" in compact or "제품명" in compact)):
-        return "direct_production_confirmation", 0.9
     if "경쟁입찰참가자격등록증" in compact or "입찰참가자격등록" in compact:
         return "procurement_registration_certificate", 0.88
     if any(token in compact for token in ("건설업등록증", "전기공사업등록증", "정보통신공사업등록증", "소방시설공사업등록증", "엔지니어링사업자신고증", "산림사업법인등록증", "소프트웨어사업자일반현황관리확인서")):
         return "license_registration_certificate", 0.86
-    if "기업신용평가" in compact or "신용평가등급" in compact or "신용등급확인서" in compact:
-        return "credit_rating_certificate", 0.86
     if "실적증명서" in compact or ("수행실적" in compact and ("계약금액" in compact or "계약기간" in compact)):
         return "performance_certificate", 0.84
     if "국세납세증명" in compact or ("납세증명서" in compact and "국세" in compact):
@@ -401,6 +539,16 @@ def extract_core_evidence_candidates(text: str, document_type: str) -> list[Evid
         summary = f"재무/매출 증빙 {fiscal_year}" if fiscal_year else "재무/매출 증빙"
         add("license_summary", summary, 0.7, summary)
 
+    if document_type in EXTENDED_EVIDENCE_SUBJECT_LABELS:
+        label = DOCUMENT_TYPE_CERTIFICATION_LABELS.get(document_type, document_type)
+        subject = _extract_extended_evidence_subject(text, document_type)
+        summary = f"{label}: {subject}" if subject else label
+        add("license_summary", summary, 0.74, summary)
+        if document_type in BUSINESS_ITEM_SUBJECT_DOCUMENT_TYPES:
+            business_item_subject = _extract_business_item_subject(text, document_type)
+            if business_item_subject:
+                add("business_item", business_item_subject, 0.68, business_item_subject)
+
     return candidates
 
 
@@ -434,6 +582,35 @@ def _extract_direct_production_items(text: str) -> list[str]:
         if value:
             values.extend(_split_items(value))
     return _dedupe(values)
+
+
+def _extract_extended_evidence_subject(text: str, document_type: str, labels: list[str] | None = None) -> str:
+    labels = labels if labels is not None else EXTENDED_EVIDENCE_SUBJECT_LABELS.get(document_type, [])
+    for label in labels:
+        value = _find_value_after_label(text, [label], allow_continuation=False)
+        value = _strip_after_label(value, ["유효기간", "인증기간", "등록일", "발급일", "권리자"])
+        if value:
+            return value
+
+    pattern = {
+        "patent_certificate": r"(?:발명의\s*명칭|명칭)\s*[:：]?\s*(.+)",
+        "copyright_registration_certificate": r"(?:저작물의\s*명칭|프로그램\s*명칭|명칭)\s*[:：]?\s*(.+)",
+        "software_quality_certificate": r"(?:제품명|소프트웨어명)\s*[:：]?\s*(.+)",
+        "green_technology_certificate": r"(?:기술명|인증명)\s*[:：]?\s*(.+)",
+        "green_product_confirmation": r"(?:제품명|모델명)\s*[:：]?\s*(.+)",
+    }.get(document_type)
+    if pattern:
+        value = _find_pattern(text, pattern)
+        if value:
+            return _clean_value(value)
+    return ""
+
+
+def _extract_business_item_subject(text: str, document_type: str) -> str:
+    labels = BUSINESS_ITEM_SUBJECT_LABELS.get(document_type)
+    if not labels:
+        return ""
+    return _extract_extended_evidence_subject(text, document_type, labels)
 
 
 def _extract_license_summary(text: str) -> str:

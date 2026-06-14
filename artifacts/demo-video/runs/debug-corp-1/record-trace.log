@@ -1,0 +1,49 @@
+[2026-06-14T10:41:46.632Z] data-ready seed=debug-corp-1
+[2026-06-14T10:41:47.005Z] scene corporations: goto http://127.0.0.1:5199/corporations
+[2026-06-14T10:41:47.017Z] scene corporations: goto committed
+[2026-06-14T10:41:47.918Z] scene corporations: overlay start
+[2026-06-14T10:41:47.924Z] scene corporations: overlay done
+[2026-06-14T10:41:47.941Z] scene corporations: text checks done
+[2026-06-14T10:41:50.154Z] scene corporations: screenshot start
+[2026-06-14T10:41:50.226Z] scene corporations: screenshot done
+[2026-06-14T10:41:50.226Z] scene corporations: captured
+[2026-06-14T10:41:50.227Z] browser close start
+[2026-06-14T10:41:50.334Z] browser close done
+[2026-06-14T10:42:10.804Z] data-ready seed=debug-corp-1
+[2026-06-14T10:42:11.199Z] scene intro: goto http://127.0.0.1:5199/
+[2026-06-14T10:42:11.209Z] scene intro: goto committed
+[2026-06-14T10:42:12.116Z] scene intro: overlay start
+[2026-06-14T10:42:12.133Z] scene intro: overlay done
+[2026-06-14T10:42:12.133Z] scene intro: text checks done
+[2026-06-14T10:42:13.942Z] scene intro: screenshot start
+[2026-06-14T10:42:14.028Z] scene intro: screenshot done
+[2026-06-14T10:42:14.029Z] scene intro: captured
+[2026-06-14T10:42:14.029Z] scene corporations: goto http://127.0.0.1:5199/corporations
+[2026-06-14T10:42:14.036Z] scene corporations: goto committed
+[2026-06-14T10:42:14.947Z] scene corporations: overlay start
+[2026-06-14T10:42:14.957Z] scene corporations: overlay done
+[2026-06-14T10:42:14.977Z] scene corporations: text checks done
+[2026-06-14T10:42:17.189Z] scene corporations: screenshot start
+[2026-06-14T10:42:17.260Z] scene corporations: screenshot done
+[2026-06-14T10:42:17.261Z] scene corporations: captured
+[2026-06-14T10:42:17.261Z] browser close start
+[2026-06-14T10:42:17.375Z] browser close done
+[2026-06-14T10:42:34.022Z] data-ready seed=debug-corp-1
+[2026-06-14T10:42:34.380Z] scene intro: goto http://127.0.0.1:5199/
+[2026-06-14T10:42:34.390Z] scene intro: goto committed
+[2026-06-14T10:42:35.297Z] scene intro: overlay start
+[2026-06-14T10:42:35.312Z] scene intro: overlay done
+[2026-06-14T10:42:35.313Z] scene intro: text checks done
+[2026-06-14T10:42:37.128Z] scene intro: screenshot start
+[2026-06-14T10:42:37.216Z] scene intro: screenshot done
+[2026-06-14T10:42:37.217Z] scene intro: captured
+[2026-06-14T10:42:37.217Z] scene corporations: goto http://127.0.0.1:5199/corporations
+[2026-06-14T10:42:37.224Z] scene corporations: goto committed
+[2026-06-14T10:42:38.126Z] scene corporations: overlay start
+[2026-06-14T10:42:38.136Z] scene corporations: overlay done
+[2026-06-14T10:42:38.153Z] scene corporations: text checks done
+[2026-06-14T10:42:40.361Z] scene corporations: screenshot start
+[2026-06-14T10:42:40.423Z] scene corporations: screenshot done
+[2026-06-14T10:42:40.423Z] scene corporations: captured
+[2026-06-14T10:42:40.424Z] browser close start
+[2026-06-14T10:42:40.535Z] browser close done

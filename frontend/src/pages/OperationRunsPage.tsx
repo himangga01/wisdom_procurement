@@ -93,9 +93,9 @@ export function OperationRunsPage() {
   };
 
   return (
-    <section className="page-grid">
+    <section className="page-grid" data-demo-id="demo-operation-runs-page">
       <div className="page-title">
-        <p className="eyebrow">Phase 4B / 4C</p>
+        <p className="eyebrow">작업 이력</p>
         <h1>작업/실패 관리</h1>
         <p>나라장터 수집, 판단 실행, 기준문서 처리 같은 운영 작업의 실행 이력과 실패 사유를 확인합니다.</p>
       </div>
@@ -107,10 +107,10 @@ export function OperationRunsPage() {
         </div>
       ) : null}
 
-      <form className="surface-card" onSubmit={onFilter}>
+      <form className="surface-card" onSubmit={onFilter} data-demo-id="demo-operation-run-list">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Runs</p>
+            <p className="eyebrow">작업 목록</p>
             <h3>작업 이력</h3>
           </div>
           <div className="toolbar">
@@ -147,6 +147,8 @@ export function OperationRunsPage() {
                 className={`collection-run-row${activeRun?.id === run.id ? " active" : ""}`}
                 key={run.id}
                 onClick={() => setActiveId(run.id)}
+                data-demo-id="demo-operation-run-row"
+                data-demo-row-id={run.id}
               >
                 <span className={`status-badge status-badge--${statusTone(run.status)}`}>{run.status}</span>
                 <strong>{operationTypeLabels[run.operation_type] ?? run.operation_type}</strong>
@@ -159,10 +161,10 @@ export function OperationRunsPage() {
       </form>
 
       {activeRun ? (
-        <div className="surface-card">
+        <div className="surface-card" data-demo-id="demo-operation-run-detail">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Detail</p>
+              <p className="eyebrow">작업 상세</p>
               <h3>작업 상세</h3>
             </div>
             <button type="button" className="button-secondary" onClick={onRetry} disabled={!canRetry(activeRun)}>
@@ -190,7 +192,7 @@ export function OperationRunsPage() {
           </div>
 
           {activeRun.error_message ? (
-            <div className="empty-state empty-state--warning">
+            <div className="empty-state empty-state--warning" data-demo-id="demo-operation-error-detail">
               <strong>{activeRun.error_code || "failure"}</strong>
               <p>{activeRun.error_message}</p>
             </div>

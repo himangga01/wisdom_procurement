@@ -75,7 +75,7 @@ export function SettingsPage() {
     <section className="content-stack">
       <div className="surface-card analysis-hero">
         <div>
-          <p className="eyebrow">API Integrations</p>
+          <p className="eyebrow">API 연동</p>
           <h3>나라장터 API 연결 상태</h3>
           <p className="section-copy">
             API 키 전체 값은 화면에 표시하지 않고, 설정 여부와 연결 테스트 결과만 확인합니다.
@@ -127,7 +127,7 @@ export function SettingsPage() {
       <article className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">AI Models</p>
+            <p className="eyebrow">AI 모델</p>
             <h3>AI 요약 모델 설정</h3>
             <p className="section-copy">
               실제 API 키는 `backend/.env`에 직접 입력하고, 포탈에서는 설정 여부와 선택 가능한 모델만 확인합니다.
@@ -165,7 +165,7 @@ export function SettingsPage() {
       <article className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Nara API</p>
+            <p className="eyebrow">나라장터 API</p>
             <h3>연동 엔드포인트</h3>
           </div>
         </div>
@@ -185,7 +185,7 @@ export function SettingsPage() {
         <article className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Connection Test</p>
+              <p className="eyebrow">연결 테스트</p>
               <h3>최근 연결 테스트 결과</h3>
             </div>
             <span className={`status-badge status-badge--${testResult.status === "ok" ? "active" : "muted"}`}>
@@ -215,7 +215,7 @@ export function SettingsPage() {
         <article className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Connection Test</p>
+              <p className="eyebrow">연결 테스트</p>
               <h3>저장된 최근 연결 테스트 결과</h3>
             </div>
             <span className={`status-badge status-badge--${status.last_test_status === "ok" ? "active" : "muted"}`}>

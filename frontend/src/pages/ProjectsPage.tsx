@@ -141,11 +141,9 @@ export function ProjectsPage() {
         <form className="surface-card form-card" onSubmit={onSubmit}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Project Setup</p>
-              <h3>프로젝트를 먼저 만들어 흐름을 묶기</h3>
-              <p className="section-copy">
-                업로드 이력은 파일보다 프로젝트 기준으로 보는 것이 훨씬 읽기 쉽습니다. 그래서 생성 폼 자체를 더 안내형으로 바꿨습니다.
-              </p>
+              <p className="eyebrow">프로젝트 등록</p>
+              <h3>프로젝트 생성</h3>
+              <p className="section-copy">공고 대응 업무를 프로젝트 단위로 등록하고 연결 법인을 지정합니다.</p>
             </div>
           </div>
 
@@ -195,12 +193,12 @@ export function ProjectsPage() {
         </form>
 
         <aside className="surface-card accent-card accent-card--leaf">
-          <p className="eyebrow">Project First</p>
-          <h3>프로젝트 기준 UX로 바꾼 이유</h3>
+          <p className="eyebrow">관리 항목</p>
+          <h3>프로젝트에 연결되는 정보</h3>
           <ul className="feature-list">
-            <li>같은 공고 관련 문서를 한 흐름으로 다시 보기 쉽습니다.</li>
-            <li>나중에 분석 결과와 근거 문서를 묶어 관리하기 좋습니다.</li>
-            <li>Phase 2, 3 확장 시 판단 단위를 유지하기 쉽습니다.</li>
+            <li>연결 법인</li>
+            <li>업로드 문서와 분석 이력</li>
+            <li>업무 메모와 진행 상태</li>
           </ul>
         </aside>
       </div>
@@ -215,7 +213,7 @@ export function ProjectsPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Project Directory</p>
+            <p className="eyebrow">프로젝트 목록</p>
             <h3>운영 중인 프로젝트</h3>
           </div>
           <input
@@ -237,7 +235,7 @@ export function ProjectsPage() {
               <article key={item.id} className="project-card">
                 <div className="project-card__top">
                   <div>
-                    <p className="eyebrow eyebrow--soft">PROJECT #{item.id}</p>
+                    <p className="eyebrow eyebrow--soft">프로젝트 #{item.id}</p>
                     <h4>{item.name}</h4>
                   </div>
                   <span className="status-badge status-badge--active">{item.status}</span>
@@ -262,7 +260,7 @@ export function ProjectsPage() {
         <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Edit Project</p>
+              <p className="eyebrow">프로젝트 편집</p>
               <h3>프로젝트 정보 편집</h3>
               <p className="section-copy">프로젝트명, 연결 법인, 상태, 메모를 수정합니다.</p>
             </div>

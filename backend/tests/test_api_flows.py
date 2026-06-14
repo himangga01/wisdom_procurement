@@ -12,7 +12,9 @@ from pathlib import Path
 import fitz
 from docx import Document
 
-_TMP_DIR = Path(tempfile.mkdtemp(prefix="wisdom_api_tests_"))
+_TEST_TMP_ROOT = Path(os.environ.get("WISDOM_TEST_TMPDIR", Path(__file__).resolve().parents[2] / "temp" / "api-tests"))
+_TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
+_TMP_DIR = Path(tempfile.mkdtemp(prefix="wisdom_api_tests_", dir=_TEST_TMP_ROOT))
 
 os.environ["SQLITE_PATH"] = str(_TMP_DIR / "test.db")
 os.environ["STORAGE_ROOT"] = str(_TMP_DIR / "storage")
@@ -948,6 +950,198 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response.get_json()
 
+    def test_service_rocket_pitch_demo_pipeline_flow(self) -> None:
+        business_evidence = self.upload_business_registration_evidence()
+        self.assertEqual(business_evidence["document_type"], "business_registration_certificate")
+        self.assertEqual(business_evidence["classification_status"], "classified")
+
+        business_approval = self.client.post(
+            f"/api/corporation-evidence-documents/{business_evidence['id']}/approve",
+            json={},
+        )
+        self.assertEqual(business_approval.status_code, 200)
+        corporation = business_approval.get_json()["corporation"]
+        self.assertEqual(corporation["name"], "주식회사 온세이엔씨")
+        self.assertEqual(corporation["evidence_verification_status"], "evidence_reviewed")
+
+        small_business_evidence = self.upload_small_business_evidence(corporation["id"])
+        small_business_approval = self.client.post(
+            f"/api/corporation-evidence-documents/{small_business_evidence['id']}/approve",
+            json={},
+        )
+        self.assertEqual(small_business_approval.status_code, 200)
+        corporation = small_business_approval.get_json()["corporation"]
+        self.assertEqual(corporation["company_size_classification"], "소기업")
+        self.assertIn("중소기업확인서", json.loads(corporation["certifications_json"]))
+
+        dashboard_response = self.client.get("/api/dashboard/summary")
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertGreaterEqual(dashboard_response.get_json()["corporation_count"], 1)
+
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "DEMO20260614001",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Rocket Pitch 시연용 정보통신 용역 공고",
+                    "ntceInsttNm": "데모 발주기관",
+                    "dminsttNm": "데모 수요기관",
+                    "bidNtceDt": "2026-06-14 09:00",
+                    "bidBeginDt": "2026-06-15 09:00",
+                    "bidClseDt": "2026-06-30 17:00",
+                    "opengDt": "2026-07-01 10:00",
+                    "presmptPrce": "25000000",
+                    "bssamt": "23000000",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "information communication construction license",
+                    "bidNtceDtlUrl": "https://example.go.kr/demo-notice",
+                    "business_type": "service",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+        self.assertEqual(notice["bid_ntce_no"], "DEMO20260614001")
+        self.assertEqual(notice["business_type"], "service")
+
+        requirements_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/requirements")
+        self.assertEqual(requirements_response.status_code, 200)
+        requirements_payload = requirements_response.get_json()
+        requirement_types = {item["requirement_type"] for item in requirements_payload["requirements"]}
+        self.assertIn("region", requirement_types)
+        self.assertIn("license", requirement_types)
+        self.assertIn("date", requirement_types)
+
+        structured_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/requirements/structured")
+        self.assertEqual(structured_response.status_code, 200)
+        structured_payload = structured_response.get_json()
+        self.assertEqual(structured_payload["contract_version"], "phase3_gap_judgment_contract_v1")
+        self.assertGreaterEqual(structured_payload["requirement_count"], 3)
+
+        basis = self.upload_basis_document(
+            """
+            Information communication construction license is a citation candidate for bidder qualification review.
+            Small business certificate is a required document candidate for company type review.
+            Business registration certificate must be submitted before contract review.
+            Contract officers should verify missing documents before deciding readiness.
+            """,
+            file_name="rocket-pitch-demo-basis.pdf",
+        )
+        self.assertEqual(basis["processing_status"], "completed")
+        self.assertEqual(basis["index_status"], "completed")
+        self.assertGreaterEqual(basis["chunk_count"], 1)
+
+        basis_search_response = self.client.post(
+            "/api/basis-search",
+            json={"query": "information communication construction license", "top_k": 3},
+        )
+        self.assertEqual(basis_search_response.status_code, 200)
+        basis_search = basis_search_response.get_json()
+        self.assertEqual(basis_search["index_source"], "json_basis_index")
+        self.assertGreaterEqual(basis_search["result_count"], 1)
+
+        comparison_response = self.client.post(
+            "/api/notice-comparisons",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+        )
+        self.assertEqual(comparison_response.status_code, 201)
+        comparison = comparison_response.get_json()
+        self.assertEqual(comparison["status"], "preview")
+        self.assertGreaterEqual(comparison["summary"]["prepared_count"], 1)
+        self.assertGreaterEqual(comparison["summary"]["possibly_missing_count"], 1)
+
+        judgment_response = self.client.post(
+            "/api/judgment-runs",
+            json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+        )
+        self.assertEqual(judgment_response.status_code, 201)
+        judgment = judgment_response.get_json()
+        self.assertEqual(judgment["status"], "completed")
+        self.assertEqual(judgment["review_status"], "pending")
+        self.assertGreaterEqual(judgment["summary"]["missing_count"], 1)
+        self.assertTrue(judgment["result"]["preparation_guide"])
+        self.assertTrue(any(item["citation_candidates"] for item in judgment["result"]["items"]))
+
+        contract_preview_response = self.client.post(
+            "/api/contracts/preview",
+            json={
+                "nara_notice_id": notice["id"],
+                "corporation_id": corporation["id"],
+                "judgment_run_id": judgment["id"],
+                "custom_fields": {
+                    "contract_number": "DEMO-2026-001",
+                    "contract_amount": "25,000,000원",
+                    "contract_period": "2026.07.01 ~ 2026.12.31",
+                },
+            },
+        )
+        self.assertEqual(contract_preview_response.status_code, 200)
+        self.assertTrue(contract_preview_response.get_json()["valid"])
+
+        contract_response = self.client.post(
+            "/api/contracts",
+            json={
+                "nara_notice_id": notice["id"],
+                "corporation_id": corporation["id"],
+                "judgment_run_id": judgment["id"],
+                "title": "Rocket Pitch 시연 계약서 초안",
+                "custom_fields": {
+                    "contract_number": "DEMO-2026-001",
+                    "contract_amount": "25,000,000원",
+                    "contract_period": "2026.07.01 ~ 2026.12.31",
+                },
+            },
+        )
+        self.assertEqual(contract_response.status_code, 201)
+        contract = contract_response.get_json()
+        self.assertEqual(contract["status"], "generated")
+        self.assertEqual(contract["review_status"], "draft")
+        self.assertTrue(contract["download_url"])
+
+        download_response = self.client.get(f"/api/contracts/{contract['id']}/download")
+        self.assertEqual(download_response.status_code, 200)
+        try:
+            downloaded = Document(io.BytesIO(download_response.data))
+            downloaded_text_parts = [paragraph.text for paragraph in downloaded.paragraphs]
+            for table in downloaded.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        downloaded_text_parts.append(cell.text)
+            downloaded_text = "\n".join(downloaded_text_parts)
+            self.assertIn("용역표준계약서", downloaded_text)
+            self.assertIn("Rocket Pitch 시연용 정보통신 용역 공고", downloaded_text)
+        finally:
+            download_response.close()
+
+        operation_runs_response = self.client.get("/api/operation-runs")
+        self.assertEqual(operation_runs_response.status_code, 200)
+        operation_types = {item["operation_type"] for item in operation_runs_response.get_json()}
+        self.assertIn("basis_document_processing", operation_types)
+        self.assertIn("judgment_run", operation_types)
+        self.assertIn("contract_create", operation_types)
+
+        operations_response = self.client.get("/api/operations/summary")
+        self.assertEqual(operations_response.status_code, 200)
+        self.assertIn(operations_response.get_json()["overall_status"], {"ok", "warning", "action_required"})
+
+        combined_payload = json.dumps(
+            {
+                "business_evidence": business_evidence,
+                "small_business_evidence": small_business_evidence,
+                "notice": notice,
+                "requirements": requirements_payload,
+                "basis_search": basis_search,
+                "comparison": comparison,
+                "judgment": judgment,
+                "contract": contract,
+            },
+            ensure_ascii=False,
+        )
+        self.assertNotIn("eligible", combined_payload.lower())
+        for forbidden_verdict in ['"match_status": "eligible"', '"status_label": "지원 가능"', '"eligible": true', '"eligibility"']:
+            self.assertNotIn(forbidden_verdict, combined_payload)
+
     def test_crud_update_delete_flow(self) -> None:
         corporation = self.create_corporation()
         corp_patch = self.client.patch(
@@ -1116,6 +1310,16 @@ class ApiFlowTests(unittest.TestCase):
         self.assertGreaterEqual(len(chunks), 1)
         self.assertIn("chunker", chunks[0]["metadata"])
         self.assertTrue(chunks[0]["chunk_hash"])
+
+        chunk_detail_response = self.client.get(f"/api/basis-documents/{basis['id']}/chunks/{chunks[0]['id']}")
+        self.assertEqual(chunk_detail_response.status_code, 200)
+        chunk_detail = chunk_detail_response.get_json()
+        self.assertEqual(chunk_detail["detail_type"], "basis_chunk")
+        self.assertEqual(chunk_detail["basis_document"]["id"], basis["id"])
+        self.assertIn("business registration", chunk_detail["chunk_text"].lower())
+
+        missing_chunk_response = self.client.get(f"/api/basis-documents/{basis['id']}/chunks/999999")
+        self.assertEqual(missing_chunk_response.status_code, 404)
 
         reprocess_response = self.client.post(f"/api/basis-documents/{basis['id']}/reprocess")
         self.assertEqual(reprocess_response.status_code, 200)
@@ -1633,6 +1837,15 @@ class ApiFlowTests(unittest.TestCase):
         list_response = self.client.get(f"/api/basis-documents/{basis['id']}/rule-candidates")
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(list_response.get_json()["candidate_count"], payload["candidate_count"])
+        self.assertEqual(list_response.get_json()["returned_count"], payload["candidate_count"])
+
+        limited_response = self.client.get("/api/basis-rule-candidates?limit=1")
+        self.assertEqual(limited_response.status_code, 200)
+        limited_payload = limited_response.get_json()
+        self.assertGreaterEqual(limited_payload["candidate_count"], payload["candidate_count"])
+        self.assertEqual(limited_payload["returned_count"], 1)
+        self.assertEqual(len(limited_payload["candidates"]), 1)
+        self.assertEqual(limited_payload["limit"], 1)
 
     def test_basis_rule_candidate_reextract_preserves_reviewed_candidates(self) -> None:
         basis = self.upload_basis_document(
@@ -2073,6 +2286,9 @@ class ApiFlowTests(unittest.TestCase):
         self.assertGreaterEqual(payload["summary"]["matched_count"], 1)
         self.assertGreaterEqual(payload["summary"]["missing_count"], 1)
         self.assertIn("preparation_guide", payload["result"])
+        self.assertEqual(payload["result"]["user_summary"]["generated_by"], "fallback")
+        self.assertTrue(payload["result"]["user_summary"]["plain_summary"])
+        self.assertTrue(any(link["type"] == "basis_chunk" for link in payload["result"]["user_summary"]["evidence_links"]))
         self.assertTrue(payload["input_snapshot"]["notice_requirements"])
         statuses = {item["match_status"] for item in payload["result"]["items"]}
         self.assertIn("matched", statuses)
@@ -2313,6 +2529,7 @@ class ApiFlowTests(unittest.TestCase):
                 "keyword": "조경",
                 "start_date": "2026-05-01",
                 "end_date": "2026-05-22",
+                "business_type": "goods",
                 "save": True,
                 "notices": [
                     {
@@ -2331,6 +2548,9 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "injected")
         self.assertEqual(payload["searched_count"], 1)
         self.assertEqual(payload["saved_count"], 1)
+        self.assertEqual(payload["criteria"]["business_type"], "goods")
+        self.assertEqual(payload["result"]["business_type"], "goods")
+        self.assertEqual(payload["result"]["items"][0]["business_type"], "goods")
         self.assertIn("HTML", payload["result"]["policy"])
         saved_response = self.client.get("/api/nara/saved-notices")
         self.assertEqual(saved_response.status_code, 200)
@@ -3021,6 +3241,300 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("NARA_API_SERVICE_KEY", response.get_json()["detail"])
 
+    def test_nara_search_uses_selected_business_type_operation(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+        calls: list[str] = []
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            calls.append(operation)
+            business_label = {
+                "getBidPblancListInfoServcPPSSrch": "용역",
+                "getBidPblancListInfoThngPPSSrch": "물품",
+            }[operation]
+            return {
+                "http_status": 200,
+                "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+                "total_count": 1,
+                "items": [
+                    {
+                        "bidNtceNo": f"20260614-{business_label}",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": f"{business_label} 테스트 공고",
+                        "bidNtceDt": "202606141000",
+                    }
+                ],
+            }
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            service_response = self.client.get("/api/nara/notices/search", query_string={"business_type": "service"})
+            self.assertEqual(service_response.status_code, 200)
+            service_payload = service_response.get_json()
+            self.assertEqual(calls, ["getBidPblancListInfoServcPPSSrch"])
+            self.assertEqual(service_payload["items"][0]["business_type"], "service")
+            self.assertEqual(service_payload["items"][0]["business_type_label"], "용역")
+
+            calls.clear()
+            goods_response = self.client.get("/api/nara/notices/search", query_string={"business_type": "goods"})
+            self.assertEqual(goods_response.status_code, 200)
+            goods_payload = goods_response.get_json()
+            self.assertEqual(calls, ["getBidPblancListInfoThngPPSSrch"])
+            self.assertEqual(goods_payload["items"][0]["business_type"], "goods")
+            self.assertEqual(goods_payload["items"][0]["business_type_label"], "물품")
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
+    def test_nara_search_all_merges_business_types_and_deduplicates_notices(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+        calls: list[str] = []
+
+        item_map = {
+            "getBidPblancListInfoCnstwkPPSSrch": [
+                {"bidNtceNo": "202606140001", "bidNtceOrd": "000", "bidNtceNm": "공사 공고", "bidNtceDt": "202606141000"}
+            ],
+            "getBidPblancListInfoServcPPSSrch": [
+                {"bidNtceNo": "202606140002", "bidNtceOrd": "000", "bidNtceNm": "용역 공고", "bidNtceDt": "202606141200"}
+            ],
+            "getBidPblancListInfoThngPPSSrch": [
+                {"bidNtceNo": "202606140002", "bidNtceOrd": "000", "bidNtceNm": "중복 물품 공고", "bidNtceDt": "202606141300"}
+            ],
+            "getBidPblancListInfoEtcPPSSrch": [
+                {"bidNtceNo": "202606140004", "bidNtceOrd": "000", "bidNtceNm": "기타 공고", "bidNtceDt": "202606140900"}
+            ],
+        }
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            calls.append(operation)
+            return {
+                "http_status": 200,
+                "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+                "total_count": len(item_map.get(operation, [])),
+                "items": item_map.get(operation, []),
+            }
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            response = self.client.get("/api/nara/notices/search", query_string={"business_type": "all", "page_size": 20})
+            self.assertEqual(response.status_code, 200)
+            payload = response.get_json()
+
+            self.assertEqual(
+                calls,
+                [
+                    "getBidPblancListInfoCnstwkPPSSrch",
+                    "getBidPblancListInfoServcPPSSrch",
+                    "getBidPblancListInfoThngPPSSrch",
+                    "getBidPblancListInfoEtcPPSSrch",
+                ],
+            )
+            self.assertEqual(payload["business_type"], "all")
+            self.assertEqual(payload["queried_business_types"], ["construction", "service", "goods", "etc"])
+            self.assertEqual(payload["total_count"], 4)
+            self.assertEqual(len(payload["items"]), 3)
+            self.assertEqual(len({(item["bid_ntce_no"], item["bid_ntce_ord"]) for item in payload["items"]}), 3)
+            self.assertEqual({item["business_type"] for item in payload["items"]}, {"construction", "service", "etc"})
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
+    def test_nara_search_all_uses_global_merged_pagination_without_duplicates(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+
+        item_map = {
+            "getBidPblancListInfoCnstwkPPSSrch": [
+                {"bidNtceNo": "C-1", "bidNtceOrd": "000", "bidNtceNm": "공사 1", "bidNtceDt": "202606141400"},
+                {"bidNtceNo": "C-2", "bidNtceOrd": "000", "bidNtceNm": "공사 2", "bidNtceDt": "202606141000"},
+            ],
+            "getBidPblancListInfoServcPPSSrch": [
+                {"bidNtceNo": "S-1", "bidNtceOrd": "000", "bidNtceNm": "용역 1", "bidNtceDt": "202606141300"},
+                {"bidNtceNo": "S-2", "bidNtceOrd": "000", "bidNtceNm": "용역 2", "bidNtceDt": "202606140900"},
+            ],
+            "getBidPblancListInfoThngPPSSrch": [
+                {"bidNtceNo": "G-1", "bidNtceOrd": "000", "bidNtceNm": "물품 1", "bidNtceDt": "202606141200"},
+            ],
+            "getBidPblancListInfoEtcPPSSrch": [
+                {"bidNtceNo": "E-1", "bidNtceOrd": "000", "bidNtceNm": "기타 1", "bidNtceDt": "202606141100"},
+            ],
+        }
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            rows = item_map[operation]
+            page_no = int(params.get("pageNo", "1"))
+            page_size = int(params.get("numOfRows", "20"))
+            start = (page_no - 1) * page_size
+            return {
+                "http_status": 200,
+                "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+                "total_count": len(rows),
+                "items": rows[start : start + page_size],
+            }
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            first = self.client.get("/api/nara/notices/search", query_string={"business_type": "all", "page_size": 2, "page_no": 1})
+            second = self.client.get("/api/nara/notices/search", query_string={"business_type": "all", "page_size": 2, "page_no": 2})
+
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(second.status_code, 200)
+            first_payload = first.get_json()
+            second_payload = second.get_json()
+            first_keys = [(item["bid_ntce_no"], item["bid_ntce_ord"]) for item in first_payload["items"]]
+            second_keys = [(item["bid_ntce_no"], item["bid_ntce_ord"]) for item in second_payload["items"]]
+
+            self.assertEqual(first_payload["pagination_mode"], "merged_all")
+            self.assertTrue(first_payload["total_count_is_estimated"])
+            self.assertTrue(first_payload["has_next_page"])
+            self.assertEqual(first_keys, [("C-1", "000"), ("S-1", "000")])
+            self.assertEqual(second_keys, [("G-1", "000"), ("E-1", "000")])
+            self.assertFalse(set(first_keys) & set(second_keys))
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
+    def test_nara_search_all_returns_partial_results_when_one_business_type_fails(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            if operation == "getBidPblancListInfoThngPPSSrch":
+                raise RuntimeError("goods endpoint timeout")
+            return {
+                "http_status": 200,
+                "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+                "total_count": 1,
+                "items": [
+                    {
+                        "bidNtceNo": f"{operation}-1",
+                        "bidNtceOrd": "000",
+                        "bidNtceNm": "부분 성공 공고",
+                        "bidNtceDt": "202606141000",
+                    }
+                ],
+            }
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            response = self.client.get("/api/nara/notices/search", query_string={"business_type": "all"})
+            self.assertEqual(response.status_code, 200)
+            payload = response.get_json()
+
+            self.assertEqual(payload["result_code"], "partial_failed")
+            self.assertEqual(payload["result_msg"], "일부 업무유형 조회 실패")
+            self.assertEqual(payload["partial_errors"][0]["business_type"], "goods")
+            self.assertTrue(payload["items"])
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
+    def test_nara_search_all_returns_502_when_all_business_types_fail(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            raise RuntimeError(f"{operation} failed")
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            response = self.client.get("/api/nara/notices/search", query_string={"business_type": "all"})
+            self.assertEqual(response.status_code, 502)
+            payload = response.get_json()
+            self.assertEqual(len(payload["partial_errors"]), 4)
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
+    def test_nara_notice_business_type_backfill_uses_raw_json_when_default_is_stale(self) -> None:
+        now = runtime.now_iso()
+        with runtime.db_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO nara_notices (
+                  bid_ntce_no, bid_ntce_ord, business_type, bid_ntce_nm,
+                  raw_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "BACKFILL-SERVICE",
+                    "000",
+                    "construction",
+                    "과거 용역 공고",
+                    json.dumps({"bsnsDivNm": "용역", "bidNtceNm": "과거 용역 공고"}, ensure_ascii=False),
+                    now,
+                    now,
+                ),
+            )
+            updated_count = runtime.backfill_nara_notice_business_type(conn)
+            row = conn.execute("SELECT business_type FROM nara_notices WHERE bid_ntce_no=?", ("BACKFILL-SERVICE",)).fetchone()
+
+        self.assertEqual(updated_count, 1)
+        self.assertEqual(row["business_type"], "service")
+
+    def test_nara_save_analysis_uses_business_type_specific_detail_operations(self) -> None:
+        original_key = runtime.NARA_API_SERVICE_KEY
+        original_request = runtime.request_nara_operation
+        calls: list[str] = []
+
+        def fake_request_nara_operation(operation: str, params: dict[str, str]) -> dict:
+            calls.append(operation)
+            return {
+                "http_status": 200,
+                "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+                "total_count": 1 if operation.endswith(("Servc", "Thng")) else 0,
+                "items": [
+                    {
+                        "bidNtceNo": params.get("bidNtceNo", ""),
+                        "bidNtceOrd": params.get("bidNtceOrd", "000"),
+                        "bidNtceNm": "업무유형 상세 공고",
+                        "bidNtceDt": "202606141000",
+                    }
+                ]
+                if operation.endswith(("Servc", "Thng"))
+                else [],
+            }
+
+        runtime.NARA_API_SERVICE_KEY = "TEST_NARA_KEY"
+        runtime.request_nara_operation = fake_request_nara_operation
+        try:
+            service_payload, service_code = runtime.save_and_analyze_nara_notice_item(
+                {
+                    "bidNtceNo": "202606140101",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "용역 저장 공고",
+                    "business_type": "service",
+                }
+            )
+            self.assertEqual(service_code, 200)
+            self.assertEqual(service_payload["notice"]["business_type"], "service")
+            self.assertIn("getBidPblancListInfoServc", calls)
+            self.assertIn("getBidPblancListInfoServcBsisAmount", calls)
+            self.assertNotIn("getBidPblancListInfoCnstwk", calls)
+
+            calls.clear()
+            goods_payload, goods_code = runtime.save_and_analyze_nara_notice_item(
+                {
+                    "bidNtceNo": "202606140102",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "물품 저장 공고",
+                    "business_type": "goods",
+                }
+            )
+            self.assertEqual(goods_code, 200)
+            self.assertEqual(goods_payload["notice"]["business_type"], "goods")
+            self.assertIn("getBidPblancListInfoThng", calls)
+            self.assertIn("getBidPblancListInfoThngBsisAmount", calls)
+        finally:
+            runtime.NARA_API_SERVICE_KEY = original_key
+            runtime.request_nara_operation = original_request
+
     def test_attachment_preview_rejects_missing_url(self) -> None:
         response = self.client.get("/api/nara/attachments/preview")
         self.assertEqual(response.status_code, 400)
@@ -3386,7 +3900,20 @@ class ApiFlowTests(unittest.TestCase):
         self.assertGreaterEqual(comparison["summary"]["prepared_count"], 1)
         self.assertGreaterEqual(comparison["summary"]["possibly_missing_count"], 1)
         self.assertGreaterEqual(comparison["summary"]["needs_review_count"], 1)
+        self.assertEqual(comparison["user_summary"]["generated_by"], "fallback")
+        self.assertTrue(comparison["user_summary"]["plain_summary"])
+        self.assertTrue(any(link["type"] == "notice_requirement" for link in comparison["user_summary"]["evidence_links"]))
         self.assertNotIn("eligible", json.dumps(comparison).lower())
+
+        requirement_link = next(link for link in comparison["user_summary"]["evidence_links"] if link["type"] == "notice_requirement")
+        requirement_detail_response = self.client.get(f"/api/notice-requirements/{requirement_link['requirement_candidate_id']}")
+        self.assertEqual(requirement_detail_response.status_code, 200)
+        requirement_detail = requirement_detail_response.get_json()
+        self.assertEqual(requirement_detail["detail_type"], "notice_requirement")
+        self.assertEqual(requirement_detail["notice"]["id"], notice["id"])
+
+        missing_requirement_response = self.client.get("/api/notice-requirements/999999")
+        self.assertEqual(missing_requirement_response.status_code, 404)
 
         list_response = self.client.get("/api/notice-comparisons")
         self.assertEqual(list_response.status_code, 200)
@@ -3429,6 +3956,170 @@ class ApiFlowTests(unittest.TestCase):
         stale_history_response = self.client.get(f"/api/nara/saved-notices/{notice['id']}/comparisons")
         self.assertEqual(stale_history_response.status_code, 200)
         self.assertEqual(stale_history_response.get_json(), [])
+
+    def test_notice_comparison_user_summary_uses_gemini_payload_when_configured(self) -> None:
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "Gemini 요약 테스트 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "business_item": "조경식재공사업",
+                "company_size_classification": "중소기업",
+                "license_summary": "조경식재공사업",
+            },
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500013",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Gemini 요약 비교 공고",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "산림사업법인",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        previous_generator = runtime.generate_json_with_ai
+        previous_gemini_key = runtime.GEMINI_API_KEY
+        observed = {}
+
+        def fake_json_generator(prompt: str, selection: dict):
+            observed["prompt"] = prompt
+            observed["selection"] = dict(selection)
+            return (
+                {
+                    "headline_status": "보강 필요",
+                    "plain_summary": "AI가 기존 비교 결과만 쉬운 말로 정리했습니다.",
+                    "top_priority_actions": [
+                        {
+                            "title": "면허 증빙 확인",
+                            "reason": "공고 요구조건과 법인 승인 정보가 다릅니다.",
+                            "next_step": "면허증을 업로드하고 승인 후보를 검토하세요.",
+                            "related_requirement_ids": [],
+                            "documents": ["면허증"],
+                        }
+                    ],
+                    "missing_groups": [{"group": "면허", "count": 1, "summary": "면허 보강이 필요합니다."}],
+                    "item_explanations": {},
+                    "risk_notes": ["최종 판정이 아니라 검토용 요약입니다."],
+                },
+                {"provider": "gemini", "model": "gemini-test-model"},
+            )
+
+        try:
+            runtime.GEMINI_API_KEY = "gemini-test-key"
+            runtime.generate_json_with_ai = fake_json_generator
+            comparison_response = self.client.post(
+                "/api/notice-comparisons",
+                json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"]},
+            )
+        finally:
+            runtime.generate_json_with_ai = previous_generator
+            runtime.GEMINI_API_KEY = previous_gemini_key
+
+        self.assertEqual(comparison_response.status_code, 201)
+        comparison = comparison_response.get_json()
+        self.assertEqual(observed["selection"]["provider"], "gemini")
+        self.assertIn("새 사실을 만들지 말고", observed["prompt"])
+        self.assertEqual(comparison["user_summary"]["generated_by"], "gemini")
+        self.assertEqual(comparison["user_summary"]["model"], "gemini-test-model")
+        self.assertEqual(comparison["user_summary"]["plain_summary"], "AI가 기존 비교 결과만 쉬운 말로 정리했습니다.")
+
+    def test_judgment_run_user_summary_uses_gemini_payload_when_configured(self) -> None:
+        self.upload_basis_document(
+            "Forest business license is a citation candidate for bidder qualification review.",
+            file_name="judgment-gemini-basis.pdf",
+        )
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "Gemini 판단 테스트 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "business_item": "조경식재공사업",
+                "company_size_classification": "중소기업",
+                "license_summary": "조경식재공사업",
+            },
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500014",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Gemini 판단 검토 공고",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "산림사업법인",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        previous_generator = runtime.generate_json_with_ai
+        previous_gemini_key = runtime.GEMINI_API_KEY
+        observed = {}
+
+        def fake_json_generator(prompt: str, selection: dict):
+            observed["prompt"] = prompt
+            observed["selection"] = dict(selection)
+            return (
+                {
+                    "headline_status": "보강 필요",
+                    "plain_summary": "Gemini가 판단 검토 결과를 사람이 이해하기 쉽게 정리했습니다.",
+                    "top_priority_actions": [
+                        {
+                            "title": "면허 조건 확인",
+                            "reason": "공고가 요구한 면허와 법인 보유 정보가 일치하지 않습니다.",
+                            "next_step": "면허 증빙을 업로드하고 기준문서 근거를 함께 검토하세요.",
+                            "related_requirement_ids": [],
+                            "documents": ["면허증"],
+                        }
+                    ],
+                    "missing_groups": [{"group": "면허", "count": 1, "summary": "면허 조건 확인이 필요합니다."}],
+                    "item_explanations": {},
+                    "risk_notes": ["최종 판정이 아니라 검토용 판단 정리입니다."],
+                },
+                {"provider": "gemini", "model": "gemini-test-model"},
+            )
+
+        try:
+            runtime.GEMINI_API_KEY = "gemini-test-key"
+            runtime.generate_json_with_ai = fake_json_generator
+            judgment_response = self.client.post(
+                "/api/judgment-runs",
+                json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+            )
+        finally:
+            runtime.generate_json_with_ai = previous_generator
+            runtime.GEMINI_API_KEY = previous_gemini_key
+
+        self.assertEqual(judgment_response.status_code, 201)
+        judgment = judgment_response.get_json()
+        self.assertEqual(observed["selection"]["provider"], "gemini")
+        self.assertIn('"mode": "judgment"', observed["prompt"])
+        self.assertIn("새 사실을 만들지 말고", observed["prompt"])
+        self.assertEqual(judgment["result"]["user_summary"]["generated_by"], "gemini")
+        self.assertEqual(judgment["result"]["user_summary"]["model"], "gemini-test-model")
+        self.assertEqual(
+            judgment["result"]["user_summary"]["plain_summary"],
+            "Gemini가 판단 검토 결과를 사람이 이해하기 쉽게 정리했습니다.",
+        )
 
     def test_notice_requirement_extraction_reads_text_candidates_without_verdict(self) -> None:
         requirements = runtime.extract_notice_requirements(

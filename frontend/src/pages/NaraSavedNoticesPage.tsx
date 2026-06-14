@@ -70,11 +70,11 @@ export function NaraSavedNoticesPage() {
   };
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-saved-notices-page">
       <div className="surface-card form-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Saved Nara Notices</p>
+            <p className="eyebrow">저장한 공고</p>
             <h3>저장한 공고</h3>
             <p className="section-copy">
               `공고 상세 저장`으로 DB에 저장한 공고와 첨부 다운로드/분석 상태를 다시 확인합니다.
@@ -105,7 +105,7 @@ export function NaraSavedNoticesPage() {
         </div>
       ) : null}
 
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-saved-notice-list">
         {loading ? (
           <div className="empty-state">
             <strong>저장한 공고를 불러오는 중입니다.</strong>
@@ -131,7 +131,7 @@ export function NaraSavedNoticesPage() {
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} data-demo-id="demo-saved-notice-row" data-demo-row-id={item.id}>
                     <td>
                       <strong>{item.bid_ntce_nm || "-"}</strong>
                       <div className="table-subcopy">
@@ -155,7 +155,11 @@ export function NaraSavedNoticesPage() {
                     </td>
                     <td>
                       <div className="row">
-                        <Link to={`/nara-saved-notices/${item.id}`} className="link-button link-button--soft">
+                        <Link
+                          to={`/nara-saved-notices/${item.id}`}
+                          className="link-button link-button--soft"
+                          data-demo-id="demo-saved-notice-detail-link"
+                        >
                           상세
                         </Link>
                         <button type="button" className="button-danger" onClick={() => onDelete(item)}>

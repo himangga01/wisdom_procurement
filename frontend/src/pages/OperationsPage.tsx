@@ -65,9 +65,9 @@ export function OperationsPage() {
   const counts = summary?.counts;
 
   return (
-    <section className="page-grid">
+    <section className="page-grid" data-demo-id="demo-operations-page">
       <div className="page-title">
-        <p className="eyebrow">Phase 4A</p>
+        <p className="eyebrow">운영 대시보드</p>
         <h1>운영 대시보드</h1>
         <p>실패 작업, 검토 대기, 연동 상태, 백업 상태를 한 화면에서 확인합니다.</p>
       </div>
@@ -86,10 +86,10 @@ export function OperationsPage() {
         </div>
       ) : (
         <>
-          <div className="surface-card">
+          <div className="surface-card" data-demo-id="demo-operations-summary">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Status</p>
+                <p className="eyebrow">전체 상태</p>
                 <h3>전체 상태</h3>
               </div>
               <button type="button" className="button-secondary" onClick={refresh}>
@@ -138,10 +138,10 @@ export function OperationsPage() {
             </div>
           </div>
 
-          <div className="surface-card">
+          <div className="surface-card" data-demo-id="demo-operations-health">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Health</p>
+                <p className="eyebrow">운영 환경</p>
                 <h3>운영 환경</h3>
               </div>
               <span>{formatDate(summary.generated_at)}</span>
@@ -159,10 +159,10 @@ export function OperationsPage() {
             </div>
           </div>
 
-          <div className="surface-card">
+          <div className="surface-card" data-demo-id="demo-operations-recent-failures">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Failures</p>
+                <p className="eyebrow">최근 실패</p>
                 <h3>최근 실패</h3>
               </div>
               <span>{summary.recent_failures.length}건</span>
@@ -175,7 +175,11 @@ export function OperationsPage() {
             ) : (
               <div className="result-list">
                 {summary.recent_failures.map((item) => (
-                  <article className="result-row" key={`${item.operation_type}-${item.target_type}-${item.target_id}`}>
+                  <article
+                    className="result-row"
+                    key={`${item.operation_type}-${item.target_type}-${item.target_id}`}
+                    data-demo-id="demo-operation-error-detail"
+                  >
                     <div>
                       <strong>{item.target_label}</strong>
                       <span>{item.operation_type} · {formatDate(item.occurred_at)}</span>
@@ -193,7 +197,7 @@ export function OperationsPage() {
           <div className="surface-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Review</p>
+                <p className="eyebrow">검토 대기</p>
                 <h3>검토 대기</h3>
               </div>
               <span>{summary.review_queues.length}개 큐</span>

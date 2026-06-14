@@ -232,18 +232,16 @@ export function DocumentsPage() {
         <form className="surface-card form-card" onSubmit={onUpload}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Upload Flow</p>
-              <h3>메타데이터와 함께 문서 업로드</h3>
-              <p className="section-copy">
-                업로드 자체보다 어떤 프로젝트 맥락에 올리는지가 중요해서, 프로젝트와 문서 유형을 먼저 선택하도록 UX를 정리했습니다.
-              </p>
+              <p className="eyebrow">문서 업로드</p>
+              <h3>문서 파일 등록</h3>
+              <p className="section-copy">프로젝트, 문서 유형, 메모를 지정하고 PDF/DOCX 파일을 업로드합니다.</p>
             </div>
           </div>
 
           {projects.length === 0 ? (
             <div className="empty-state">
               <strong>먼저 프로젝트를 만들어야 문서를 업로드할 수 있습니다.</strong>
-              <p>프로젝트 없이 올린 파일은 나중에 다시 봤을 때 업무 맥락이 흐려집니다.</p>
+              <p>프로젝트를 만든 뒤 문서를 업로드해 주세요.</p>
               <Link to="/projects" className="link-button">
                 프로젝트 관리로 이동
               </Link>
@@ -303,12 +301,12 @@ export function DocumentsPage() {
         </form>
 
         <aside className="surface-card accent-card accent-card--petal">
-          <p className="eyebrow">Usability Upgrade</p>
-          <h3>업로드 화면에서 바꾼 점</h3>
+          <p className="eyebrow">등록 정보</p>
+          <h3>문서에 저장되는 항목</h3>
           <ul className="feature-list">
-            <li>프로젝트와 법인 문맥을 바로 보이게 노출</li>
-            <li>문서 유형, 메모, 개정 메모를 한 흐름으로 정리</li>
-            <li>문서 이력을 검색/필터로 다시 찾기 쉽게 개선</li>
+            <li>프로젝트와 연결 법인</li>
+            <li>문서 유형과 업로드 메모</li>
+            <li>분석 상태와 처리 이력</li>
           </ul>
         </aside>
       </div>
@@ -323,7 +321,7 @@ export function DocumentsPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">History</p>
+            <p className="eyebrow">문서 이력</p>
             <h3>프로젝트 기준 문서 이력</h3>
           </div>
           <div className="toolbar">
@@ -426,7 +424,7 @@ export function DocumentsPage() {
         <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Edit Document Metadata</p>
+              <p className="eyebrow">문서 정보 편집</p>
               <h3>문서 메타데이터 편집</h3>
               <p className="section-copy">원본 파일은 유지하고 문서 유형, 메모, 개정 메모만 수정합니다.</p>
             </div>

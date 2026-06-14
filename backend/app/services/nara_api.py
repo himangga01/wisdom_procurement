@@ -234,6 +234,8 @@ def normalize_nara_notice(item: dict, attachments: list[dict] | None = None) -> 
     attachment_rows = attachments if attachments is not None else collect_nara_attachments([item])
     supported_count = len([row for row in attachment_rows if row["support_status"] == "supported"])
     return {
+        "business_type": item_first(item, ["business_type", "businessType", "_nara_business_type", "bsnsDivNm"]),
+        "business_type_label": item_first(item, ["business_type_label", "businessTypeLabel", "bsnsDivNm"]),
         "bid_ntce_no": item_first(item, ["bidNtceNo"]),
         "bid_ntce_ord": item_first(item, ["bidNtceOrd"]) or "000",
         "bid_ntce_nm": item_first(item, ["bidNtceNm"]),

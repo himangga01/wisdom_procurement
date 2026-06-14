@@ -123,7 +123,7 @@ export function WorkOverlayProvider({ children }: { children: ReactNode }) {
           <div className="work-overlay-panel">
             <div className="work-overlay-spinner" aria-hidden="true" />
             <div className="work-overlay-copy">
-              <p className="eyebrow">Processing</p>
+          <p className="eyebrow">처리 중</p>
               <h3>{activeTask.title}</h3>
               {activeTask.description ? <p>{activeTask.description}</p> : null}
             </div>

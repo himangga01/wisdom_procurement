@@ -907,3 +907,66 @@ POST /api/corporation-evidence-documents/{id}/apply-extracted-fields
 - Which evidence types should be rule-extracted first after business registration?
 - Is PDF conversion guidance enough for HWP/HWPX evidence files?
 - If local image OCR quality is insufficient, is an external Vision API allowed?
+
+## 추가 업데이트 (2026-06-14) - 데모 법인 증빙 PDF 전부 별도화
+
+### 한국어 버전
+`source/test_doc/`의 데모 법인 등록용 PDF 구성을 기준으로, 기존 핵심 유형 외 증빙을 하나의 기타 문서로 묶지 않고 별도 문서유형으로 지원합니다.
+
+추가 지원 문서유형:
+- `gpass_company_certificate`: G-PASS기업 지정서
+- `iso_quality_certificate`: ISO9001 인증서
+- `venture_business_confirmation`: 벤처기업확인서
+- `innobiz_confirmation`: 기술혁신형 중소기업(Inno-Biz) 확인서
+- `factory_registration_certificate`: 공장등록증명서
+- `research_institute_certificate`: 기업부설연구소 인정서
+- `software_business_certificate`: 소프트웨어사업자확인서
+- `software_quality_certificate`: 소프트웨어품질인증서
+- `green_technology_certificate`: 녹색기술인증서
+- `green_product_confirmation`: 녹색기술제품확인서
+- `excellent_product_certificate`: 우수제품지정증서
+- `patent_certificate`: 특허증
+- `copyright_registration_certificate`: 저작권등록증
+- `outdoor_advertising_business_registration`: 옥외광고사업 등록증
+- `online_sales_business_registration`: 통신판매업신고증
+- `industry_association_membership`: 조합원증
+- `investment_share_certificate`: 출자증권
+- `employment_support_approval`: 고용안정장려금 승인서
+- `insurance_policy_certificate`: 책임보험가입증명서
+- `special_business_license`: 특수 영업/등록/신고증
+- `technology_grade_confirmation`: 기술등급확인서
+- `technology_evaluation_excellent_certificate`: 기술평가우수기업인증서
+
+프로필 반영 후보 정책:
+- 인증/지정/확인류는 `certifications_json` 후보로 생성합니다.
+- 우대/가점 성격이 있는 문서는 `preference_tags_json` 후보도 함께 생성합니다.
+- 면허/등록/사업 허가류와 운영상 설명이 필요한 항목은 `license_summary` 후보로 생성합니다.
+- 제품명, 기술명, 소프트웨어명, 특허명, 저작물명처럼 사업 수행 역량과 연결되는 값은 `business_item` 후보로 생성합니다.
+- 유효기간이 추출되면 `evidence_expiry_summary` 후보로 생성합니다.
+- 모든 후보는 기존 흐름과 동일하게 자동 확정하지 않고 관리자 승인 후 법인 프로필에 반영합니다.
+
+### AI / Engineering Version (English)
+- Added separate corporation evidence document types for all demo PDF categories from `source/test_doc`.
+- Rule-based classification, manual frontend options, backend labels, and LLM allowed document type lists now share the same taxonomy.
+- Extended evidence candidates map into review-safe profile fields: `certifications_json`, `preference_tags_json`, `license_summary`, `business_item`, and `evidence_expiry_summary`.
+- No automatic profile mutation is introduced; approval remains mandatory.
+
+## 추가 업데이트 (2026-06-14) - 확장 증빙 후보 매핑 안전장치
+
+### 한국어 버전
+- 확장 증빙의 대표 subject를 모든 문서에서 `business_item`으로 올리지 않습니다.
+- `business_item` 후보는 제품명, 기술명, 소프트웨어명, 특허명, 저작물명처럼 사업 수행 품목과 직접 연결되는 유형에만 생성합니다.
+- `공장등록증명서`의 공장소재지, `G-PASS기업 지정서`의 지정번호, `조합원증`의 조합원명처럼 식별자/주소/회원명 성격의 값은 `license_summary`에는 남기되 `business_item` 후보로 만들지 않습니다.
+- `소프트웨어사업자일반현황관리확인서`, `기술혁신형 중소기업 확인서` 같은 실제 파일명 변형은 별도 문서유형으로 먼저 분류합니다.
+- `source/test_doc/` 실제 PDF 검증 결과, 기술등급확인서와 기술평가우수기업인증서도 별도 문서유형으로 추가했습니다.
+- 직접생산확인증명서, 기업신용평가등급확인서, 책임보험가입증명서, 출자증권은 하위 법령/기관명에 포함된 일반 키워드보다 전용 문서유형 규칙을 먼저 적용합니다.
+- 후보 자동 확정 정책은 바꾸지 않으며, 관리자가 승인한 값만 법인 프로필에 반영합니다.
+
+### AI / Engineering Version (English)
+- Extended evidence subjects are no longer mapped to `business_item` for every document type.
+- `business_item` is restricted to product, technology, software, patent, copyright, and similar capability-bearing subjects.
+- Address, certificate number, member name, and other identifier-style subjects remain in `license_summary` only.
+- Real filename variants for software-business and Inno-Biz evidence are classified before generic fallback rules.
+- Real `source/test_doc/` PDF verification added technology-grade and technology-evaluation excellent certificates as separated document types.
+- Direct-production, credit-rating, insurance-policy, and investment-share evidence now take precedence over generic legal text or organization-name tokens.
+- Approval-before-profile-update remains unchanged.

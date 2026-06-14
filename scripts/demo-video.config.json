@@ -1,0 +1,25 @@
+{
+  "mode": "stable-demo",
+  "frontendUrl": "http://127.0.0.1:5199",
+  "backendUrl": "http://127.0.0.1:18111",
+  "outputDir": "artifacts/demo-video",
+  "video": {
+    "width": 1440,
+    "height": 900,
+    "format": "mp4",
+    "minDurationSeconds": 5
+  },
+  "scenes": [
+    "intro",
+    "corporations",
+    "dashboard",
+    "nara-board",
+    "saved-notice",
+    "basis-documents",
+    "notice-comparison",
+    "judgment-runs",
+    "contracts",
+    "operations",
+    "operation-runs"
+  ]
+}

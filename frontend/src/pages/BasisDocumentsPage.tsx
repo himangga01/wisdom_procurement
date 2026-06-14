@@ -349,12 +349,12 @@ export function BasisDocumentsPage() {
       : `${reprocessElapsedSeconds}초`;
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-basis-documents-page">
       <div className="two-column-grid two-column-grid--wide-left">
         <form className="surface-card form-card" onSubmit={onUpload}>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Basis Ingestion</p>
+              <p className="eyebrow">기준문서 업로드</p>
               <h3>기준문서 업로드</h3>
               <p className="section-copy">PDF 기준문서를 저장하면 텍스트 추출, 청킹, 로컬 검색 인덱싱까지 자동으로 처리합니다.</p>
             </div>
@@ -393,13 +393,20 @@ export function BasisDocumentsPage() {
 
             <label className="field field--full">
               <span>PDF 파일</span>
-              <input type="file" accept=".pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+              <input
+                type="file"
+                accept=".pdf"
+                data-demo-id="demo-basis-file-input"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                required
+              />
             </label>
 
             <label className="toggle-field field--full">
               <input
                 type="checkbox"
                 checked={uploadForceOcr}
+                data-demo-id="demo-basis-force-ocr-toggle"
                 onChange={(event) => setUploadForceOcr(event.target.checked)}
               />
               <span className="toggle-field__body">
@@ -420,13 +427,13 @@ export function BasisDocumentsPage() {
           </div>
 
           <div className="form-actions">
-            <button type="submit">기준문서 업로드</button>
+            <button type="submit" data-demo-id="demo-basis-upload-submit">기준문서 업로드</button>
           </div>
         </form>
 
         <aside className="surface-card accent-card accent-card--leaf">
-          <p className="eyebrow">Pipeline Status</p>
-          <h3>Phase 2 처리 현황</h3>
+          <p className="eyebrow">처리 현황</p>
+          <h3>기준문서 처리 현황</h3>
           <div className="metric-list">
             <div>
               <span>기준문서</span>
@@ -451,10 +458,10 @@ export function BasisDocumentsPage() {
         </div>
       ) : null}
 
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-basis-document-list">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Basis Library</p>
+            <p className="eyebrow">기준문서 목록</p>
             <h3>기준문서 목록</h3>
           </div>
           <div className="toolbar">
@@ -497,7 +504,7 @@ export function BasisDocumentsPage() {
               </thead>
               <tbody>
                 {documents.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} data-demo-id="demo-basis-document-row" data-demo-row-id={item.id}>
                     <td>
                       <strong>{item.title}</strong>
                       <div className="table-subcopy">
@@ -519,7 +526,12 @@ export function BasisDocumentsPage() {
                     </td>
                     <td>
                       <div className="row">
-                        <button type="button" className="button-secondary" onClick={() => onSelect(item)}>
+                        <button
+                          type="button"
+                          className="button-secondary"
+                          onClick={() => onSelect(item)}
+                          data-demo-id="demo-basis-document-detail"
+                        >
                           상세
                         </button>
                         <button type="button" className="button-danger" onClick={() => onDelete(item)}>
@@ -540,7 +552,7 @@ export function BasisDocumentsPage() {
           <form className="surface-card form-card" onSubmit={onUpdate}>
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Basis Detail</p>
+                <p className="eyebrow">기준문서 상세</p>
                 <h3>{selectedDoc.title}</h3>
                 <p className="section-copy">{selectedDoc.original_file_name}</p>
               </div>
@@ -551,6 +563,7 @@ export function BasisDocumentsPage() {
                       type="checkbox"
                       checked={reprocessForceOcr}
                       disabled={Boolean(selectedReprocessProgress)}
+                      data-demo-id="demo-basis-reprocess-force-ocr-toggle"
                       onChange={(event) => setReprocessForceOcr(event.target.checked)}
                     />
                     <span>OCR 강제 실행</span>
@@ -560,6 +573,7 @@ export function BasisDocumentsPage() {
                     className="button-secondary"
                     onClick={onReprocess}
                     disabled={Boolean(selectedReprocessProgress)}
+                    data-demo-id="demo-basis-reprocess-submit"
                   >
                     {selectedReprocessProgress ? "처리 중" : "재처리"}
                   </button>
@@ -572,7 +586,7 @@ export function BasisDocumentsPage() {
               </div>
             </div>
 
-            <div className="status-strip">
+            <div className="status-strip" data-demo-id="demo-basis-processing-status">
               <span className={`status-badge status-badge--${statusTone(selectedDoc.parse_status)}`}>
                 parse {selectedDoc.parse_status}
               </span>
@@ -588,7 +602,7 @@ export function BasisDocumentsPage() {
             </div>
 
             {selectedReprocessProgress ? (
-              <div className="basis-processing-panel" aria-live="polite">
+              <div className="basis-processing-panel" aria-live="polite" data-demo-id="demo-basis-processing-progress">
                 <div className="basis-processing-panel__top">
                   <div>
                     <strong>
@@ -671,15 +685,15 @@ export function BasisDocumentsPage() {
             </div>
           </form>
 
-          <div className="surface-card">
+          <div className="surface-card" data-demo-id="demo-basis-chunk-list">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Chunks</p>
+                <p className="eyebrow">청크 목록</p>
                 <h3>생성된 청크</h3>
               </div>
               <div className="toolbar">
                 <span className="status-badge status-badge--muted">{selectedDoc.chunk_count}개</span>
-                <button type="button" className="button-secondary" onClick={onToggleChunks} disabled={chunksLoading}>
+                <button type="button" className="button-secondary" onClick={onToggleChunks} disabled={chunksLoading} data-demo-id="demo-basis-chunk-list-toggle">
                   {chunksVisible ? "청크 숨기기" : chunksLoading ? "불러오는 중" : "청크 보기"}
                 </button>
               </div>
@@ -715,7 +729,7 @@ export function BasisDocumentsPage() {
                   const canExpand = (chunk.chunk_text || "").length > CHUNK_PREVIEW_LIMIT;
 
                   return (
-                    <article key={chunk.id} className="chunk-row">
+                    <article key={chunk.id} className="chunk-row" data-demo-id="demo-basis-chunk-row" data-demo-row-id={chunk.id}>
                       <div className="chunk-row__meta">
                         <strong>#{chunk.chunk_index + 1}</strong>
                         <span>{chunk.section_title || "섹션 없음"}</span>
@@ -730,6 +744,7 @@ export function BasisDocumentsPage() {
                             type="button"
                             className="chunk-row__toggle"
                             aria-expanded={expanded}
+                            data-demo-id="demo-basis-chunk-expand"
                             onClick={() => toggleChunkExpanded(chunk.id)}
                           >
                             {expanded ? "접기" : "더보기"}
@@ -751,7 +766,7 @@ export function BasisDocumentsPage() {
       <form className="surface-card" onSubmit={onSearch}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Basis Search</p>
+            <p className="eyebrow">청크 검색</p>
             <h3>청크 후보 검색</h3>
           </div>
           <div className="toolbar">

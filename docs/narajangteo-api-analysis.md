@@ -372,3 +372,45 @@ Exclude:
 - RAG-based legal evidence judgment
 - HWP/HWPX conversion
 - award/contract analytics
+
+## 추가 업데이트 (2026-06-14) - 공사/용역/물품/기타 업무유형 확장
+
+### 한국어 버전
+- 나라장터 공고 검색은 더 이상 공사 공고만 대상으로 보지 않습니다.
+- 포탈 검색 기본값은 `전체`이며, 내부적으로 공사, 용역, 물품, 기타 검색 operation을 순차 호출한 뒤 `bidNtceNo + bidNtceOrd` 기준으로 중복 제거합니다.
+- 저장/분석 시 검색 결과에 포함된 `business_type`을 유지하고, 상세 보강도 같은 업무유형의 상세/기초금액 operation을 사용합니다.
+
+| 업무유형 | 검색 operation | 상세 operation | 기초금액 operation |
+|---|---|---|---|
+| 공사 | `getBidPblancListInfoCnstwkPPSSrch` | `getBidPblancListInfoCnstwk` | `getBidPblancListInfoCnstwkBsisAmount` |
+| 용역 | `getBidPblancListInfoServcPPSSrch` | `getBidPblancListInfoServc` | `getBidPblancListInfoServcBsisAmount` |
+| 물품 | `getBidPblancListInfoThngPPSSrch` | `getBidPblancListInfoThng` | `getBidPblancListInfoThngBsisAmount` |
+| 기타 | `getBidPblancListInfoEtcPPSSrch` | `getBidPblancListInfoEtc` | 없음 |
+
+운영 정책:
+- `business_type=all`은 검색 전용 정책입니다. 저장된 개별 공고는 실제 조회된 업무유형(`construction`, `service`, `goods`, `etc`)을 보존합니다.
+- 기초금액 operation이 없는 업무유형은 해당 보강만 건너뛰고 저장 자체는 계속 진행합니다.
+- 첨부 다운로드/분석 정책은 기존과 동일하게 PDF/DOCX만 분석하고 HWP/HWPX/XLSX 등은 메타데이터만 저장합니다.
+
+### AI / Engineering Version (English)
+- Nara notice search now supports `business_type=all|construction|service|goods|etc`.
+- `all` calls construction, service, goods, and etc search operations, merges results, deduplicates by `bidNtceNo + bidNtceOrd`, and sorts by latest notice date.
+- Save/analyze preserves the item-level `business_type` and uses matching detail/basis-amount operations.
+- Missing basis-amount operations are skipped without failing the saved notice flow.
+
+## 추가 업데이트 (2026-06-14) - `전체` 검색 병합 페이지네이션 보강
+
+### 한국어 버전
+- `business_type=all`은 네 개 업무유형 API를 합친 병합 검색입니다.
+- `전체` 검색의 페이지는 각 업무유형의 같은 page 번호를 그대로 합치지 않고, 요청 page에 필요한 범위만큼 각 업무유형의 최신 결과를 먼저 확보한 뒤 전체 최신순으로 다시 자릅니다.
+- `total_count`는 프론트 호환을 위해 유지하지만, 업무유형별 total 합산 기반의 추정값입니다. 응답에는 `total_count_is_estimated=true`와 `pagination_mode=merged_all`을 함께 내려줍니다.
+- 일부 업무유형 API가 실패해도 나머지 업무유형 결과가 있으면 HTTP 200과 `result_code=partial_failed`, `partial_errors`를 반환합니다.
+- 모든 업무유형 API가 실패한 경우에만 HTTP 502로 처리합니다.
+- 단일 업무유형(`construction`, `service`, `goods`, `etc`)은 기존처럼 해당 operation의 `pageNo`, `numOfRows` 기준 페이지네이션을 사용합니다.
+
+### AI / Engineering Version (English)
+- `business_type=all` uses merged pagination across construction, service, goods, and etc.
+- The backend fetches enough latest rows per business type for the requested window, deduplicates by notice number/order, sorts globally, and slices the requested page.
+- `total_count` remains for compatibility but is marked as estimated via `total_count_is_estimated=true`.
+- Partial operation failures return HTTP 200 with `result_code=partial_failed` and `partial_errors` when at least one business type succeeds.
+- Only all-operation failure returns HTTP 502.

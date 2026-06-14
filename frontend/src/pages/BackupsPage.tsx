@@ -131,7 +131,7 @@ export function BackupsPage() {
   return (
     <section className="page-grid">
       <div className="page-title">
-        <p className="eyebrow">Phase 4D</p>
+        <p className="eyebrow">백업/복원</p>
         <h1>백업/복원</h1>
         <p>로컬 DB와 storage 파일을 ZIP으로 백업하고, 복원 전 dry-run 검증을 수행합니다.</p>
       </div>
@@ -146,7 +146,7 @@ export function BackupsPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Backup</p>
+            <p className="eyebrow">백업 생성</p>
             <h3>백업 만들기</h3>
           </div>
           <button type="button" onClick={onCreateBackup}>
@@ -162,7 +162,7 @@ export function BackupsPage() {
       <div className="surface-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">History</p>
+            <p className="eyebrow">백업 이력</p>
             <h3>백업 이력</h3>
           </div>
           <button type="button" className="button-secondary" onClick={() => refresh()}>
@@ -202,7 +202,7 @@ export function BackupsPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Validation</p>
+              <p className="eyebrow">백업 검증</p>
               <h3>검증과 복원 dry-run</h3>
             </div>
             <div className="toolbar">

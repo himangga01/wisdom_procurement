@@ -5,6 +5,22 @@ import { api } from "../app/api";
 import type { NaraCollectionRun } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
 
+type NaraBusinessType = "all" | "construction" | "service" | "goods" | "etc";
+
+const naraBusinessTypeOptions: Array<{ value: NaraBusinessType; label: string }> = [
+  { value: "all", label: "전체" },
+  { value: "construction", label: "공사" },
+  { value: "service", label: "용역" },
+  { value: "goods", label: "물품" },
+  { value: "etc", label: "기타" },
+];
+
+function businessTypeLabel(value: unknown, label?: unknown) {
+  if (label) return String(label);
+  const normalized = String(value || "all");
+  return naraBusinessTypeOptions.find((option) => option.value === normalized)?.label ?? normalized;
+}
+
 function statusTone(status: string) {
   if (status === "completed") return "active";
   if (status === "not_configured" || status === "failed" || status === "partial_failed") return "pending";
@@ -33,6 +49,7 @@ export function NaraCollectionRunsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [keywordFilter, setKeywordFilter] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [businessType, setBusinessType] = useState<NaraBusinessType>("all");
   const [startDate, setStartDate] = useState(daysAgoIso(3));
   const [endDate, setEndDate] = useState(todayIso());
   const [pageSize, setPageSize] = useState("50");
@@ -81,6 +98,7 @@ export function NaraCollectionRunsPage() {
         try {
           const created = await api.createNaraCollectionRun({
             keyword,
+            business_type: businessType,
             start_date: startDate,
             end_date: endDate,
             page_size: Number(pageSize) || 50,
@@ -98,9 +116,9 @@ export function NaraCollectionRunsPage() {
   const resultItems = (activeRun?.result.items ?? []).slice(0, 20);
 
   return (
-    <section className="page-grid">
+    <section className="page-grid" data-demo-id="demo-nara-collection-runs-page">
       <div className="page-title">
-        <p className="eyebrow">Nara Collection</p>
+        <p className="eyebrow">나라장터 자동 수집</p>
         <h1>나라장터 자동 수집 관리</h1>
         <p>API 기반 공고 수집을 실행하고 저장 결과, 스킵 수, 실패 사유를 확인합니다.</p>
       </div>
@@ -115,15 +133,29 @@ export function NaraCollectionRunsPage() {
       <form className="surface-card" onSubmit={onCreate}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Run</p>
+            <p className="eyebrow">수집 실행</p>
             <h3>수집 실행</h3>
           </div>
-          <button type="submit">수집 실행</button>
+          <button type="submit" data-demo-id="demo-nara-collection-run-create">수집 실행</button>
         </div>
         <div className="form-grid">
           <label className="field">
             <span>검색어</span>
             <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="조경, 전기, 정보통신" />
+          </label>
+          <label className="field">
+            <span>업무유형</span>
+            <select
+              value={businessType}
+              onChange={(event) => setBusinessType(event.target.value as NaraBusinessType)}
+              data-demo-id="demo-nara-collection-business-type"
+            >
+              {naraBusinessTypeOptions.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>시작일</span>
@@ -151,7 +183,7 @@ export function NaraCollectionRunsPage() {
       <form className="surface-card" onSubmit={onFilter}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">History</p>
+            <p className="eyebrow">실행 이력</p>
             <h3>실행 이력</h3>
           </div>
           <div className="toolbar">
@@ -173,16 +205,19 @@ export function NaraCollectionRunsPage() {
             <p>수집 조건을 입력하고 실행하면 이력이 여기에 표시됩니다.</p>
           </div>
         ) : (
-          <div className="collection-run-list">
+          <div className="collection-run-list" data-demo-id="demo-nara-collection-run-list">
             {runs.map((run) => (
               <button
                 type="button"
                 className={`collection-run-row${activeRun?.id === run.id ? " active" : ""}`}
                 key={run.id}
                 onClick={() => setActiveId(run.id)}
+                data-demo-id="demo-nara-collection-run-row"
+                data-demo-row-id={run.id}
               >
                 <span className={`status-badge status-badge--${statusTone(run.status)}`}>{run.status}</span>
                 <strong>{run.keyword || "검색어 없음"}</strong>
+                <span>{businessTypeLabel(run.criteria.business_type, run.result.business_type_label)}</span>
                 <span>{run.start_date} ~ {run.end_date}</span>
                 <small>
                   조회 {run.searched_count} · 저장 {run.saved_count} · 스킵 {run.skipped_count}
@@ -197,7 +232,7 @@ export function NaraCollectionRunsPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Result</p>
+              <p className="eyebrow">수집 결과</p>
               <h3>수집 결과</h3>
             </div>
             <span>{formatDate(activeRun.created_at)}</span>
@@ -219,6 +254,10 @@ export function NaraCollectionRunsPage() {
             <article>
               <span>모드</span>
               <strong>{activeRun.mode}</strong>
+            </article>
+            <article>
+              <span>업무유형</span>
+              <strong>{businessTypeLabel(activeRun.criteria.business_type, activeRun.result.business_type_label)}</strong>
             </article>
           </div>
 
@@ -246,7 +285,10 @@ export function NaraCollectionRunsPage() {
                 <article className="result-row" key={`${item.bid_ntce_no ?? index}-${item.bid_ntce_ord ?? ""}`}>
                   <div>
                     <strong>{String(item.bid_ntce_nm ?? "공고명 없음")}</strong>
-                    <span>{String(item.bid_ntce_no ?? "-")} / 첨부 {String(item.attachment_count ?? 0)}</span>
+                    <span>
+                      {businessTypeLabel(item.business_type, item.business_type_label)} · {String(item.bid_ntce_no ?? "-")} / 첨부{" "}
+                      {String(item.attachment_count ?? 0)}
+                    </span>
                   </div>
                   <small>{String(item.ntce_instt_nm ?? "")} · {String(item.bid_clse_dt ?? "")}</small>
                 </article>

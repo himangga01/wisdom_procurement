@@ -98,7 +98,7 @@ export function BasisRetrievalEvaluationsPage() {
   return (
     <section className="page-grid">
       <div className="page-title">
-        <p className="eyebrow">Retrieval Evaluation</p>
+        <p className="eyebrow">검색 평가</p>
         <h1>검색 / citation 평가</h1>
         <p>기준문서 검색 결과가 기대 citation을 얼마나 찾는지 확인합니다.</p>
       </div>
@@ -113,7 +113,7 @@ export function BasisRetrievalEvaluationsPage() {
       <form className="surface-card" onSubmit={onCreate}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Run Evaluation</p>
+            <p className="eyebrow">평가 실행</p>
             <h3>평가 실행</h3>
           </div>
           <button type="submit" disabled={submitting}>{submitting ? "실행 중" : "평가 실행"}</button>
@@ -152,7 +152,7 @@ export function BasisRetrievalEvaluationsPage() {
       <form className="surface-card" onSubmit={onRefresh}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">History</p>
+            <p className="eyebrow">평가 이력</p>
             <h3>평가 이력</h3>
           </div>
           <button type="submit">새로고침</button>
@@ -187,7 +187,7 @@ export function BasisRetrievalEvaluationsPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Metrics</p>
+              <p className="eyebrow">평가 결과</p>
               <h3>{active.name}</h3>
             </div>
             <span>{formatDate(active.created_at)}</span>
@@ -226,7 +226,7 @@ export function BasisRetrievalEvaluationsPage() {
                     <small>누락: {query.missed_expected_citation_ids.join(", ")}</small>
                   ) : null}
                 </div>
-                <small>{query.citation_candidate_ids.slice(0, 3).join(", ") || "citation 후보 없음"}</small>
+                <small>{query.citation_candidate_ids.slice(0, 3).join(", ") || "근거 후보 없음"}</small>
               </article>
             ))}
           </div>

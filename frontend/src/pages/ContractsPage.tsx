@@ -192,15 +192,20 @@ export function ContractsPage() {
   const generatedFields = preview?.snapshot.generated_fields ?? {};
 
   return (
-    <section className="content-stack">
+    <section className="content-stack" data-demo-id="demo-contracts-page">
       <div className="surface-card form-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Contract Drafts</p>
+            <p className="eyebrow">계약서 생성</p>
             <h3>계약서 생성</h3>
             <p className="section-copy">저장 공고와 법인 정보를 기준으로 검토용 용역표준계약서 DOCX 초안을 생성합니다.</p>
           </div>
-          <button type="button" onClick={onCreate} disabled={!selectedNoticeId || !selectedCorporationId}>
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={!selectedNoticeId || !selectedCorporationId}
+            data-demo-id="demo-contract-create"
+          >
             계약서 초안 생성
           </button>
         </div>
@@ -217,14 +222,18 @@ export function ContractsPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Input</p>
+              <p className="eyebrow">생성 입력</p>
               <h3>생성 입력</h3>
             </div>
           </div>
           <div className="form-grid">
             <label className="field">
               <span>저장 공고</span>
-              <select value={selectedNoticeId} onChange={(event) => setSelectedNoticeId(event.target.value)}>
+              <select
+                value={selectedNoticeId}
+                data-demo-id="demo-contract-notice-select"
+                onChange={(event) => setSelectedNoticeId(event.target.value)}
+              >
                 <option value="">공고 선택</option>
                 {notices.map((notice) => (
                   <option key={notice.id} value={notice.id}>
@@ -235,7 +244,11 @@ export function ContractsPage() {
             </label>
             <label className="field">
               <span>법인</span>
-              <select value={selectedCorporationId} onChange={(event) => setSelectedCorporationId(event.target.value)}>
+              <select
+                value={selectedCorporationId}
+                data-demo-id="demo-contract-corporation-select"
+                onChange={(event) => setSelectedCorporationId(event.target.value)}
+              >
                 <option value="">법인 선택</option>
                 {corporations.map((corporation) => (
                   <option key={corporation.id} value={corporation.id}>
@@ -246,7 +259,11 @@ export function ContractsPage() {
             </label>
             <label className="field">
               <span>판단 run</span>
-              <select value={selectedJudgmentRunId} onChange={(event) => setSelectedJudgmentRunId(event.target.value)}>
+              <select
+                value={selectedJudgmentRunId}
+                data-demo-id="demo-contract-judgment-select"
+                onChange={(event) => setSelectedJudgmentRunId(event.target.value)}
+              >
                 <option value="">선택 안 함</option>
                 {compatibleJudgmentRuns.map((run) => (
                   <option key={run.id} value={run.id}>
@@ -292,7 +309,13 @@ export function ContractsPage() {
               <textarea value={customFields.attachment_notes ?? ""} onChange={(event) => updateCustomField("attachment_notes", event.target.value)} />
             </label>
           </div>
-          <button type="button" className="button-secondary" onClick={onPreview} disabled={!selectedNoticeId || !selectedCorporationId}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={onPreview}
+            disabled={!selectedNoticeId || !selectedCorporationId}
+            data-demo-id="demo-contract-preview"
+          >
             미리보기
           </button>
         </div>
@@ -300,7 +323,7 @@ export function ContractsPage() {
         <div className="surface-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Preview</p>
+              <p className="eyebrow">미리보기</p>
               <h3>표준계약서 매핑</h3>
             </div>
           </div>
@@ -346,10 +369,10 @@ export function ContractsPage() {
         </div>
       </div>
 
-      <div className="surface-card">
+      <div className="surface-card" data-demo-id="demo-contract-list">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">History</p>
+            <p className="eyebrow">생성 이력</p>
             <h3>생성 이력</h3>
           </div>
         </div>
@@ -384,7 +407,7 @@ export function ContractsPage() {
               </thead>
               <tbody>
                 {contracts.map((contract) => (
-                  <tr key={contract.id}>
+                  <tr key={contract.id} data-demo-id="demo-contract-row" data-demo-row-id={contract.id}>
                     <td>
                       <strong>{contract.title || contract.file_name || `contract #${contract.id}`}</strong>
                       <div className="table-subcopy">{contract.created_at}</div>
@@ -402,7 +425,11 @@ export function ContractsPage() {
                     <td>
                       <div className="row">
                         {contract.download_url ? (
-                          <a className="link-button link-button--soft" href={api.getContractDownloadUrl(contract.id)}>
+                          <a
+                            className="link-button link-button--soft"
+                            href={api.getContractDownloadUrl(contract.id)}
+                            data-demo-id="demo-contract-download"
+                          >
                             다운로드
                           </a>
                         ) : null}

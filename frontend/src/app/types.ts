@@ -402,6 +402,9 @@ export type BasisRuleCandidate = {
 
 export type BasisRuleCandidateList = {
   candidate_count: number;
+  returned_count?: number;
+  limit?: number;
+  offset?: number;
   candidates: BasisRuleCandidate[];
 };
 
@@ -549,6 +552,8 @@ export type NaraAttachmentCandidate = {
 export type NaraNoticeSearchItem = {
   bid_ntce_no: string;
   bid_ntce_ord: string;
+  business_type?: string;
+  business_type_label?: string;
   bid_ntce_nm: string;
   ntce_instt_nm: string;
   dminstt_nm: string;
@@ -573,9 +578,20 @@ export type NaraNoticeSearchResponse = {
   total_count: number;
   page_no: number;
   page_size: number;
+  business_type?: string;
+  business_type_label?: string;
+  queried_business_types?: string[];
   result_code: string;
   result_msg: string;
   http_status: number;
+  pagination_mode?: "single" | "merged_all";
+  has_next_page?: boolean;
+  total_count_is_estimated?: boolean;
+  partial_errors?: Array<{
+    business_type: string;
+    operation: string;
+    message: string;
+  }>;
   queried_at: string;
 };
 
@@ -602,6 +618,8 @@ export type SavedNaraNotice = {
   id: number;
   bid_ntce_no: string;
   bid_ntce_ord: string;
+  business_type?: string;
+  business_type_label?: string;
   bid_ntce_nm: string;
   ntce_instt_nm: string;
   dminstt_nm: string;
@@ -669,7 +687,62 @@ export type CorporationComparisonProfile = {
   required_documents: string[];
   approved_evidence_count: number;
   approved_evidence_labels: string[];
+  approved_evidence_documents?: Array<{
+    id: number;
+    document_type: string;
+    document_label: string;
+    original_file_name: string;
+    review_status: string;
+    extracted_text_preview: string;
+    updated_at: string;
+  }>;
   profile_note: string;
+};
+
+export type ResultEvidenceLink = {
+  type: "corporation_evidence" | "basis_chunk" | "notice_requirement";
+  ref_id: string;
+  label: string;
+  description: string;
+  evidence_document_id?: number;
+  basis_document_id?: number;
+  chunk_id?: number;
+  requirement_candidate_id?: number;
+};
+
+export type UserSummaryAction = {
+  title: string;
+  reason: string;
+  next_step: string;
+  related_requirement_ids?: string[];
+  documents?: string[];
+};
+
+export type UserSummaryGroup = {
+  group: string;
+  count: number;
+  summary: string;
+};
+
+export type UserSummary = {
+  generated_by: string;
+  model?: string;
+  headline_status: string;
+  plain_summary: string;
+  top_priority_actions: UserSummaryAction[];
+  missing_groups: UserSummaryGroup[];
+  item_explanations: Record<
+    string,
+    {
+      user_gap_summary: string;
+      next_action: string;
+      evidence_hint: string;
+      citation_summary: string;
+    }
+  >;
+  risk_notes: string[];
+  evidence_links: ResultEvidenceLink[];
+  generation_error?: string;
 };
 
 export type NoticeComparisonItem = {
@@ -712,6 +785,7 @@ export type NoticeCorporationComparison = {
   };
   items: NoticeComparisonItem[];
   profile: CorporationComparisonProfile;
+  user_summary?: UserSummary;
   notice: SavedNaraNotice | null;
   corporation: Corporation | null;
 };
@@ -792,10 +866,21 @@ export type JudgmentRun = {
       actions: string[];
       uncertainty_notes: string[];
     };
+    user_summary?: UserSummary;
   };
   input_snapshot: Record<string, unknown>;
   notice: SavedNaraNotice | null;
   corporation: Corporation | null;
+};
+
+export type BasisChunkDetail = BasisDocumentChunk & {
+  detail_type: "basis_chunk";
+  basis_document: BasisDocument;
+};
+
+export type NoticeRequirementDetail = NoticeRequirementCandidate & {
+  detail_type: "notice_requirement";
+  notice: SavedNaraNotice | null;
 };
 
 export type ContractCustomFields = {
@@ -895,6 +980,9 @@ export type NaraCollectionRun = {
     };
     failure_reason?: string;
     retryable?: boolean;
+    business_type?: string;
+    business_type_label?: string;
+    queried_business_types?: string[];
     policy?: string;
   };
   created_at: string;

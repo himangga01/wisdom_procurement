@@ -1,0 +1,255 @@
+[2026-06-14T10:43:16.894Z] data-ready seed=20260614104248
+[2026-06-14T10:43:17.382Z] scene intro: goto http://127.0.0.1:5199/
+[2026-06-14T10:43:17.391Z] scene intro: goto committed
+[2026-06-14T10:43:18.303Z] scene intro: overlay start
+[2026-06-14T10:43:18.318Z] scene intro: overlay done
+[2026-06-14T10:43:18.319Z] scene intro: text checks done
+[2026-06-14T10:43:20.131Z] scene intro: screenshot start
+[2026-06-14T10:43:20.213Z] scene intro: screenshot done
+[2026-06-14T10:43:20.213Z] scene intro: captured
+[2026-06-14T10:43:20.213Z] scene corporations: goto http://127.0.0.1:5199/corporations
+[2026-06-14T10:43:20.223Z] scene corporations: goto committed
+[2026-06-14T10:43:21.130Z] scene corporations: overlay start
+[2026-06-14T10:43:21.139Z] scene corporations: overlay done
+[2026-06-14T10:43:21.157Z] scene corporations: text checks done
+[2026-06-14T10:43:23.371Z] scene corporations: screenshot start
+[2026-06-14T10:43:23.463Z] scene corporations: screenshot done
+[2026-06-14T10:43:23.464Z] scene corporations: captured
+[2026-06-14T10:43:23.464Z] scene dashboard: goto http://127.0.0.1:5199/
+[2026-06-14T10:43:23.473Z] scene dashboard: goto committed
+[2026-06-14T10:43:24.380Z] scene dashboard: overlay start
+[2026-06-14T10:43:24.388Z] scene dashboard: overlay done
+[2026-06-14T10:43:24.389Z] scene dashboard: text checks done
+[2026-06-14T10:43:26.203Z] scene dashboard: screenshot start
+[2026-06-14T10:43:26.280Z] scene dashboard: screenshot done
+[2026-06-14T10:43:26.281Z] scene dashboard: captured
+[2026-06-14T10:43:26.281Z] scene nara-board: goto http://127.0.0.1:5199/nara-board
+[2026-06-14T10:43:26.293Z] scene nara-board: goto committed
+[2026-06-14T10:43:27.208Z] scene nara-board: overlay start
+[2026-06-14T10:43:27.217Z] scene nara-board: overlay done
+[2026-06-14T10:43:27.218Z] scene nara-board: text checks done
+[2026-06-14T10:43:29.020Z] scene nara-board: screenshot start
+[2026-06-14T10:43:29.093Z] scene nara-board: screenshot done
+[2026-06-14T10:43:29.094Z] scene nara-board: captured
+[2026-06-14T10:43:29.094Z] scene saved-notice: goto http://127.0.0.1:5199/nara-saved-notices/24
+[2026-06-14T10:43:29.107Z] scene saved-notice: goto committed
+[2026-06-14T10:43:30.020Z] scene saved-notice: overlay start
+[2026-06-14T10:43:30.031Z] scene saved-notice: overlay done
+[2026-06-14T10:43:30.042Z] scene saved-notice: text checks done
+[2026-06-14T10:43:32.444Z] scene saved-notice: screenshot start
+[2026-06-14T10:43:32.496Z] scene saved-notice: screenshot done
+[2026-06-14T10:43:32.496Z] scene saved-notice: captured
+[2026-06-14T10:43:32.497Z] scene basis-documents: goto http://127.0.0.1:5199/basis-documents
+[2026-06-14T10:43:32.506Z] scene basis-documents: goto committed
+[2026-06-14T10:43:33.417Z] scene basis-documents: overlay start
+[2026-06-14T10:43:33.427Z] scene basis-documents: overlay done
+[2026-06-14T10:43:33.438Z] scene basis-documents: text checks done
+[2026-06-14T10:43:35.849Z] scene basis-documents: screenshot start
+[2026-06-14T10:43:35.922Z] scene basis-documents: screenshot done
+[2026-06-14T10:43:35.923Z] scene basis-documents: captured
+[2026-06-14T10:43:35.923Z] scene notice-comparison: goto http://127.0.0.1:5199/notice-comparison
+[2026-06-14T10:43:35.936Z] scene notice-comparison: goto committed
+[2026-06-14T10:43:36.864Z] scene notice-comparison: overlay start
+[2026-06-14T10:43:36.872Z] scene notice-comparison: overlay done
+[2026-06-14T10:43:36.882Z] scene notice-comparison: text checks done
+[2026-06-14T10:43:39.084Z] scene notice-comparison: screenshot start
+[2026-06-14T10:43:39.150Z] scene notice-comparison: screenshot done
+[2026-06-14T10:43:39.151Z] scene notice-comparison: captured
+[2026-06-14T10:43:39.151Z] scene judgment-runs: goto http://127.0.0.1:5199/judgment-runs
+[2026-06-14T10:43:39.162Z] scene judgment-runs: goto committed
+[2026-06-14T10:43:40.068Z] scene judgment-runs: overlay start
+[2026-06-14T10:43:40.078Z] scene judgment-runs: overlay done
+[2026-06-14T10:43:40.089Z] scene judgment-runs: text checks done
+[2026-06-14T10:43:42.300Z] scene judgment-runs: screenshot start
+[2026-06-14T10:43:42.358Z] scene judgment-runs: screenshot done
+[2026-06-14T10:43:42.359Z] scene judgment-runs: captured
+[2026-06-14T10:43:42.359Z] scene contracts: goto http://127.0.0.1:5199/contracts?notice_id=24&corporation_id=28&judgment_run_id=4
+[2026-06-14T10:43:42.368Z] scene contracts: goto committed
+[2026-06-14T10:43:43.270Z] scene contracts: overlay start
+[2026-06-14T10:43:43.279Z] scene contracts: overlay done
+[2026-06-14T10:43:43.288Z] scene contracts: text checks done
+[2026-06-14T10:43:45.693Z] scene contracts: screenshot start
+[2026-06-14T10:43:45.757Z] scene contracts: screenshot done
+[2026-06-14T10:43:45.758Z] scene contracts: captured
+[2026-06-14T10:43:45.758Z] scene operations: goto http://127.0.0.1:5199/operations
+[2026-06-14T10:43:45.767Z] scene operations: goto committed
+[2026-06-14T10:43:46.669Z] scene operations: overlay start
+[2026-06-14T10:43:46.678Z] scene operations: overlay done
+[2026-06-14T10:43:46.678Z] scene operations: text checks done
+[2026-06-14T10:43:48.502Z] scene operations: screenshot start
+[2026-06-14T10:43:48.555Z] scene operations: screenshot done
+[2026-06-14T10:43:48.555Z] scene operations: captured
+[2026-06-14T10:43:48.556Z] scene operation-runs: goto http://127.0.0.1:5199/operation-runs
+[2026-06-14T10:43:48.564Z] scene operation-runs: goto committed
+[2026-06-14T10:43:49.471Z] scene operation-runs: overlay start
+[2026-06-14T10:43:49.479Z] scene operation-runs: overlay done
+[2026-06-14T10:43:59.782Z] scene operation-runs: text checks done
+[2026-06-14T10:44:01.986Z] scene operation-runs: screenshot start
+[2026-06-14T10:44:02.065Z] scene operation-runs: screenshot done
+[2026-06-14T10:44:02.066Z] scene operation-runs: captured
+[2026-06-14T10:44:02.066Z] browser close start
+[2026-06-14T10:44:03.778Z] browser close done
+[2026-06-14T10:44:25.003Z] data-ready seed=20260614104248
+[2026-06-14T10:44:25.364Z] scene intro: goto http://127.0.0.1:5199/
+[2026-06-14T10:44:25.374Z] scene intro: goto committed
+[2026-06-14T10:44:26.283Z] scene intro: overlay start
+[2026-06-14T10:44:26.299Z] scene intro: overlay done
+[2026-06-14T10:44:26.300Z] scene intro: text checks done
+[2026-06-14T10:44:28.111Z] scene intro: screenshot start
+[2026-06-14T10:44:28.195Z] scene intro: screenshot done
+[2026-06-14T10:44:28.195Z] scene intro: captured
+[2026-06-14T10:44:28.196Z] scene corporations: goto http://127.0.0.1:5199/corporations
+[2026-06-14T10:44:28.204Z] scene corporations: goto committed
+[2026-06-14T10:44:29.111Z] scene corporations: overlay start
+[2026-06-14T10:44:29.120Z] scene corporations: overlay done
+[2026-06-14T10:44:29.140Z] scene corporations: text checks done
+[2026-06-14T10:44:31.343Z] scene corporations: screenshot start
+[2026-06-14T10:44:31.424Z] scene corporations: screenshot done
+[2026-06-14T10:44:31.425Z] scene corporations: captured
+[2026-06-14T10:44:31.425Z] scene dashboard: goto http://127.0.0.1:5199/
+[2026-06-14T10:44:31.436Z] scene dashboard: goto committed
+[2026-06-14T10:44:32.343Z] scene dashboard: overlay start
+[2026-06-14T10:44:32.352Z] scene dashboard: overlay done
+[2026-06-14T10:44:32.352Z] scene dashboard: text checks done
+[2026-06-14T10:44:34.161Z] scene dashboard: screenshot start
+[2026-06-14T10:44:34.241Z] scene dashboard: screenshot done
+[2026-06-14T10:44:34.241Z] scene dashboard: captured
+[2026-06-14T10:44:34.242Z] scene nara-board: goto http://127.0.0.1:5199/nara-board
+[2026-06-14T10:44:34.250Z] scene nara-board: goto committed
+[2026-06-14T10:44:35.157Z] scene nara-board: overlay start
+[2026-06-14T10:44:35.166Z] scene nara-board: overlay done
+[2026-06-14T10:44:35.166Z] scene nara-board: text checks done
+[2026-06-14T10:44:36.982Z] scene nara-board: screenshot start
+[2026-06-14T10:44:37.063Z] scene nara-board: screenshot done
+[2026-06-14T10:44:37.063Z] scene nara-board: captured
+[2026-06-14T10:44:37.063Z] scene saved-notice: goto http://127.0.0.1:5199/nara-saved-notices/24
+[2026-06-14T10:44:37.075Z] scene saved-notice: goto committed
+[2026-06-14T10:44:37.990Z] scene saved-notice: overlay start
+[2026-06-14T10:44:37.998Z] scene saved-notice: overlay done
+[2026-06-14T10:44:38.011Z] scene saved-notice: text checks done
+[2026-06-14T10:44:40.416Z] scene saved-notice: screenshot start
+[2026-06-14T10:44:40.473Z] scene saved-notice: screenshot done
+[2026-06-14T10:44:40.473Z] scene saved-notice: captured
+[2026-06-14T10:44:40.474Z] scene basis-documents: goto http://127.0.0.1:5199/basis-documents
+[2026-06-14T10:44:40.483Z] scene basis-documents: goto committed
+[2026-06-14T10:44:41.390Z] scene basis-documents: overlay start
+[2026-06-14T10:44:41.399Z] scene basis-documents: overlay done
+[2026-06-14T10:44:41.410Z] scene basis-documents: text checks done
+[2026-06-14T10:44:43.814Z] scene basis-documents: screenshot start
+[2026-06-14T10:44:43.890Z] scene basis-documents: screenshot done
+[2026-06-14T10:44:43.890Z] scene basis-documents: captured
+[2026-06-14T10:44:43.890Z] scene notice-comparison: goto http://127.0.0.1:5199/notice-comparison
+[2026-06-14T10:44:43.899Z] scene notice-comparison: goto committed
+[2026-06-14T10:44:44.814Z] scene notice-comparison: overlay start
+[2026-06-14T10:44:44.823Z] scene notice-comparison: overlay done
+[2026-06-14T10:44:44.836Z] scene notice-comparison: text checks done
+[2026-06-14T10:44:47.048Z] scene notice-comparison: screenshot start
+[2026-06-14T10:44:47.114Z] scene notice-comparison: screenshot done
+[2026-06-14T10:44:47.115Z] scene notice-comparison: captured
+[2026-06-14T10:44:47.116Z] scene judgment-runs: goto http://127.0.0.1:5199/judgment-runs
+[2026-06-14T10:44:47.126Z] scene judgment-runs: goto committed
+[2026-06-14T10:44:48.032Z] scene judgment-runs: overlay start
+[2026-06-14T10:44:48.043Z] scene judgment-runs: overlay done
+[2026-06-14T10:44:48.057Z] scene judgment-runs: text checks done
+[2026-06-14T10:44:50.264Z] scene judgment-runs: screenshot start
+[2026-06-14T10:44:50.335Z] scene judgment-runs: screenshot done
+[2026-06-14T10:44:50.336Z] scene judgment-runs: captured
+[2026-06-14T10:44:50.336Z] scene contracts: goto http://127.0.0.1:5199/contracts?notice_id=24&corporation_id=28&judgment_run_id=4
+[2026-06-14T10:44:50.346Z] scene contracts: goto committed
+[2026-06-14T10:44:51.249Z] scene contracts: overlay start
+[2026-06-14T10:44:51.258Z] scene contracts: overlay done
+[2026-06-14T10:44:51.271Z] scene contracts: text checks done
+[2026-06-14T10:44:53.681Z] scene contracts: screenshot start
+[2026-06-14T10:44:53.761Z] scene contracts: screenshot done
+[2026-06-14T10:44:53.762Z] scene contracts: captured
+[2026-06-14T10:44:53.762Z] scene operations: goto http://127.0.0.1:5199/operations
+[2026-06-14T10:44:53.773Z] scene operations: goto committed
+[2026-06-14T10:44:54.681Z] scene operations: overlay start
+[2026-06-14T10:44:54.693Z] scene operations: overlay done
+[2026-06-14T10:44:54.694Z] scene operations: text checks done
+[2026-06-14T10:44:56.496Z] scene operations: screenshot start
+[2026-06-14T10:44:56.551Z] scene operations: screenshot done
+[2026-06-14T10:44:56.552Z] scene operations: captured
+[2026-06-14T10:44:56.552Z] scene operation-runs: goto http://127.0.0.1:5199/operation-runs
+[2026-06-14T10:44:56.560Z] scene operation-runs: goto committed
+[2026-06-14T10:44:57.465Z] scene operation-runs: overlay start
+[2026-06-14T10:44:57.473Z] scene operation-runs: overlay done
+[2026-06-14T10:44:57.480Z] scene operation-runs: text checks done
+[2026-06-14T10:44:59.681Z] scene operation-runs: screenshot start
+[2026-06-14T10:44:59.760Z] scene operation-runs: screenshot done
+[2026-06-14T10:44:59.760Z] scene operation-runs: captured
+[2026-06-14T10:44:59.761Z] browser close start
+[2026-06-14T10:45:00.517Z] browser close done
+[2026-06-14T11:12:48.540Z] data-ready seed=20260614104248
+[2026-06-14T11:12:48.967Z] scene intro: open http://127.0.0.1:5199/ mode=interactive-demo
+[2026-06-14T11:12:49.707Z] scene intro: interactive navigation done
+[2026-06-14T11:12:50.619Z] scene intro: overlay start
+[2026-06-14T11:12:50.624Z] scene intro: overlay done
+[2026-06-14T11:12:50.624Z] scene intro: text checks done
+[2026-06-14T11:12:52.435Z] scene intro: screenshot start
+[2026-06-14T11:12:52.518Z] scene intro: screenshot done
+[2026-06-14T11:12:52.519Z] scene intro: captured
+[2026-06-14T11:12:52.519Z] scene corporations: open http://127.0.0.1:5199/corporations mode=interactive-demo
+[2026-06-14T11:12:53.782Z] sidebar-click sidebar-corporations
+[2026-06-14T11:12:55.700Z] scene corporations: interactive navigation done
+[2026-06-14T11:12:56.601Z] scene corporations: overlay start
+[2026-06-14T11:12:56.606Z] scene corporations: overlay done
+[2026-06-14T11:12:56.608Z] scene corporations: text checks done
+[2026-06-14T11:12:58.818Z] scene corporations: screenshot start
+[2026-06-14T11:12:58.882Z] scene corporations: screenshot done
+[2026-06-14T11:12:58.882Z] scene corporations: captured
+[2026-06-14T11:12:58.883Z] browser close start
+[2026-06-14T11:12:58.995Z] browser close done
+[2026-06-14T11:13:03.397Z] data-ready seed=20260614104248
+[2026-06-14T11:13:03.800Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=interactive-demo
+[2026-06-14T11:13:05.814Z] sidebar-click sidebar-basis-documents
+[2026-06-14T11:13:08.680Z] scene basis-documents: interactive navigation done
+[2026-06-14T11:13:09.580Z] scene basis-documents: overlay start
+[2026-06-14T11:13:09.583Z] scene basis-documents: overlay done
+[2026-06-14T11:13:09.586Z] scene basis-documents: text checks done
+[2026-06-14T11:13:11.997Z] scene basis-documents: screenshot start
+[2026-06-14T11:13:12.061Z] scene basis-documents: screenshot done
+[2026-06-14T11:13:12.062Z] scene basis-documents: captured
+[2026-06-14T11:13:12.062Z] scene contracts: open http://127.0.0.1:5199/contracts?notice_id=24&corporation_id=28&judgment_run_id=4 mode=interactive-demo
+[2026-06-14T11:13:13.758Z] scene contracts: interactive navigation done
+[2026-06-14T11:13:14.664Z] scene contracts: overlay start
+[2026-06-14T11:13:14.668Z] scene contracts: overlay done
+[2026-06-14T11:13:14.671Z] scene contracts: text checks done
+[2026-06-14T11:13:17.080Z] scene contracts: screenshot start
+[2026-06-14T11:13:17.129Z] scene contracts: screenshot done
+[2026-06-14T11:13:17.130Z] scene contracts: captured
+[2026-06-14T11:13:17.130Z] scene operation-runs: open http://127.0.0.1:5199/operation-runs mode=interactive-demo
+[2026-06-14T11:13:18.362Z] sidebar-click sidebar-operation-runs
+[2026-06-14T11:13:19.313Z] scene operation-runs: interactive navigation done
+[2026-06-14T11:13:20.216Z] scene operation-runs: overlay start
+[2026-06-14T11:13:20.219Z] scene operation-runs: overlay done
+[2026-06-14T11:13:20.221Z] scene operation-runs: text checks done
+[2026-06-14T11:13:22.432Z] scene operation-runs: screenshot start
+[2026-06-14T11:13:22.486Z] scene operation-runs: screenshot done
+[2026-06-14T11:13:22.486Z] scene operation-runs: captured
+[2026-06-14T11:13:22.486Z] browser close start
+[2026-06-14T11:13:22.591Z] browser close done
+[2026-06-14T11:13:28.095Z] data-ready seed=20260614104248
+[2026-06-14T11:13:28.535Z] scene corporations: open http://127.0.0.1:5199/corporations mode=real-pdf-demo
+[2026-06-14T11:13:30.487Z] sidebar-click sidebar-corporations
+[2026-06-14T11:13:32.301Z] scene corporations: interactive navigation done
+[2026-06-14T11:13:33.212Z] scene corporations: overlay start
+[2026-06-14T11:13:33.216Z] scene corporations: overlay done
+[2026-06-14T11:13:33.219Z] scene corporations: text checks done
+[2026-06-14T11:13:35.435Z] scene corporations: screenshot start
+[2026-06-14T11:13:35.522Z] scene corporations: screenshot done
+[2026-06-14T11:13:35.522Z] scene corporations: captured
+[2026-06-14T11:13:35.522Z] browser close start
+[2026-06-14T11:13:35.627Z] browser close done
+[2026-06-14T11:13:43.863Z] data-ready seed=20260614104248
+[2026-06-14T11:13:44.293Z] scene nara-board: open http://127.0.0.1:5199/nara-board mode=live-nara-demo
+[2026-06-14T11:13:46.283Z] sidebar-click sidebar-nara-board
+[2026-06-14T11:13:46.284Z] scene nara-board: interactive navigation done
+[2026-06-14T11:13:47.185Z] scene nara-board: overlay start
+[2026-06-14T11:13:47.190Z] scene nara-board: overlay done
+[2026-06-14T11:13:47.190Z] scene nara-board: text checks done
+[2026-06-14T11:13:48.995Z] scene nara-board: screenshot start
+[2026-06-14T11:13:49.065Z] scene nara-board: screenshot done
+[2026-06-14T11:13:49.065Z] scene nara-board: captured
+[2026-06-14T11:13:49.066Z] browser close start
+[2026-06-14T11:13:49.184Z] browser close done

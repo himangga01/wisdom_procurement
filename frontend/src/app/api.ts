@@ -6,6 +6,7 @@ import type {
   BackupRun,
   BackupValidation,
   BasisDocument,
+  BasisChunkDetail,
   BasisDocumentChunk,
   BasisIndexStatus,
   BasisRuleCandidate,
@@ -25,6 +26,7 @@ import type {
   NaraNoticeSearchItem,
   NaraNoticeSearchResponse,
   NoticeCorporationComparison,
+  NoticeRequirementDetail,
   NoticeRequirementPayload,
   NaraIntegrationStatus,
   NaraIntegrationTestResult,
@@ -279,6 +281,8 @@ export const api = {
     }),
   getBasisDocument: (id: number) => request<BasisDocument>(`/api/basis-documents/${id}`),
   listBasisDocumentChunks: (id: number) => request<BasisDocumentChunk[]>(`/api/basis-documents/${id}/chunks`),
+  getBasisDocumentChunk: (basisDocumentId: number, chunkId: number) =>
+    request<BasisChunkDetail>(`/api/basis-documents/${basisDocumentId}/chunks/${chunkId}`),
   updateBasisDocument: (id: number, body: Record<string, unknown>) =>
     request<BasisDocument>(`/api/basis-documents/${id}`, {
       method: "PATCH",
@@ -378,6 +382,7 @@ export const api = {
   getSavedNaraNotice: (id: number) => request<SavedNaraNotice>(`/api/nara/saved-notices/${id}`),
   getSavedNaraNoticeRequirements: (id: number) =>
     request<NoticeRequirementPayload>(`/api/nara/saved-notices/${id}/requirements`),
+  getNoticeRequirement: (id: number) => request<NoticeRequirementDetail>(`/api/notice-requirements/${id}`),
   extractSavedNaraNoticeRequirements: (id: number) =>
     request<NoticeRequirementPayload>(`/api/nara/saved-notices/${id}/requirements/extract`, {
       method: "POST",
@@ -393,6 +398,7 @@ export const api = {
     }),
   getNoticeComparison: (id: number) => request<NoticeCorporationComparison>(`/api/notice-comparisons/${id}`),
   listJudgmentRuns: () => request<JudgmentRun[]>("/api/judgment-runs"),
+  getJudgmentRun: (id: number) => request<JudgmentRun>(`/api/judgment-runs/${id}`),
   createJudgmentRun: (noticeId: number, corporationId: number, topK = 3) =>
     request<JudgmentRun>("/api/judgment-runs", {
       method: "POST",

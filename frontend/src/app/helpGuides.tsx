@@ -54,7 +54,7 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     summary: "공공데이터 API를 통해 나라장터 공고를 검색하고 필요한 공고를 저장합니다.",
     details: [
       "검색 조건을 입력해 공고 목록을 조회합니다.",
-      "선택한 공고는 로컬 DB에 저장하고 지원 가능한 첨부 문서를 다운로드/분석합니다.",
+      "선택한 공고는 로컬 DB에 저장하고 PDF/DOCX 첨부 문서를 다운로드/분석합니다.",
       "HTML 크롤링이 아니라 설정된 나라장터 API 키를 사용하는 화면입니다.",
     ],
   },
@@ -78,10 +78,10 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
   },
   "/judgment-runs": {
     title: "판단 검토 메뉴",
-    summary: "공고, 법인, 기준문서 citation 후보를 묶어 부족조건 중심 판단 결과를 검토합니다.",
+    summary: "공고, 법인, 기준문서 근거를 묶어 부족조건 중심 판단 결과를 검토합니다.",
     details: [
       "판단 실행 결과는 관리자 검토가 필요한 초안으로 다룹니다.",
-      "기준문서 citation이 부족한 조건은 확정 근거로 사용하지 않는 흐름을 유지합니다.",
+      "기준문서 근거가 부족한 조건은 확정 근거로 사용하지 않는 흐름을 유지합니다.",
       "검토 메모를 남겨 후속 준비 가이드와 운영 이력에 반영할 수 있습니다.",
     ],
   },
@@ -118,7 +118,7 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     details: [
       "기준문서는 프로젝트에 속하지 않는 재사용 지식 자산입니다.",
       "청크 본문은 화면 렉을 줄이기 위해 필요할 때만 따로 불러옵니다.",
-      "검색과 판단 citation의 품질을 좌우하므로 인덱스 상태와 청크 품질을 함께 확인합니다.",
+      "검색과 판단 근거 품질을 좌우하므로 인덱스 상태와 청크 품질을 함께 확인합니다.",
     ],
   },
   "/basis-rule-candidates": {
@@ -127,14 +127,14 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     details: [
       "자동 추출된 후보는 바로 확정하지 않고 관리자 검토 대상으로 둡니다.",
       "승인된 후보만 판단 엔진의 강한 근거로 사용할 수 있습니다.",
-      "후보 문구, 규칙 유형, citation 연결 상태를 확인하고 보정합니다.",
+      "후보 문구, 규칙 유형, 근거 연결 상태를 확인하고 보정합니다.",
     ],
   },
   "/basis-retrieval-evaluations": {
     title: "검색 평가 메뉴",
-    summary: "기준문서 RAG 검색이 실제 질의에서 적절한 청크와 citation을 찾는지 평가합니다.",
+    summary: "기준문서 RAG 검색이 실제 질의에서 적절한 청크와 근거를 찾는지 평가합니다.",
     details: [
-      "평가 질의를 실행해 검색 coverage와 citation 누락 가능성을 확인합니다.",
+      "평가 질의를 실행해 검색 품질과 근거 누락 가능성을 확인합니다.",
       "JSON 기준문서 인덱스를 사용하는 검색 품질 점검 화면입니다.",
       "RAG 개선 전후 결과를 비교하는 운영 QA 용도로 사용합니다.",
     ],
@@ -143,7 +143,8 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     title: "법인 관리 메뉴",
     summary: "법인 기본정보와 증빙자료를 관리하고, 검토 승인된 값만 프로필에 반영합니다.",
     details: [
-      "사업자등록증명 등 증빙자료를 업로드해 자동 추출 후보를 만들 수 있습니다.",
+      "사업자등록증명, 사업자등록증, 인증서, 면허, 확인서, 특허/저작권 문서 등 법인이 보유한 여러 증빙자료를 업로드해 자동 추출 후보를 만들 수 있습니다.",
+      "여러 파일을 한 번에 선택하면 순서대로 분석하고, 증빙자료 관리 탭에서 각 문서의 검토 버튼으로 후보값을 확인합니다.",
       "AI나 OCR 결과는 자동 확정하지 않고 사용자가 승인한 값만 반영합니다.",
       "공고 비교와 판단 실행에서 사용하는 법인 준비 상태의 기준 데이터입니다.",
     ],
@@ -305,7 +306,7 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       summary: "부정확하거나 사용할 수 없는 후보를 판단 근거에서 제외합니다.",
       details: [
         "반려된 후보는 자동 판단 근거로 사용하지 않습니다.",
-        "오탐, 중복, citation 불일치가 있는 후보를 정리할 때 사용합니다.",
+        "오탐, 중복, 근거 연결 불일치가 있는 후보를 정리할 때 사용합니다.",
         "반려 사유가 필요한 경우 운영 메모에 남겨 후속 검토자가 이해할 수 있게 합니다.",
       ],
     },
@@ -365,7 +366,7 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       summary: "기준문서 RAG 검색 품질을 평가하기 위한 테스트 질의를 실행합니다.",
       details: [
         "입력한 평가 질의로 JSON 기준문서 인덱스를 검색합니다.",
-        "검색 결과의 coverage, citation 후보, 누락 가능성을 확인합니다.",
+        "검색 결과의 범위, 근거 후보, 누락 가능성을 확인합니다.",
         "기준문서 추출/청킹 로직 개선 전후 품질 비교에 사용합니다.",
       ],
     },
@@ -377,7 +378,7 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       summary: "기준문서 청크에서 판단 규칙으로 쓸 수 있는 조건 후보를 추출합니다.",
       details: [
         "추출된 후보는 바로 확정되지 않고 검토 필요 상태로 저장됩니다.",
-        "관리자가 문구와 citation을 확인한 뒤 승인해야 판단 근거로 사용됩니다.",
+        "관리자가 문구와 근거를 확인한 뒤 승인해야 판단 근거로 사용됩니다.",
         "테이블이 많은 기준문서는 추출 품질을 별도로 확인해야 합니다.",
       ],
     },
@@ -400,8 +401,8 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       title: "비교/판단 실행 버튼",
       summary: "공고 요구조건과 법인 준비 상태, 기준문서 근거를 연결해 검토 결과를 만듭니다.",
       details: [
-        "지원 가능 여부를 단정하기보다 부족 조건과 필요한 준비 항목을 중심으로 보여줍니다.",
-        "기준문서 citation이 없는 조건은 확정 근거로 쓰지 않는 것이 원칙입니다.",
+        "최종 결론을 단정하기보다 부족 조건과 필요한 준비 항목을 중심으로 보여줍니다.",
+        "기준문서 근거가 없는 조건은 확정 근거로 쓰지 않는 것이 원칙입니다.",
         "결과는 관리자가 검토하고 메모를 남겨야 운영 흐름에서 안전하게 사용할 수 있습니다.",
       ],
     },
@@ -602,7 +603,7 @@ export function ActionHelpProvider({ children }: { children: ReactNode }) {
           >
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Guide</p>
+                <p className="eyebrow">도움말</p>
                 <h3 id="help-guide-title">{activeGuide.title}</h3>
               </div>
               <button type="button" className="help-guide-close" onClick={() => setActiveGuide(null)}>

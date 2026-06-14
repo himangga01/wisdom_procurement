@@ -1,0 +1,128 @@
+{
+  "status": "completed",
+  "mode": "interactive-demo",
+  "seed": "20260614111559",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\raw-video\\service-demo-20260614111559.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\demo-data.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "SMART 조달청 계산기",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:31.530Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\01-intro.png",
+      "finished_at": "2026-06-14T11:16:35.075Z"
+    },
+    {
+      "id": "corporations",
+      "title": "1. 법인 등록과 증빙 준비",
+      "route": "/corporations",
+      "url": "http://127.0.0.1:5199/corporations",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:35.075Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\02-corporations.png",
+      "finished_at": "2026-06-14T11:16:41.492Z"
+    },
+    {
+      "id": "dashboard",
+      "title": "2. 대시보드에서 오늘 업무 확인",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:41.493Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\03-dashboard.png",
+      "finished_at": "2026-06-14T11:16:45.526Z"
+    },
+    {
+      "id": "nara-board",
+      "title": "3. 나라장터 공고 검색",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:45.527Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\04-nara-board.png",
+      "finished_at": "2026-06-14T11:16:49.555Z"
+    },
+    {
+      "id": "saved-notice",
+      "title": "4. 저장 공고 요구조건 확인",
+      "route": "/nara-saved-notices/25",
+      "url": "http://127.0.0.1:5199/nara-saved-notices/25",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:49.556Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\05-saved-notice.png",
+      "finished_at": "2026-06-14T11:16:56.009Z"
+    },
+    {
+      "id": "basis-documents",
+      "title": "5. 기준문서/RAG 준비 상태",
+      "route": "/basis-documents",
+      "url": "http://127.0.0.1:5199/basis-documents",
+      "status": "passed",
+      "started_at": "2026-06-14T11:16:56.010Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\06-basis-documents.png",
+      "finished_at": "2026-06-14T11:17:03.522Z"
+    },
+    {
+      "id": "notice-comparison",
+      "title": "6. 부족조건 미리보기",
+      "route": "/notice-comparison",
+      "url": "http://127.0.0.1:5199/notice-comparison",
+      "status": "passed",
+      "started_at": "2026-06-14T11:17:03.523Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\07-notice-comparison.png",
+      "finished_at": "2026-06-14T11:17:08.928Z"
+    },
+    {
+      "id": "judgment-runs",
+      "title": "7. 부족조건 중심 판단 검토",
+      "route": "/judgment-runs",
+      "url": "http://127.0.0.1:5199/judgment-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T11:17:08.929Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\08-judgment-runs.png",
+      "finished_at": "2026-06-14T11:17:14.290Z"
+    },
+    {
+      "id": "contracts",
+      "title": "8. 계약서 DOCX 초안 생성",
+      "route": "/contracts?notice_id=25&corporation_id=29&judgment_run_id=5",
+      "url": "http://127.0.0.1:5199/contracts?notice_id=25&corporation_id=29&judgment_run_id=5",
+      "status": "passed",
+      "started_at": "2026-06-14T11:17:14.291Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\09-contracts.png",
+      "finished_at": "2026-06-14T11:17:19.367Z"
+    },
+    {
+      "id": "operations",
+      "title": "9. 운영 상태 확인",
+      "route": "/operations",
+      "url": "http://127.0.0.1:5199/operations",
+      "status": "passed",
+      "started_at": "2026-06-14T11:17:19.368Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\10-operations.png",
+      "finished_at": "2026-06-14T11:17:23.373Z"
+    },
+    {
+      "id": "operation-runs",
+      "title": "10. 작업 이력",
+      "route": "/operation-runs",
+      "url": "http://127.0.0.1:5199/operation-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T11:17:23.373Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614111559\\screenshots\\11-operation-runs.png",
+      "finished_at": "2026-06-14T11:17:28.766Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T11:16:31.530Z",
+  "finished_at": "2026-06-14T11:17:29.508Z"
+}

@@ -1,0 +1,33 @@
+{
+  "status": "completed_with_warnings",
+  "mode": "live-nara-demo",
+  "seed": "20260614104248",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614104248",
+  "raw_video_path": null,
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614104248\\demo-data.json",
+  "scenes": [
+    {
+      "id": "nara-board",
+      "title": "3. 나라장터 공고 검색",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-14T11:13:44.294Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614104248\\screenshots\\01-nara-board.png",
+      "finished_at": "2026-06-14T11:13:49.065Z"
+    }
+  ],
+  "warnings": [
+    {
+      "scene": "nara-board",
+      "type": "live_nara_search_skipped_in_dry_run"
+    }
+  ],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T11:13:44.294Z",
+  "finished_at": "2026-06-14T11:13:49.185Z"
+}

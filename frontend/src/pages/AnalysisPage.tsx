@@ -116,7 +116,7 @@ export function AnalysisPage() {
     <section className="content-stack">
       <div className="surface-card analysis-hero">
         <div>
-          <p className="eyebrow">Analysis Result</p>
+          <p className="eyebrow">분석 결과</p>
           <h3>한눈에 보는 문서 요약 결과</h3>
           <p className="section-copy">
             기존에는 마크다운 원문만 보여서 다시 읽는 부담이 컸습니다. 지금은 핵심 요약, 요구사항, 확인 포인트를 카드 단위로 나눠 빠르게 검토할 수 있게 바꿨습니다.
@@ -175,13 +175,13 @@ export function AnalysisPage() {
 
           <div className="analysis-grid">
             <article className="surface-card">
-              <p className="eyebrow">Summary</p>
+              <p className="eyebrow">요약</p>
               <h3>핵심 요약</h3>
               <p className="analysis-copy">{parsed.document_summary || "요약 텍스트가 없습니다."}</p>
             </article>
 
             <article className="surface-card">
-              <p className="eyebrow">Requirements</p>
+              <p className="eyebrow">요구사항</p>
               <h3>주요 요구사항</h3>
               {parsed.requirements?.length ? (
                 <ul className="feature-list">
@@ -195,7 +195,7 @@ export function AnalysisPage() {
             </article>
 
             <article className="surface-card">
-              <p className="eyebrow">Checkpoints</p>
+              <p className="eyebrow">확인 포인트</p>
               <h3>추가 확인 포인트</h3>
               {parsed.questions_to_check?.length ? (
                 <ul className="feature-list">
@@ -212,7 +212,7 @@ export function AnalysisPage() {
           <article className="surface-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Raw Markdown</p>
+                <p className="eyebrow">원본 출력</p>
                 <h3>원본 분석 출력</h3>
               </div>
             </div>

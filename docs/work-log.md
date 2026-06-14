@@ -7276,3 +7276,999 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Reordered the product demo flow in `docs/service-rocket-pitch.md` based on user feedback.
 - Moved corporation registration and evidence preparation before the dashboard and Nara notice flow.
 - Updated the English Demo Flow to match the Korean presentation sequence.
+
+## 추가 업데이트 (2026-06-14) - 왼쪽 네비게이션 섹션별 배경색 구분
+
+### 한국어 기록
+- 사용자 요청에 따라 왼쪽 `sidebar` 네비게이션의 기능 그룹별 배경색을 다르게 적용했다.
+- 메뉴 구조와 라우트는 유지하고, 기존 6개 그룹에 tone을 추가했다.
+  - 업무 현황: `overview`
+  - 공고 업무: `notice`
+  - 문서 분석: `document`
+  - 기준문서 / RAG: `rag`
+  - 내부 관리: `admin`
+  - 설정: `settings`
+- 각 그룹은 낮은 채도의 업무용 tint 배경과 accent 색상을 사용한다.
+- active 메뉴 아이콘은 해당 그룹의 accent 색상을 따라가도록 조정했다.
+- 회귀 방지를 위해 프론트 계약 테스트에 nav group tone과 CSS class 검증을 추가했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_frontend_contracts -v`: 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: 통과
+  - `git diff --check`: 공백 오류 없음
+  - 브라우저 데스크톱 확인: 6개 섹션 배경색 적용, 도움말 버튼 겹침 0건
+  - 브라우저 모바일 폭 확인: 6개 섹션 배경색 유지, 도움말 버튼 겹침 0건
+
+### AI / Engineering Version (English)
+- Added distinct visual tones for each left-sidebar navigation section.
+- Kept navigation routes and grouping unchanged while adding group-level `tone` metadata.
+- Added section background/accent CSS variables and tone-specific classes.
+- Updated frontend contract tests to assert all six tones and the required CSS hooks.
+- Verified with frontend contract tests, frontend build, encoding check, git whitespace check, and desktop/mobile browser checks.
+
+## 추가 업데이트 (2026-06-14) - 네비게이션 아이콘 배경색 정합성 보강
+
+### 한국어 기록
+- 사용자 피드백에 따라 왼쪽 네비게이션의 `nav-icon` 배경색을 각 메뉴 그룹 배경색과 동일하게 맞췄다.
+- 기존에는 메뉴 그룹 배경은 section tint를 사용하고, 아이콘 배경은 기본 회색 또는 active accent 색상을 사용해 색상이 따로 보였다.
+- 변경 후:
+  - 일반 아이콘 배경: `var(--nav-section-bg)`
+  - active 아이콘 배경: `var(--nav-section-bg)`
+  - 아이콘 선/색상: `var(--nav-section-accent)`
+- 배경색은 동일하게 유지하고, 아이콘의 구분감은 얇은 outline과 accent 색상으로 처리했다.
+- 회귀 방지를 위해 active `nav-icon`도 section background를 사용하는지 프론트 계약 테스트를 보강했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_frontend_contracts -v`: 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: 통과
+  - `git diff --check`: 공백 오류 없음
+  - 브라우저 계산 CSS 확인: 6개 섹션 모두 `nav-icon` 배경색과 섹션 배경색 일치
+
+### AI / Engineering Version (English)
+- Aligned `.nav-icon` backgrounds with each navigation section background.
+- Replaced the default gray and active accent icon backgrounds with `var(--nav-section-bg)`.
+- Kept contrast through icon color and subtle outline using `var(--nav-section-accent)`.
+- Updated frontend contract tests to ensure active icons continue using the section background.
+- Verified with frontend contract tests, frontend build, encoding check, git whitespace check, and browser computed-style checks.
+
+## 추가 업데이트 (2026-06-14) - 네비게이션 아이콘 테두리 효과 제거
+
+### 한국어 기록
+- 사용자 피드백에 따라 왼쪽 네비게이션 `nav-icon`의 `box-shadow` 값을 삭제했다.
+- 일반 아이콘과 active 아이콘 모두에서 inset outline처럼 보이던 그림자 효과를 제거했다.
+- 아이콘 배경색은 메뉴 그룹 배경색과 동일하게 유지하고, 아이콘 색상만 그룹 accent 색상을 사용한다.
+- 회귀 방지를 위해 `nav-icon`과 active `nav-icon` style block에 `box-shadow`가 없는지 프론트 계약 테스트를 보강했다.
+- 검증:
+  - `py -3.13 -m unittest tests.test_frontend_contracts -v`: 통과
+  - `npm run build`: 통과
+  - `py -3.13 scripts\check-encoding.py`: 통과
+  - `git diff --check`: 공백 오류 없음
+  - 브라우저 계산 CSS 확인: 6개 섹션 모두 `nav-icon` box-shadow `none`
+
+### AI / Engineering Version (English)
+- Removed the `.nav-icon` and `.nav-card.active .nav-icon` box-shadow styles.
+- Kept icon backgrounds aligned with the section background and retained accent-colored icons only.
+- Updated frontend contract tests to prevent nav icon box shadows from being reintroduced.
+- Verified with frontend contract tests, frontend build, encoding check, git whitespace check, and browser computed-style checks.
+
+## 추가 업데이트 (2026-06-14) - 데모 영상용 법인 증빙자료 샘플 확인
+
+### 한국어 기록
+- 사용자 요청에 따라 `D:\project\wisdom_procurement\source\test_doc` 폴더의 데모 전용 법인 증빙자료 샘플을 확인했다.
+- 확인 결과:
+  - PDF 파일 47개
+  - PNG 파일 1개
+- 대표 샘플:
+  - `1.벡트_사업자등록증.pdf`
+  - `2.중소기업확인서_중기업_20260331.pdf`
+  - `20250226_(주)벡트_직생(동영상제작).pdf`
+  - `기업신용평가등급확인서_벡트(공공기관 제출용).pdf`
+  - `공장등록증명서_(주)벡트_250328.pdf`
+  - `정보통신공사업등록증_벡트.pdf`
+  - `ISO9001인증서_20270731.pdf`
+  - `G-PASS기업 지정서_(주)벡트(VECT)_지정기간~271218-복사.pdf`
+- 판단:
+  - `service-rocket-pitch.md`의 제품 시연 흐름 중 법인 등록/증빙자료 준비 시연에 사용할 샘플이 충분히 존재한다.
+  - 실제 데모 영상에서는 개인정보/민감정보 노출 여부를 확인하고 필요한 경우 마스킹 또는 데모 전용 화면/데이터로 대체해야 한다.
+
+### AI / Engineering Version (English)
+- Inspected `source/test_doc` as the demo corporation evidence sample directory.
+- Found 47 PDF files and 1 PNG file.
+- The folder contains enough evidence examples for the corporation registration/evidence portion of the service demo video.
+- Future demo recording should check for sensitive information and use masking or demo-safe data where needed.
+
+## 추가 업데이트 (2026-06-14) - 데모용 나라장터 공고 후보 샘플링
+
+### 한국어 기록
+- 데모 전용 법인 샘플(`source/test_doc`)의 증빙 구성을 기준으로 나라장터 공고 후보를 검토했다.
+- 샘플 법인의 주요 적합 분야:
+  - 직접생산확인증명서: 동영상제작
+  - 정보통신공사업등록증
+  - 전자칠판/인터랙티브화이트보드 관련 인증, 특허, 소프트웨어 품질 자료
+  - LED전광판 관련 특허와 제조/공장 자료
+- 기존 서비스의 `/api/nara/notices/search`는 현재 공사 공고 API(`getBidPblancListInfoCnstwkPPSSrch`) 중심이라, 위 샘플 법인에 잘 맞는 물품/용역 후보를 찾기에는 범위가 좁다는 점을 확인했다.
+- 로컬 OpenAPI 참고문서에서 물품/용역 검색 operation을 확인했다.
+  - `getBidPblancListInfoServcPPSSrch`
+  - `getBidPblancListInfoThngPPSSrch`
+  - `getBidPblancListInfoCnstwkPPSSrch`
+  - `getBidPblancListInfoEtcPPSSrch`
+- 실제 나라장터 API 키를 출력하지 않고, 물품/용역 API를 호출해 데모 후보를 샘플링했다.
+- 추천 데모 공고 후보:
+  - 1순위: `R26BK01560739-000` / `제31회 부산국제영화제 옥외영상채널 운영을 위한 LED 임차 및 운영 용역 업체 모집 공고`
+    - 샘플 법인의 LED전광판, 영상/콘텐츠, 운영 용역 성격과 가장 잘 맞음
+    - PDF 공고문 첨부가 있어 현재 PDF 분석 데모에 적합
+    - 입찰마감: 2026-07-01 16:00
+  - 2순위: `R26BK01563614-000` / `(가칭)검단3고등학교 신축 정보통신공사 관급자재(LED전광판)`
+    - 정보통신공사업, LED전광판 제조/설치 증빙과 잘 맞음
+    - PDF 공고문 첨부가 있음
+  - 3순위: `R26BK01559211-000` / `제주MICE다목적복합시설 고도화사업」제주국제컨벤션센터 제2센터 LED스크린 구축`
+    - LED스크린/전광판 구축 성격이라 전자칠판/디스플레이 계열 증빙 시연에 적합
+    - PDF 공고문 첨부가 있음
+- 결론:
+  - 데모 본편에는 1순위 공고를 사용하고, 비교/부족조건 예시가 필요하면 2순위 또는 3순위 공고를 보조 샘플로 사용한다.
+  - 향후 서비스 검색 UI도 공사뿐 아니라 물품/용역 operation을 함께 지원해야 샘플 법인과 실제 사업영역에 맞는 공고를 안정적으로 찾을 수 있다.
+
+### AI / Engineering Version (English)
+- Reviewed demo corporation evidence samples and mapped them to Nara notice domains.
+- Confirmed that the current service search route is construction-first and does not cover the best demo-fit goods/service notices.
+- Verified goods/service search operation names from local OpenAPI reference documents.
+- Sampled real Nara API notice candidates without printing the API key.
+- Recommended `R26BK01560739-000` as the primary demo notice because it best matches LED display, video channel operation, service-contract, and PDF attachment requirements.
+- Recommended `R26BK01563614-000` and `R26BK01559211-000` as secondary demo candidates.
+
+## 추가 업데이트 (2026-06-14) - 나라장터 물품/용역 검색 확장 및 법인 증빙 PDF 전부 별도화 구현
+
+### 한국어 기록
+- 사용자 요청 계획에 따라 나라장터 검색/저장/자동수집을 `전체`, `공사`, `용역`, `물품`, `기타` 업무유형으로 확장했다.
+- 기본 검색값은 `전체`로 두었고, `all` 검색은 공사/용역/물품/기타 operation을 순차 호출한 뒤 `bidNtceNo + bidNtceOrd` 기준으로 중복 제거하도록 구현했다.
+- 저장/분석 경로는 검색 결과의 `business_type`을 보존하고, 상세/기초금액 보강도 같은 업무유형 operation을 사용하도록 수정했다.
+- 자동수집 실행에는 `business_type` 요청값을 추가했고, 실행 이력의 `criteria`, `result`, `result.items[]`에 업무유형을 기록하도록 했다.
+- 프론트엔드 반영:
+  - 나라장터 공고 검색 화면: 업무유형 선택, 결과 테이블 배지, 상세 미리보기 업무유형 표시
+  - 나라장터 자동 수집 관리: 업무유형 선택, 이력/결과 업무유형 표시
+  - 저장 공고 상세: 기본정보 업무유형 표시
+- `source/test_doc/` 데모 법인 증빙 PDF 구성을 기준으로 새 법인 증빙 문서유형 20개를 별도 유형으로 추가했다.
+- 새 문서유형은 규칙 기반 자동분류, 백엔드 문서 라벨, LLM 허용 목록, 프론트 문서유형 선택 목록에 모두 반영했다.
+- 확장 증빙의 추출 후보는 기존 승인 흐름을 유지하며 `certifications_json`, `preference_tags_json`, `license_summary`, `business_item`, `evidence_expiry_summary` 같은 안전한 후보 필드로 매핑했다.
+- 구현 중 추가로 발견한 버그와 수정:
+  - `save_discovered_nara_notice()`에서 `business_type` 컬럼 추가 후 INSERT placeholder가 1개 부족해 자동수집 저장이 500으로 실패하던 문제를 수정했다.
+  - 기준문서 재처리에서 파일이 사라진 경우, 재처리 API가 먼저 상태를 `parsing/processing`으로 바꿔 기존 completed/indexed 결과 보존 조건을 깨던 회귀를 수정했다.
+  - 테스트 임시 디렉터리는 시스템 Temp 권한 차이를 줄이기 위해 `temp/api-tests` 또는 `WISDOM_TEST_TMPDIR` 기반으로 생성하도록 정리했다.
+- 문서 보강:
+  - `docs/narajangteo-api-analysis.md`: 업무유형별 operation 매핑과 운영 정책 추가
+  - `docs/narajangteo-board-design.md`: 검색/자동수집 업무유형 UX 흐름 추가
+  - `docs/corporation-evidence-auto-extraction-plan.md`: 새 증빙 문서유형과 후보 반영 정책 추가
+
+검증:
+- `py -3.13 -m unittest tests.test_corporation_evidence -v`: 14개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 101개 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 12개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음
+- 참고: API flow 테스트와 frontend build는 현재 Codex sandbox의 SQLite/spawn 제한 때문에 승인된 외부 실행으로 검증했다.
+
+### AI / Engineering Version (English)
+- Implemented Nara `business_type=all|construction|service|goods|etc` across search, save/analyze, and collection runs.
+- `all` search calls construction, service, goods, and etc search operations, merges results, deduplicates by notice number/order, and keeps item-level business type metadata.
+- Save/analyze now preserves business type and uses matching detail/basis-amount operations.
+- Added frontend business-type controls and badges to Nara search, collection runs, and saved notice detail.
+- Added 20 separated corporation evidence document types based on `source/test_doc` demo samples.
+- Wired the new evidence taxonomy into rule classification, backend labels, LLM allowed types, frontend manual options, and review-safe candidate extraction.
+- Fixed two regressions found during verification: missing INSERT placeholder for discovered Nara notices and basis reprocess missing-file preservation being broken by premature status mutation.
+- Verified with corporation evidence tests, full API flow tests, frontend contract tests, frontend build, encoding check, and whitespace check.
+
+## 추가 업데이트 (2026-06-14) - 나라장터 병합 검색 및 확장 증빙 후보 매핑 버그 수정
+
+### 한국어 기록
+- 전체 코드 리뷰에서 발견한 버그를 우선순위대로 수정했다.
+- 나라장터 `business_type=all` 검색:
+  - 기존에는 각 업무유형의 같은 page 번호를 조회해 합친 뒤 자르기 때문에 전체 검색 2페이지 이후에서 공고 누락/중복 가능성이 있었다.
+  - `전체` 검색 전용 병합 페이지네이션을 추가해 요청 page에 필요한 범위만큼 각 업무유형 최신 결과를 확보하고, 전체 최신순 정렬 후 page window를 반환하도록 수정했다.
+  - `pagination_mode=merged_all`, `has_next_page`, `total_count_is_estimated`, `partial_errors` 응답 필드를 추가했다.
+  - 일부 업무유형 API가 실패하면 성공 결과를 유지하고 `result_code=partial_failed`로 경고를 반환하며, 전체 실패 시에만 HTTP 502를 반환하도록 수정했다.
+- 프론트 나라장터 검색 UX:
+  - `전체` 검색에서는 `총 N건 추정`으로 표시하고 마지막 페이지 이동 버튼을 숨겼다.
+  - 부분 실패가 있으면 결과 상단에 경고를 표시하되, 조회된 공고의 선택/저장/분석은 유지했다.
+- 법인 증빙 전부 별도화 보강:
+  - `소프트웨어사업자일반현황관리확인서`, `기술혁신형 중소기업 확인서` 같은 실제 파일명 변형이 generic 면허/중소기업 규칙보다 먼저 별도 문서유형으로 분류되도록 수정했다.
+  - 확장 증빙 subject를 모든 문서에서 `business_item`으로 만들던 로직을 whitelist 방식으로 제한했다.
+  - 공장소재지, G-PASS 지정번호, 조합원명 같은 값은 `license_summary`에는 남기되 `business_item` 후보로 생성하지 않게 했다.
+- 기존 저장 공고 보정:
+  - `nara_notices.business_type`이 기본값 `construction`으로 남아 있지만 `raw_json`에 용역/물품/기타 단서가 있는 경우만 안전하게 backfill 하도록 했다.
+
+검증:
+- `py -3.13 -m unittest tests.test_corporation_evidence -v`: 14개 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 13개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 105개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음
+- 참고: API flow 테스트와 frontend build는 Codex sandbox의 디렉터리 생성/spawn 제한 때문에 sandbox 밖 실행으로 검증했다.
+
+### AI / Engineering Version (English)
+- Fixed merged pagination for Nara `business_type=all`.
+- Added response metadata: `pagination_mode`, `has_next_page`, `total_count_is_estimated`, and `partial_errors`.
+- Partial all-search operation failures now return successful results with `result_code=partial_failed`; all-operation failure remains HTTP 502.
+- Updated the Nara board UI to show estimated counts, hide last-page jump for merged pagination, and show partial failure warnings.
+- Moved extended corporation evidence rules before generic fallback rules for real software-business and Inno-Biz filename variants.
+- Restricted extended evidence subject-to-`business_item` mapping to product/technology/software/patent/copyright-like document types.
+- Added cautious saved-notice business-type backfill from raw JSON only when a better type can be inferred.
+- Verified with corporation evidence tests, frontend contract tests, full API flow tests, frontend build, encoding check, and whitespace check.
+
+## 추가 업데이트 (2026-06-14) - `source/test_doc` 실제 PDF 증빙 테스트
+
+### 한국어 기록
+- `source/test_doc/` 폴더의 PDF 47개를 대상으로 실제 서비스 흐름에 가까운 `extract_document()` → `run_ocr_if_needed()` → `analyze_corporation_evidence()` 테스트를 수행했다.
+- 현재 로컬 OCR 상태:
+  - `OCR_ENGINE=paddle`
+  - PaddleOCR 사용 가능
+  - OpenDataLoader PDF reader는 `auto` 모드에서 시도 후 PyMuPDF fallback이 적용됨
+- 테스트 결과:
+  - PDF 47개 처리 완료
+  - 파싱 예외 0건
+  - PaddleOCR 실행 30건
+  - OCR skip 17건
+  - OCR 실패/미설정 0건
+  - OCR 후 최종 텍스트 0자 0건
+  - 자동 분류 45건
+  - 확인 필요 2건
+  - 총 소요 약 445.5초
+- 발견한 분류 보강점:
+  - 직접생산확인증명서가 문서 본문에 포함된 `중소기업제품 구매촉진` 문구 때문에 중소기업확인서로 오분류될 수 있었다.
+  - 기업신용평가등급확인서가 본문 내 중소기업 심사 문구 때문에 중소기업확인서로 오분류될 수 있었다.
+  - 옥외광고업책임보험가입증명서가 옥외광고사업 등록 문구 때문에 옥외광고사업 등록증으로 오분류될 수 있었다.
+  - 출자증권이 한국전자산업협동조합 문구 때문에 조합원증으로 오분류될 수 있었다.
+  - 기술등급확인서와 기술평가우수기업인증서가 별도 문서유형으로 없어서 `unknown`으로 남았다.
+- 수정:
+  - 직접생산확인증명서, 기업신용평가등급확인서, 책임보험가입증명서, 출자증권의 분류 우선순위를 전용 규칙 우선으로 조정했다.
+  - `technology_grade_confirmation`, `technology_evaluation_excellent_certificate` 문서유형을 백엔드 라벨, 규칙 기반 분류, LLM 허용 유형, 프론트 문서유형 선택 목록에 추가했다.
+  - 실제 PDF에서 확인한 오분류 케이스를 단위 테스트 fixture로 추가했다.
+
+검증:
+- `py -3.13 -m unittest tests.test_corporation_evidence -v`
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`
+- 실제 PDF targeted 재검증:
+  - `20250226_(주)벡트_직생(동영상제작).pdf` → `direct_production_confirmation`
+  - `기술등급확인서(T-2)_(주)벡트_20250912.pdf` → `technology_grade_confirmation`
+  - `기술평가우수기업인증서_벡트_전자칠판제조기술.pdf` → `technology_evaluation_excellent_certificate`
+  - `기업신용평가등급확인서_벡트(공공기관 제출용).pdf` → `credit_rating_certificate`
+  - `옥외광고업책임보험가입증명서_(주)백트.pdf` → `insurance_policy_certificate`
+  - `출자증권_한국전자산업협동조합.pdf` → `investment_share_certificate`
+
+### AI / Engineering Version (English)
+- Ran real `source/test_doc` PDF evidence verification through `extract_document()` -> `run_ocr_if_needed()` -> `analyze_corporation_evidence()`.
+- 47 PDFs processed, 0 parse errors, 30 PaddleOCR completions, 17 OCR skips, 0 OCR failures, and 0 zero-text outputs after OCR.
+- Initial run classified 45 PDFs and left 2 as needs-review/unknown.
+- Found precedence issues for direct-production, credit-rating, insurance-policy, and investment-share evidence.
+- Added separated document types for technology-grade and technology-evaluation excellent certificates.
+- Added regression tests based on the real PDF failure patterns.
+
+## 추가 업데이트 (2026-06-14) - 서비스 시연 영상 생성 지원 가능성 검토 및 계획
+
+### 한국어 기록
+- `docs/service-rocket-pitch.md`의 `3. 제품 시연 흐름`을 기준으로 실제 서비스 화면을 동영상으로 생성할 수 있는지 재검토했다.
+- 현재 코드 기준으로 법인 등록/증빙 PDF 업로드, 대시보드, 나라장터 검색/저장, 공고 요구조건 확인, 기준문서/RAG 처리 상태, 부족조건 미리보기/판단 검토, 계약서 DOCX 생성, 운영 이력 확인 흐름이 모두 화면 시연 대상으로 존재함을 확인했다.
+- Playwright가 이미 프론트엔드 devDependency에 포함되어 있으므로 브라우저 자동 조작과 화면 녹화는 지원 가능하다고 판단했다.
+- 후처리는 `ffmpeg-static` 또는 로컬 FFmpeg를 추가해 WebM 병합, MP4 변환, 자막 삽입 방식으로 계획했다.
+- 신규 계획 문서 `docs/service-demo-video-generation-plan.md`를 작성했다.
+- 권장 방향은 먼저 안정 데모 데이터 모드로 반복 가능한 영상을 만들고, 이후 실시간 나라장터 API 모드를 선택 옵션으로 추가하는 것이다.
+
+검증:
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음
+
+### AI / Engineering Version (English)
+- Reviewed the current portal against the Rocket Pitch demo flow.
+- Confirmed that corporation onboarding/evidence upload, dashboard, Nara notice search/save, saved-notice requirement review, basis/RAG status, readiness comparison/judgment review, DOCX contract generation, and operations history can be demonstrated in the UI.
+- Planned a Playwright-based recording workflow with FFmpeg post-processing.
+- Added `docs/service-demo-video-generation-plan.md`.
+- Recommended starting with deterministic demo data, then adding live Nara API mode as an optional path.
+
+## 추가 업데이트 (2026-06-14) - Rocket Pitch 제품 시연 흐름 기반 파이프라인 동작 테스트
+
+### 한국어 기록
+- 사용자 요청에 따라 `docs/service-rocket-pitch.md`의 `3. 제품 시연 흐름`을 실제 서비스 로직 동작 테스트로 구성했다.
+- 신규 계획 문서 `docs/service-demo-pipeline-test-plan.md`를 작성했다.
+- `backend/tests/test_api_flows.py`에 `test_service_rocket_pitch_demo_pipeline_flow`를 추가했다.
+- 테스트가 검증하는 흐름:
+  - 법인 증빙자료 업로드와 승인
+  - 중소기업확인서 증빙 승인과 법인 프로필 병합
+  - 대시보드 상태 확인
+  - 나라장터 공고 저장/분석
+  - 저장 공고 요구조건 후보와 Phase 3 입력 스키마 확인
+  - 기준문서 업로드, 청킹, JSON basis index 검색
+  - 공고-법인 부족조건 미리보기
+  - 부족조건 중심 판단 run 생성과 citation 후보 확인
+  - 계약서 DOCX 미리보기, 생성, 다운로드
+  - 운영 요약과 작업 이력 확인
+- 반복 테스트 중 발견한 문제:
+  - 계약서 DOCX 테스트가 표 셀 텍스트를 읽지 않아 공고명을 찾지 못했다. 테스트 검증 로직을 문단+표 셀 전체로 수정했다.
+  - 기준문서 최초 업로드 처리는 성공하지만 `operation_runs`에 `basis_document_processing` 이력이 남지 않았다. 운영 이력 누락 버그로 보고 업로드 API에서도 작업 이력을 기록하도록 수정했다.
+  - 최종 판정 금지어 검증이 `지원 가능한 첨부` 같은 안내 문구까지 오탐했다. 실제 verdict 필드/값 중심으로 테스트를 조정했다.
+
+검증:
+- `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_service_rocket_pitch_demo_pipeline_flow -v`: 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 106개 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 13개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음
+- 참고: `test_api_flows` 실행 중 기존 ResourceWarning/DeprecationWarning이 출력되었지만 테스트는 모두 통과했다.
+
+### AI / Engineering Version (English)
+- Converted the Rocket Pitch product demo flow into a backend API pipeline regression test.
+- Added `docs/service-demo-pipeline-test-plan.md`.
+- Added `test_service_rocket_pitch_demo_pipeline_flow` to `backend/tests/test_api_flows.py`.
+- The scenario validates evidence upload/approval, corporation profile enrichment, dashboard state, Nara notice save/analyze, structured requirements, basis upload/index/search, notice-corporation comparison, gap-first judgment run, DOCX contract generation/download, and operation history.
+- Found and fixed one real bug: initial basis-document upload processing did not create a `basis_document_processing` operation run.
+- Adjusted test assertions for DOCX table text and final-verdict false positives.
+- Verified with targeted pipeline test, full API flow tests, frontend contract tests, frontend build, encoding check, and whitespace check.
+
+## 추가 업데이트 (2026-06-14) - 제품 시연 흐름 파이프라인 테스트 재실행
+
+### 한국어 기록
+- 사용자 요청에 따라 `제품 시연 흐름` 전용 파이프라인 테스트를 재실행했다.
+- 단독 재실행 결과:
+  - `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_service_rocket_pitch_demo_pipeline_flow -v`: 통과
+- 추가 회귀 확인:
+  - `py -3.13 -m unittest tests.test_api_flows -v`: 106개 통과
+  - `py -3.13 -m unittest tests.test_frontend_contracts -v`: 13개 통과
+- 재확인 결과:
+  - 법인 증빙 업로드/승인, 공고 저장/분석, 기준문서 업로드/RAG 검색, 부족조건 비교, 판단 run, 계약서 DOCX 생성, 운영 이력 확인 흐름이 정상 동작했다.
+  - 새로 발견된 실패 또는 수정 필요한 버그는 없었다.
+  - 전체 API 테스트 중 기존 `ResourceWarning`과 `DeprecationWarning`이 출력되었지만 테스트 실패로 이어지지는 않았다.
+
+### AI / Engineering Version (English)
+- Re-ran the Rocket Pitch demo pipeline regression test on request.
+- Targeted pipeline test passed.
+- Full API flow suite passed: 106 tests.
+- Frontend contract suite passed: 13 tests.
+- No new blocking issues or fix-required bugs were found.
+- Existing warning output appeared during the full API suite but did not fail tests.
+
+## 추가 업데이트 (2026-06-14) - 서비스 시연 영상 생성 계획 재검토 및 보강
+
+### 한국어 기록
+- 사용자 요청에 따라 `docs/service-demo-video-generation-plan.md`를 재검토하고 구현 착수 가능한 수준으로 보강했다.
+- 보강 내용:
+  - 영상 녹화 전 `test_service_rocket_pitch_demo_pipeline_flow`를 preflight로 실행하도록 명시했다.
+  - 영상 생성 모드를 `stable-demo`, `real-pdf-demo`, `live-nara-demo`로 분리했다.
+  - 첫 공식 영상은 반복 가능한 `stable-demo` 모드로 만드는 것을 기본값으로 정리했다.
+  - 장면별 라우트, 선행 조건, 성공 신호, 실패 시 기록해야 할 산출물을 표로 추가했다.
+  - Playwright selector 정책과 필요한 경우에만 `data-demo-id`를 추가하는 기준을 정리했다.
+  - `create-service-demo-video.mjs`, `render-service-demo-video.mjs`, `prepare-service-demo-data.mjs`, `inspect-service-demo-video.mjs`의 역할을 구체화했다.
+  - `demo-video.config.json` 예시와 CLI 옵션을 추가했다.
+  - FFmpeg/FFprobe 기반 후처리와 영상 QA 기준을 추가했다.
+  - 실제 PDF 모드와 실시간 나라장터 모드의 fallback/timeout 정책을 보강했다.
+
+검증:
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음
+
+### AI / Engineering Version (English)
+- Reviewed and strengthened `docs/service-demo-video-generation-plan.md`.
+- Added pipeline preflight requirements, stable/real-pdf/live-nara recording modes, scene contracts, selector policy, script architecture, CLI/config examples, FFmpeg/FFprobe QA, and fallback policies.
+- The plan now starts implementation with deterministic `stable-demo` recording, then extends to real PDFs and live Nara API.
+
+## 추가 업데이트 (2026-06-14) - 서비스 시연 영상 생성 도구 구현 및 MP4 생성
+
+### 한국어 기록
+- `docs/service-demo-video-implementation-plan.md`를 추가해 실제 구현 범위, 실행 명령, 산출물 위치, 검증 절차를 문서화했다.
+- `stable-demo` 영상 생성 도구를 구현했다.
+  - `scripts/demo-video-utils.mjs`
+  - `scripts/prepare-service-demo-data.mjs`
+  - `scripts/create-service-demo-video.mjs`
+  - `scripts/render-service-demo-video.mjs`
+  - `scripts/inspect-service-demo-video.mjs`
+  - `scripts/create-demo-video.ps1`
+  - `scripts/demo-video.config.json`
+- `frontend/package.json`에 데모 영상 명령을 추가했다.
+  - `demo:browser-install`
+  - `demo:preflight`
+  - `demo:prepare`
+  - `demo:record`
+  - `demo:render`
+  - `demo:inspect`
+- 영상 생성 방식:
+  - 백엔드 API로 시연 법인, 증빙 샘플, 저장 공고, 기준문서, 부족조건 비교, 판단 run, 계약서 초안을 생성한다.
+  - Playwright Chromium으로 Rocket Pitch 시연 흐름의 11개 장면을 이동하며 WebM을 녹화한다.
+  - `ffmpeg-static`으로 MP4 변환 후 `ffprobe-static`으로 검사한다.
+- 구현 중 발견하고 수정한 문제:
+  - Playwright가 SPA 라우트에서 `DOMContentLoaded`를 기다리면 `/corporations` 화면에서 녹화가 멈출 수 있었다. 라우트 이동을 `waitUntil: "commit"`으로 바꾸고 장면별 고정 대기/검사 방식으로 안정화했다.
+  - 오버레이 삽입 시 함수형 `expect` 필드를 함께 직렬화하려 해 실패했다. 오버레이에는 제목과 부제만 넘기도록 수정했다.
+  - Windows에서 `npm.cmd` spawn 방식이 `EINVAL`을 냈다. `cmd.exe /d /s /c npm ...` 방식으로 수정했다.
+  - 나라장터 검색 요청이 라우트 이동 중 정상 abort되는 경우를 실패 요청에서 제외했다.
+  - 작업 이력 화면의 기대 텍스트를 내부 코드명 `basis_document_processing`이 아니라 실제 UI 라벨 `기준문서 처리`로 보정했다.
+- 생성된 최종 영상:
+  - `artifacts/demo-video/service-demo-20260614104248.mp4`
+  - 길이: 35.04초
+  - 해상도: 1440x900
+  - 코덱: H.264
+
+검증:
+- `cd frontend; npm run demo:browser-install`: 통과
+- `cd frontend; npm run demo:preflight`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\manage-servers.ps1 -Action start`: 백엔드/프론트 준비 완료
+- `cd frontend; npm run demo:record -- --skip-preflight --reuse-data --dry-run --scene intro,corporations`: 통과
+- `cd frontend; npm run demo:record -- --skip-preflight`: WebM 생성 완료
+- `cd frontend; npm run demo:record -- --skip-preflight --reuse-data`: 경고 없이 최종 WebM 재생성 완료
+- `cd frontend; npm run demo:render`: MP4 변환 완료
+- `cd frontend; npm run demo:inspect`: `status=passed`
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음. 기존 작업 파일들의 CRLF 변환 경고만 출력됨.
+
+### AI / Engineering Version (English)
+- Added an executable stable demo video toolchain.
+- Added `docs/service-demo-video-implementation-plan.md`.
+- Added demo scripts for data seeding, Playwright recording, FFmpeg rendering, FFprobe inspection, shared utilities, config, and a Windows wrapper.
+- Added npm scripts for browser install, preflight, preparation, recording, rendering, and inspection.
+- Generated `artifacts/demo-video/service-demo-20260614104248.mp4`.
+- Fixed implementation issues found during execution:
+  - changed SPA navigation wait from `domcontentloaded` to `commit`
+  - avoided serializing function fields into the browser overlay
+  - fixed Windows npm process spawning through `cmd.exe /d /s /c`
+  - ignored expected `ERR_ABORTED` route-transition requests
+  - aligned operation history scene expectations with the visible Korean label
+- Verified preflight, dry-run, full recording, MP4 rendering, MP4 inspection, encoding check, and whitespace check.
+
+## 추가 업데이트 (2026-06-14) - Vite ngrok allowed host 차단 수정
+
+### 한국어 기록
+- 사용자 제보 오류:
+  - `Blocked request. This host ("8ed6-118-216-124-59.ngrok-free.app") is not allowed.`
+- 원인:
+  - 브라우저가 ngrok 프론트 URL로 접속하면 Vite dev server에는 `Host: <ngrok>.ngrok-free.app` 요청이 들어온다.
+  - Vite의 host header 보호 기능이 해당 host를 허용 목록에서 찾지 못해 요청을 차단했다.
+  - 기존 설정은 `VITE_ALLOW_NGROK_HOSTS=1` 환경변수에 의존했기 때문에 실행 방식이 조금만 달라도 ngrok host가 막힐 수 있었다.
+- 수정:
+  - `frontend/vite.config.ts`에서 기본 `allowedHosts`에 `localhost`, `127.0.0.1`, `.ngrok-free.app`를 포함했다.
+  - `VITE_ALLOW_NGROK_HOSTS=1`이면 기존처럼 `allowedHosts=true`를 유지한다.
+  - `backend/tests/test_frontend_contracts.py`에 Vite ngrok host 허용 정적 테스트를 추가했다.
+- 주의:
+  - Vite 설정은 dev server 시작 시 읽히므로, 이미 떠 있는 프론트 서버는 재시작해야 반영된다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 14개 통과
+- `npm run build`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start`: 통과
+- 프론트 ngrok URL `https://8ed6-118-216-124-59.ngrok-free.app/`: Vite HTML 정상 반환, `Blocked request` 미발생
+- 백엔드 ngrok URL `https://0354-118-216-124-59.ngrok-free.app/health`: `{"status":"ok"}` 반환
+
+### AI / Engineering Version (English)
+- Fixed Vite dev server host blocking for ngrok frontend URLs.
+- Root cause: Vite rejected `Host: <subdomain>.ngrok-free.app` unless `VITE_ALLOW_NGROK_HOSTS=1` had been applied to the running frontend process.
+- Updated `frontend/vite.config.ts` to allow `localhost`, `127.0.0.1`, and `.ngrok-free.app` by default.
+- Kept `VITE_ALLOW_NGROK_HOSTS=1` as a broader opt-in fallback.
+- Added a frontend contract test to guard the Vite ngrok allowed-host configuration.
+- Note: the running Vite dev server must be restarted because Vite reads this config at startup.
+- Restarted ngrok/local services and verified the frontend public URL returns the Vite HTML instead of the blocked-host page.
+
+## 추가 업데이트 (2026-06-14) - Rocket Pitch 제품 시연 흐름 영상 생성용 시나리오 보강
+
+### 한국어 기록
+- 사용자 요청에 따라 `docs/service-rocket-pitch.md`의 `3. 제품 시연 흐름`을 시연 영상 생성 기준으로 상세 보강했다.
+- 보강 내용:
+  - 시연 목표를 `법인 준비 -> 공고 확보 -> 기준문서 준비 -> 부족조건 확인 -> 계약서 초안 -> 운영 이력 확인` 흐름으로 명확화
+  - `stable-demo`, `real-pdf-demo`, `live-nara-demo` 영상 모드 구분
+  - 11개 장면의 Playwright scene id, 화면 경로, 권장 길이, 핵심 메시지, 성공 신호 표 추가
+  - 장면별 화면에서 보여줄 것, 발표 멘트, 강조 포인트, Playwright 자동화 메모 추가
+  - Playwright 코드 작성이 필요한 경우와 필요 없는 경우를 정리
+  - 영상 생성 전 체크리스트 추가
+  - English engineering 섹션의 `Demo Flow`를 `Demo Video Flow Contract`로 확장
+- Playwright 관련 결론:
+  - 현재 `stable-demo` 기본 영상은 이미 구현된 `scripts/create-service-demo-video.mjs`와 `scripts/prepare-service-demo-data.mjs`로 생성 가능하므로 매번 새 Playwright 코드를 작성할 필요는 없다.
+  - 실제 클릭/파일 업로드/긴 OCR polling/실시간 나라장터 검색을 영상에 넣을 때는 Playwright scene 코드와 안정적인 `data-demo-id` selector 보강이 필요하다.
+
+### AI / Engineering Version (English)
+- Expanded `docs/service-rocket-pitch.md` section `3. 제품 시연 흐름` into a demo-video-ready scenario contract.
+- Added scene IDs, routes, recommended duration, key message, success signal, presenter script, and Playwright automation notes.
+- Clarified stable-demo vs real-pdf-demo vs live-nara-demo.
+- Added a Playwright guidance section:
+  - no new Playwright code is needed for the basic stable demo
+  - new Playwright code is needed for real clicks, file uploads, OCR polling, live Nara API search, or fragile selectors
+- Updated the English engineering section from a simple demo list to a `Demo Video Flow Contract`.
+
+## 추가 업데이트 (2026-06-14) - 인터랙티브 시연 영상 구현계획 MD 작성
+
+### 한국어 기록
+- 사용자 요청에 따라 실제 버튼 클릭, 파일 업로드, `source/test_doc/` PDF OCR 처리, 실시간 나라장터 API 검색 장면을 시연 영상에 넣기 위한 별도 구현계획서를 작성했다.
+- 신규 문서:
+  - `docs/service-demo-interactive-video-implementation-plan.md`
+- 계획서에 포함한 내용:
+  - `stable-demo`, `interactive-demo`, `real-pdf-demo`, `live-nara-demo` 모드 구분
+  - Playwright 마우스 포인터 오버레이와 실제 클릭/입력/업로드 헬퍼 설계
+  - 화면 문구 변경에도 안정적인 `data-demo-id` selector 계약
+  - 법인 등록, 증빙 PDF 업로드, 나라장터 검색, 저장 공고, 기준문서/RAG, 부족조건, 계약서, 운영 화면의 데모 selector 후보
+  - 실제 PDF OCR 처리와 실시간 나라장터 API 검색을 영상에 넣을 때의 실행 조건, fallback, 위험요소
+  - 구현 순서, 테스트 계획, 완료 기준, 제품 담당자 확인 질문
+
+검증
+- `py -3.13 scripts\check-encoding.py`: 통과
+
+### AI / Engineering Version (English)
+- Added `docs/service-demo-interactive-video-implementation-plan.md`.
+- The plan covers interactive Playwright recording, visible cursor movement, real button clicks, file uploads, real `source/test_doc/` PDF OCR scenes, live Nara API search scenes, and stable `data-demo-id` selectors.
+- The implementation is intentionally separated into demo modes so the existing stable API-seeded video remains available while interactive/live variants can be enabled when needed.
+
+## 추가 업데이트 (2026-06-14) - 인터랙티브 시연 영상 기반 구현
+
+### 한국어 기록
+- `docs/service-demo-interactive-video-implementation-plan.md`를 재검토했고, 이번 구현 범위를 명확히 보강했다.
+  - 즉시 구현: selector 계약, 인터랙티브 모드, 마우스 포인터/ripple, 대표 PDF 업로드 dry-run, live 나라장터 dry-run 경로
+  - 분리 항목: 모든 PDF 전수 OCR 영상화, 실시간 API 실패를 fatal로 처리하는 방식, 계약서 다운로드 파일 직접 열기 장면
+- 프론트엔드 주요 화면에 `data-demo-id` selector를 추가했다.
+  - 사이드바 메뉴
+  - 법인/증빙 업로드, 검토, 목록
+  - 나라장터 검색, 결과 row, 저장/분석, partial error
+  - 저장 공고 목록/상세, 첨부 상태, 요구조건
+  - 기준문서 업로드, OCR 강제 실행, 재처리, 처리 상태, 청크 보기/더보기
+  - 부족조건 비교, 판단 run, 계약서 생성/미리보기, 운영 대시보드, 작업 이력
+- `scripts/create-service-demo-video.mjs`를 보강했다.
+  - `interactive-demo`, `real-pdf-demo`, `live-nara-demo` 모드 지원
+  - 데모용 마우스 포인터 DOM overlay와 클릭 ripple 추가
+  - `clickWithCursor`, `typeWithCursor`, `setInputFilesWithCursor`, `navigateBySidebar` helper 추가
+  - `source/test_doc/` 대표 PDF를 잡아 업로드 장면을 구성하는 dry-run 경로 추가
+  - 실시간 나라장터 검색 dry-run 경로와 fallback warning 기록 추가
+- `backend/tests/test_frontend_contracts.py`에 selector/영상 모드 계약 테스트를 추가했다.
+
+검증
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 15개 통과
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `npm run build`: 통과
+- `npm run demo:record -- --mode interactive-demo --skip-preflight --reuse-data --dry-run --scene intro,corporations`: 통과, warning 0
+- `npm run demo:record -- --mode interactive-demo --skip-preflight --reuse-data --dry-run --scene basis-documents,contracts,operation-runs`: 통과, warning 0
+- `npm run demo:record -- --mode real-pdf-demo --skip-preflight --reuse-data --dry-run --scene corporations`: 통과, dry-run 제출 생략 warning 1
+- `npm run demo:record -- --mode live-nara-demo --skip-preflight --reuse-data --dry-run --scene nara-board`: 통과, live 검색 생략 warning 1
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음. 기존 작업 파일들의 LF/CRLF 변환 경고만 출력됨.
+
+### AI / Engineering Version (English)
+- Reviewed and tightened `docs/service-demo-interactive-video-implementation-plan.md` with an explicit implementation slice.
+- Added stable `data-demo-id` selectors across the frontend demo flow.
+- Extended `scripts/create-service-demo-video.mjs` with interactive recording modes, a visible cursor overlay, click ripple, sidebar navigation, file upload helper, real PDF dry-run support, and live Nara dry-run support.
+- Added frontend contract coverage for demo selectors and demo video modes.
+- Verified frontend contract tests, script syntax, Vite build, interactive dry-runs, encoding, and whitespace checks.
+
+## 추가 업데이트 (2026-06-14) - 인터랙티브 시연 영상 MP4 생성
+
+### 한국어 기록
+- 사용자 요청에 따라 `scripts/create-service-demo-video.mjs` 기반으로 실제 시연 영상을 생성했다.
+- 실행 모드:
+  - `interactive-demo`
+- 생성 seed:
+  - `20260614111559`
+- 생성 산출물:
+  - WebM 원본: `artifacts/demo-video/runs/20260614111559/raw-video/service-demo-20260614111559.webm`
+  - MP4 최종본: `artifacts/demo-video/service-demo-20260614111559.mp4`
+  - 녹화 리포트: `artifacts/demo-video/runs/20260614111559/record-report.json`
+  - 렌더 리포트: `artifacts/demo-video/latest-render.json`
+  - 검사 리포트: `artifacts/demo-video/latest-inspection.json`
+- 영상 속성:
+  - 길이: 58초
+  - 해상도: 1440x900
+  - 코덱: H.264
+  - 파일 크기: 약 3.1 MB
+- 실제 스크린샷으로 확인한 내용:
+  - 영상 오버레이 한글은 정상 표시됨
+  - 마우스 포인터 overlay와 클릭 위치 표시가 포함됨
+  - PowerShell의 JSON 출력 일부만 한글이 깨져 보였고 파일/영상 자체 인코딩 문제는 아님
+
+검증
+- FE 서버 `http://127.0.0.1:5199/`: 200 응답
+- BE 서버 `http://127.0.0.1:18111/api/dashboard/summary`: 200 응답
+- `npm run demo:record -- --mode interactive-demo --skip-preflight`: 완료, warning 0
+- `npm run demo:render`: 완료
+- `npm run demo:inspect`: `status=passed`, duration 58초, 1440x900, h264, errors 없음
+
+### AI / Engineering Version (English)
+- Generated the interactive demo video from `scripts/create-service-demo-video.mjs`.
+- Mode: `interactive-demo`.
+- Seed: `20260614111559`.
+- Final MP4: `artifacts/demo-video/service-demo-20260614111559.mp4`.
+- Inspection passed with 58 seconds duration, 1440x900 resolution, H.264 codec, and no errors.
+- Screenshot inspection confirmed the Korean overlay text renders correctly; only PowerShell JSON console output showed mojibake.
+
+## 추가 업데이트 (2026-06-14) - 법인 증빙 검토 UX 및 법인 준비도 이동 버그 수정
+
+### 한국어 기록
+- 증빙자료 관리 테이블의 `처리` 컬럼이 `review_status=pending`을 그대로 `검토 대기`로 보여주던 문제를 확인했습니다.
+  - 원인은 백엔드가 후보 수(`pending_candidate_count`, `approved_candidate_count`)를 이미 내려주고 있었지만, 프론트가 후보 수를 반영하지 않고 원본 검토 상태만 표시한 데 있었습니다.
+  - 승인 대기 후보가 0개인 문서도 `검토 대기`처럼 보여 사용자가 승인 가능한 값이 있다고 오해할 수 있었습니다.
+- 자동 추출 후보 확인 화면에서 승인 대기 후보가 없을 때 `전체 선택`, `선택 해제`, `0개 선택 반영` 버튼이 비활성화된 채 보이던 UX를 수정했습니다.
+  - 승인 대기 후보가 있을 때만 선택 버튼을 보여줍니다.
+  - 후보가 아예 없으면 `승인할 자동 추출 후보가 없습니다.` 안내를 보여줍니다.
+  - 이미 승인/제외된 후보만 있으면 `승인 대기 후보가 없습니다.` 안내를 보여줍니다.
+  - 선택 버튼 문구를 `승인 대기 후보 전체 선택`, `후보 선택 해제`, `선택한 후보 반영`으로 명확히 변경했습니다.
+- 법인 목록/준비도 화면의 준비도 카드를 클릭 가능하게 변경했습니다.
+  - 준비도 카드를 클릭하면 해당 법인의 `법인 정보 편집` 폼을 열고 자동 스크롤합니다.
+  - 등록된 법인 목록의 `편집` 버튼도 같은 편집 폼으로 자동 이동합니다.
+- 프론트 계약 테스트를 추가했습니다.
+  - 후보 없음/승인 대기 없음 안내 문구와 후보 수 기반 처리 상태 계산을 검증합니다.
+  - 준비도 카드 클릭, 편집 폼 스크롤, 관련 CSS 클래스를 검증합니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 17개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+- 브라우저 DOM 확인: `/judgment-runs`, `/notice-comparison` 모두 공고/법인 기본값 미선택, 실행 버튼 비활성화, `계약서 초안 생성` 버튼 제거 확인
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Fixed corporation evidence review UX where raw `review_status=pending` was shown as if there were candidates ready for approval.
+- Added candidate-count-aware evidence review labels:
+  - pending candidates -> approval pending count
+  - no candidates -> no candidate state
+  - approved candidates -> approved state
+  - failed extraction/OCR -> failed state
+- Hid bulk-selection actions when no pending candidates exist and added explicit empty-state messages for no candidates or no pending candidates.
+- Made corporation readiness cards clickable and routed both readiness-card clicks and directory edit actions to the inline edit form via smooth scroll.
+- Added frontend contract coverage for the evidence review empty state and corporation readiness card edit navigation.
+
+## 추가 업데이트 (2026-06-14) - 법인 프로필 준비도 카드 레이아웃 수정
+
+### 한국어 기록
+- 사용자 스크린샷 기준으로 `법인 프로필 준비도` 카드 사이에 작은 `?` 도움말 버튼이 끼어들어 grid 칸을 차지하는 문제를 확인했습니다.
+- 원인은 준비도 카드를 클릭 가능하게 만들면서 `<button>`으로 렌더링했고, 전역 액션 도움말 데코레이터가 이 큰 카드 버튼을 일반 액션 버튼으로 판단해 자동 `?` 버튼을 삽입한 것이었습니다.
+- 수정 내용:
+  - 준비도 카드 버튼에 `data-help-ignore="true"`를 추가해 자동 도움말 데코레이터 대상에서 제외했습니다.
+  - `.readiness-grid`에 `align-items: stretch`를 추가했습니다.
+  - `.readiness-card`에 `min-height: 212px`를 추가해 카드 높이 흔들림을 줄였습니다.
+  - 프론트 계약 테스트에 자동 도움말 제외와 카드 sizing 계약을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 17개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Fixed readiness card layout regression caused by the global action-help decorator inserting `?` buttons after clickable readiness card buttons.
+- Added `data-help-ignore="true"` to readiness cards so they remain clickable without becoming decorated action buttons.
+- Added stable card sizing through stretched grid alignment and a minimum card height.
+- Added frontend contract coverage for the decorator opt-out and readiness card sizing rules.
+
+## 추가 업데이트 (2026-06-14) - nav 메뉴 순서와 법인 증빙 다중 업로드 UX 수정
+
+### 한국어 기록
+- 사용자 요청에 따라 왼쪽 nav 메뉴 그룹 순서를 조정했습니다.
+  - 변경 후 순서: `업무 현황` -> `내부 관리` -> `공고 업무` -> `기준문서 / RAG` -> `문서 분석` -> `설정`
+  - `내부 관리`는 `업무 현황` 바로 아래로 이동했습니다.
+  - `문서 분석`은 `설정` 바로 위로 이동했습니다.
+- 법인 관리의 `증빙 업로드` 화면이 사업자등록증 전용처럼 보이던 문제를 수정했습니다.
+  - 제목을 `법인 증빙자료 업로드`로 변경했습니다.
+  - 사업자등록증명, 사업자등록증, 인증서, 면허, 확인서, 특허/저작권 문서 등 법인이 보유한 증빙자료를 같은 화면에서 업로드한다고 명시했습니다.
+  - 파일 input에 `multiple`을 추가해 여러 파일을 한 번에 선택할 수 있게 했습니다.
+  - 선택된 파일 목록과 개수를 화면에 표시합니다.
+  - 여러 파일 선택 시 기존 단일 업로드 API를 파일별로 순차 호출하고, 완료 후 `증빙자료 관리` 탭으로 이동해 문서별 검토를 진행하도록 했습니다.
+  - 단일 파일 업로드는 기존처럼 바로 `추출값 검토` 탭으로 이동합니다.
+- 법인 관리 도움말도 여러 증빙자료 업로드 흐름에 맞춰 수정했습니다.
+- 프론트 계약 테스트에 nav 그룹 순서와 다중 증빙 업로드 계약을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 17개 통과
+- `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Reordered sidebar nav groups to: overview, admin, notice, RAG, document, settings.
+- Clarified that corporation evidence upload is not limited to business registration documents.
+- Added multi-file selection to the corporation evidence upload input.
+- Implemented sequential uploads through the existing single-file backend API, routing batch uploads to the evidence library for per-document review.
+- Added selected-file count/list UI and updated corporation help copy.
+- Added frontend contract coverage for nav order and multi-file evidence upload behavior.
+
+## 추가 업데이트 (2026-06-14) - 포탈 화면 설명 문구 전수 정리
+
+### 한국어 기록
+- 사용자 피드백에 따라 포탈 내부의 개발 단계명, UX 변경 이유, 내부 설명성 문구를 전수 검색하고 정리했습니다.
+- 제거/교체한 대표 문구:
+  - `Phase 1.6A/B`, `Phase 2 처리 현황`, `Phase 3 Review`, `Phase 4A`, `Phase 4B / 4C`, `Phase 4D`
+  - `Project First`, `프로젝트 기준 UX로 바꾼 이유`
+  - `업로드 화면에서 바꾼 점`, `업로드 자체보다 ... UX를 정리했습니다`
+  - `Why It Matters`, `Manual Fallback`, `Evidence First`, `Profile Readiness`
+- 화면 문구는 다음 기준으로 재정리했습니다.
+  - 개발 단계명 대신 메뉴/기능명을 표시합니다.
+  - “왜 바꿨는지” 대신 사용자가 지금 관리하는 항목을 표시합니다.
+  - 영어 eyebrow 라벨은 한국어 기능 라벨로 통일합니다.
+  - 설명 문장은 실제 동작, 입력값, 결과물 중심으로 짧게 정리합니다.
+- 정리한 주요 화면:
+  - 대시보드
+  - 프로젝트 관리
+  - 문서 업로드/문서 이력
+  - 법인 관리/증빙 업로드/법인 준비도
+  - 기준문서 관리/규칙 후보/검색 평가
+  - 나라장터 검색/저장 공고/자동 수집
+  - 부족조건 미리보기/판단 검토
+  - 계약서 생성
+  - 운영 대시보드/작업 이력/백업/복원
+  - 설정/외부 접속/도움말/처리 오버레이
+- 프론트 계약 테스트에 금지 문구 회귀 검사를 추가했습니다.
+  - `frontend/src/**/*.tsx` 전체에서 `Phase`, `Project First`, `Why It Matters`, `Manual Fallback`, `Evidence First`, `Profile Readiness`, `Usability Upgrade`, `바꾼 이유`, `바꾼 점`, `UX로`, `UX를` 등이 다시 노출되면 실패합니다.
+
+검증:
+- `rg` 금지 문구 검색: 결과 없음
+- eyebrow 라벨 전수 출력: 한국어 기능 라벨로 정리됨
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 18개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Audited frontend portal copy and removed internal phase labels, UX-rationale copy, and developer-facing eyebrow labels from user-visible TSX screens.
+- Replaced phase/rationale copy with concise menu/function labels and action-oriented descriptions.
+- Converted section eyebrow labels across portal screens to Korean functional labels.
+- Added frontend contract coverage that scans `frontend/src/**/*.tsx` and fails if internal phase or UX-rationale phrases reappear.
+
+## 추가 업데이트 (2026-06-14) - 액션 버튼 도움말 간격 전수 수정
+
+### 한국어 기록
+- 버튼 옆에 자동으로 붙는 `?` 도움말 버튼이 일부 화면에서 비정상적으로 멀리 떨어지는 문제를 확인했습니다.
+- 원인은 `ActionHelpProvider`가 버튼 바로 뒤에 `action-help-trigger`를 형제 요소로 삽입하는데, 일부 액션 컨테이너가 `justify-content: space-between`을 사용해 원래 버튼과 `?` 버튼을 양끝으로 밀어낸 것이었습니다.
+- 전수 확인 결과, 실제로 동일 문제가 반복될 수 있는 액션 컨테이너는 `section-heading`, `analysis-hero`, `sticky-action-bar`, `toolbar`, `form-actions`, `row` 계열이었습니다.
+- `analysis-hero`와 `sticky-action-bar`를 `justify-content: flex-start` 기반으로 정리하고, 첫 번째 설명 영역만 남는 공간을 차지하도록 `margin-right: auto`를 적용했습니다.
+- `analysis-hero`와 `sticky-action-bar`의 직접 자식 `action-help-trigger`에도 작은 음수 margin을 적용해 원래 액션 버튼 바로 옆에 붙도록 수정했습니다.
+- 카드 헤더, 상태 행, 리스트 행처럼 `space-between`이 필요한 단순 정보 정렬 영역은 버튼 도움말 문제와 무관하므로 레이아웃을 유지했습니다.
+- 전수 재발 방지를 위해 프론트 계약 테스트에 `analysis-hero`, `sticky-action-bar`가 `space-between`으로 돌아가지 않고 `column-gap: 6px`를 유지하는지 검증을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 18개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+- 브라우저 실제 렌더링 검증: `/notice-comparison`, `/analysis`, `/judgment-runs`, `/settings`, `/settings/external-access`, `/nara` 대표 라우트에서 자동 도움말 버튼 간격을 확인했고, 감지된 버튼-도움말 조합의 최대 간격은 4px였습니다.
+
+### AI / Engineering Version (English)
+- Fixed action help `?` buttons drifting away from their target buttons in flex action containers.
+- Root cause: auto-inserted `.action-help-trigger` siblings were distributed by `justify-content: space-between` in `analysis-hero` and `sticky-action-bar`.
+- Updated action containers so text/summary content takes the available space while action buttons and help triggers stay adjacent.
+- Kept informational `space-between` rows unchanged because they are not action-help target containers.
+- Added frontend contract assertions to prevent `analysis-hero` and `sticky-action-bar` from regressing to spaced-apart button/help layouts.
+- Verified rendered routes in the browser; detected button/help pairs stayed within a 4px gap.
+
+## 추가 업데이트 (2026-06-14) - 판단 검토 UX 전면 개선 제안서 작성
+
+### 한국어 기록
+- 사용자 피드백에 따라 서비스 핵심 기능인 `판단 검토` 화면의 UX 문제를 분석했습니다.
+- 확인한 주요 문제:
+  - 실행 이력 클릭 시 선택 피드백과 상세 영역 이동이 약해 아무 반응이 없는 것처럼 보입니다.
+  - `citation candidate_found`, `weak_candidate`, `review_ready` 같은 내부 상태값이 사용자 화면에 노출될 수 있습니다.
+  - 부족조건, 필요 서류, 기준문서 근거, 다음 행동이 한눈에 연결되지 않습니다.
+  - Gemini API를 활용해 사용자용 요약과 준비 액션을 정리하는 흐름이 판단 검토 화면에 부족합니다.
+- `docs/judgment-review-ux-improvement-proposal.md`를 작성했습니다.
+  - 한국어 제안서를 먼저 작성했습니다.
+  - 뒤에 `AI / Engineering Version (English)` 섹션을 추가했습니다.
+  - 화면 구조, 문구 사전, Gemini 활용 방식, 구현 단계, 테스트 기준, 완료 기준을 포함했습니다.
+
+검증:
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Analyzed the core `JudgmentRunsPage` UX based on user feedback.
+- Wrote `docs/judgment-review-ux-improvement-proposal.md`.
+- The proposal covers user-facing label mapping, run-history interaction, summary-first layout, priority action grouping, citation evidence presentation, Gemini-generated user summaries, fallback behavior, implementation steps, test plan, and acceptance criteria.
+
+## 추가 업데이트 (2026-06-14) - 부족조건 미리보기 / 판단 검토 모달 UX와 Gemini 요약 구현
+
+### 한국어 기록
+- 사용자 요청 계획에 따라 `부족조건 미리보기`와 `판단 검토` 화면을 요약 중심 UX로 재구성했습니다.
+- 메인 페이지에는 공고/법인 선택, 실행 버튼, 판단 요약, 우선 준비 항목만 남기고 최근 이력, 상세 결과, 요구조건, 법인 프로필, 근거 원문은 모달에서 확인하도록 분리했습니다.
+- 백엔드 비교/판단 결과에 `user_summary`를 추가했습니다.
+  - Gemini 설정이 있으면 기존 엔진 결과를 사람이 이해하기 쉬운 문장으로 재정리합니다.
+  - Gemini가 없거나 실패하면 deterministic fallback 요약을 저장해 화면이 항상 동작하게 했습니다.
+  - Gemini는 새로운 판단을 만들지 않고 기존 결과의 `부족 사유`, `다음 행동`, `필요 서류`, `근거 링크`만 풀어쓰도록 제한했습니다.
+- 근거 링크 확인을 위해 새 API를 추가했습니다.
+  - `GET /api/basis-documents/{basis_document_id}/chunks/{chunk_id}`
+  - `GET /api/notice-requirements/{requirement_candidate_id}`
+  - 법인 증빙서류는 기존 `GET /api/corporation-evidence-documents/{id}`를 재사용합니다.
+- 프론트엔드에는 다음 모달 selector를 추가했습니다.
+  - `demo-comparison-history-modal`
+  - `demo-comparison-detail-modal`
+  - `demo-comparison-evidence-modal`
+  - `demo-judgment-history-modal`
+  - `demo-judgment-detail-modal`
+  - `demo-judgment-evidence-modal`
+- 오래된 실행 결과처럼 `user_summary`가 비어 있는 경우에도 화면에서 기존 결과를 분석해 fallback 요약과 근거 링크를 보여주도록 보강했습니다.
+- 이력 행을 클릭하면 목록 응답만 보여주는 것이 아니라 상세 API를 다시 조회해 요구조건/근거/증빙 링크까지 모달에 표시하도록 수정했습니다.
+- 사용자 화면에 보이는 `citation`, `candidate_found`, `weak_candidate`, `review_ready` 계열 문구를 `근거`, `검토 가능한 근거`, `사람 확인 필요`처럼 이해 가능한 라벨로 정리했습니다.
+- `docs/judgment-review-ux-improvement-proposal.md`에 이번 구현 범위, Gemini/fallback 정책, 근거 링크 정책, 모달별 정보 범위를 최신화했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_api_flows -v`: 107개 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 19개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+- 브라우저 UX 검증: `/notice-comparison`에서 비교 이력 모달, 상세 모달, 공고 요구조건 근거 모달을 확인했습니다.
+- 브라우저 UX 검증: `/judgment-runs`에서 판단 이력 모달, 상세 모달, 기준문서 근거 모달을 확인했습니다.
+
+### AI / Engineering Version (English)
+- Implemented the modal-first summary UX for `NoticeComparisonPage` and `JudgmentRunsPage`.
+- Added `user_summary` generation to comparison and judgment results.
+  - Uses Gemini through the existing AI JSON generation path when configured.
+  - Falls back to deterministic summaries when Gemini is unavailable or fails.
+  - Restricts summaries to rewriting existing engine output, not creating new judgment facts.
+- Added evidence detail APIs for basis chunks and notice requirement candidates.
+- Reused corporation evidence document detail API for evidence modals.
+- Added frontend modal selectors for demo/video automation and regression tests.
+- Hardened older result handling by deriving fallback summaries and evidence links when saved `user_summary` data is empty.
+- Updated frontend contract tests to assert modal UX, evidence link labels, and removal of raw engine status labels from user-facing pages.
+
+## 추가 업데이트 (2026-06-14) - 왼쪽 네비게이션 설정 그룹 재배치
+
+### 한국어 기록
+- 사용자 요청에 따라 왼쪽 네비게이션 메뉴의 운영/관리성 항목을 `설정` 그룹으로 이동했습니다.
+- 이동한 메뉴:
+  - `운영 대시보드`: `업무 현황` 그룹에서 `설정` 그룹으로 이동
+  - `백업/복원`: `업무 현황` 그룹에서 `설정` 그룹으로 이동
+  - `자동 수집 관리`: `공고 업무` 그룹에서 `설정` 그룹으로 이동
+- 라우트와 페이지 구현은 변경하지 않고, 사이드바 노출 그룹만 재배치했습니다.
+- 프론트 계약 테스트에 세 메뉴가 `설정` 그룹에만 포함되고 기존 그룹에는 남지 않는지 검증을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 19개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Moved operational/admin-oriented sidebar entries into the `settings` navigation group without changing routes.
+- Moved `/operations`, `/backups`, and `/nara-collection-runs` under `설정`.
+- Added a frontend contract assertion to ensure those labels stay in the settings group and are no longer rendered under overview or notice groups.
+
+## 추가 업데이트 (2026-06-14) - 기준문서 규칙 후보 관리 UX 및 긴 원문 렌더링 보강
+
+### 한국어 기록
+- 사용자 피드백에 따라 `기준문서 규칙 후보 관리` 화면의 목적과 사용 흐름을 화면 안에서 이해하기 쉽게 정리했습니다.
+- 이 화면의 역할은 기준문서에서 자동 추출된 조건 후보를 사람이 검토하고, 승인된 후보만 판단 검토의 우선 근거 규칙으로 사용하게 만드는 것입니다.
+- 화면 상단에 3단계 사용 흐름을 추가했습니다.
+  - 후보 추출
+  - 문구 검토
+  - 근거 확인 후 승인
+- 긴 기준문서 PDF에서 추출된 후보가 많을 때 브라우저가 멈추는 문제를 보강했습니다.
+  - 후보 목록은 조건 문구를 180자 미리보기로 축약합니다.
+  - 상세 하단 기준문서 원문은 360자 미리보기만 기본 표시합니다.
+  - 전체 원문은 `원문 보기` 모달에서만 확인합니다.
+  - 모달에서도 기본은 약 4,200자 미리보기이며, 사용자가 `전체 원문 표시`를 누른 경우에만 전체 텍스트를 표시합니다.
+- `basis-rule-candidates` 목록 API에 선택적 `limit/offset`을 추가했습니다.
+  - 기존 호환을 위해 limit이 없으면 전체 반환 동작을 유지합니다.
+  - 프론트 화면은 기본 `limit=200`으로 호출해 9,908건 같은 대량 후보를 한 번에 렌더링하지 않습니다.
+  - 응답에 `candidate_count`, `returned_count`, `limit`, `offset`을 내려 화면에서 전체 개수와 표시 개수를 구분합니다.
+- 브라우저에서 실제 현재 데이터 기준 `전체 9,908건 중 200건 표시`, 원문 기본 모달 미오픈, 원문 미리보기 높이 제한을 확인했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 20개 통과
+- `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_phase25a_basis_rule_candidate_extraction_keeps_review_status -v`: 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 107개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+- 브라우저 UX 확인: `/basis-rule-candidates`에서 사용 흐름 카드 3개, 목록 200건 제한, 원문 모달, 원문 영역 높이 제한 확인
+
+### AI / Engineering Version (English)
+- Improved `BasisRuleCandidatesPage` with a clearer workflow explanation and safer long-text rendering.
+- Added a three-step guide: extract candidates, review wording, verify evidence and approve.
+- Collapsed long candidate text by default in list and detail views.
+- Moved full source/chunk text into an on-demand modal with an additional preview-first guard.
+- Added optional `limit/offset` support to `/api/basis-rule-candidates`.
+- The frontend now requests `limit=200` to avoid rendering thousands of candidates and large text blobs at once.
+- Added backend and frontend contract coverage for limited candidate lists and collapsed long sources.
+
+## 추가 업데이트 (2026-06-14) - FE/BE 서버 재실행 및 ngrok 주소 확인
+
+### 한국어 기록
+- 사용자 요청에 따라 로컬 FE/BE 서버를 재실행했습니다.
+- 백엔드는 `http://127.0.0.1:18111`에서 정상 응답을 확인했습니다.
+- 프론트엔드는 `http://127.0.0.1:5199`에서 정상 응답을 확인했습니다.
+- ngrok 프로세스는 재시작하지 않았습니다.
+- 현재 확인된 외부 접속 주소:
+  - 프론트엔드: `https://8ed6-118-216-124-59.ngrok-free.app`
+  - 백엔드 API: `https://0354-118-216-124-59.ngrok-free.app`
+- 외부 프론트엔드가 백엔드 API를 로컬 주소가 아니라 `https://0354-118-216-124-59.ngrok-free.app`로 바라보도록 FE dev server를 재기동했습니다.
+
+검증:
+- `http://127.0.0.1:18111/health`: 200
+- `http://127.0.0.1:5199`: 200
+- `https://8ed6-118-216-124-59.ngrok-free.app`: 200
+- `https://0354-118-216-124-59.ngrok-free.app/health`: 200
+- 외부 프론트엔드의 `/src/app/api.ts` 응답에 백엔드 public URL 포함, 로컬 API URL 미포함 확인
+
+### AI / Engineering Version (English)
+- Restarted the local backend and frontend servers.
+- Kept existing ngrok processes running to preserve public URLs.
+- Verified backend on `127.0.0.1:18111` and frontend on `127.0.0.1:5199`.
+- Verified the current frontend ngrok URL and backend ngrok URL.
+- Restarted the frontend dev server with `VITE_API_BASE_URL` set to the backend public ngrok URL so external browser sessions do not call `127.0.0.1`.
+
+## 추가 업데이트 (2026-06-14) - 작업 이력 메뉴 설정 그룹 이동
+
+### 한국어 기록
+- 사용자 요청에 따라 왼쪽 네비게이션의 `작업 이력` 메뉴를 `업무 현황` 그룹에서 `설정` 그룹으로 이동했습니다.
+- 라우트와 페이지 구현은 변경하지 않고 사이드바 노출 위치만 바꿨습니다.
+- 프론트 계약 테스트에 `작업 이력`이 `설정` 그룹에 포함되고 기존 `업무 현황`/`공고 업무` 그룹에는 남지 않는지 검증을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 20개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Moved the `/operation-runs` sidebar entry from the overview group into the settings group.
+- Kept the route and page implementation unchanged.
+- Extended the frontend contract test so `작업 이력` must remain under settings and not under overview or notice groups.
+
+## 추가 업데이트 (2026-06-14) - 법인 증빙자료 업로드 연결 옵션 문구 수정
+
+### 한국어 기록
+- 사용자 요청에 따라 `법인 증빙자료 업로드` 화면의 `기존 법인에 연결` 선택 필드 문구를 수정했습니다.
+- 기존 문구 `새 법인으로 생성 예정`을 `새로운 법인 생성 및 추가`로 변경했습니다.
+- 프론트 계약 테스트에 새 문구가 존재하고 기존 문구가 남지 않는지 검증을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 20개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Updated the corporation evidence upload select option copy from `새 법인으로 생성 예정` to `새로운 법인 생성 및 추가`.
+- Added a frontend contract assertion to keep the new copy and reject the old copy.
+
+## 추가 업데이트 (2026-06-14) - 판단 검토 화면 `보강 필요` 표시 문구 정리
+
+### 한국어 기록
+- 사용자 요청에 따라 `판단 검토` 화면에 표시되던 `보강 필요` 문구를 정리했습니다.
+- 해당 문구는 내부 `missing` 상태와 `needs_followup` 검토 상태를 사용자 라벨로 보여주기 위해 존재했습니다.
+- `판단 검토` 화면 자체가 부족조건 검토 맥락이므로 중복되고 딱딱한 표현으로 판단해 사용자 표시 문구를 바꿨습니다.
+  - `missing`: `보강 필요` -> `준비 필요`
+  - 검토 상태 `needs_followup`: `보강 필요` -> `추가 확인`
+  - 이력/상세/요약 문구의 `보강` 표현을 `준비` 중심으로 교체
+- 기존 DB에 저장된 과거 `user_summary` 안에 `보강 필요`가 남아 있어도 화면 표시 직전에 `준비 필요`로 변환하도록 보강했습니다.
+- 프론트 계약 테스트에 기존 표시 문구가 다시 들어오지 않도록 금지 케이스를 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 20개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Removed user-facing `보강 필요` wording from the judgment review page.
+- Replaced missing-result copy with `준비 필요` and follow-up review status copy with `추가 확인`.
+- Added a frontend display normalizer so legacy saved summaries containing `보강 필요` render as `준비 필요`.
+- Extended frontend contract tests to prevent the removed visible copy from returning.
+
+## 추가 업데이트 (2026-06-14) - 판단 검토 / 부족조건 미리보기 선택 흐름과 이력 모달 UX 정리
+
+### 한국어 기록
+- `판단 검토` 페이지에서 첫 공고/첫 법인/최근 판단 결과를 자동 선택하던 흐름을 제거했습니다.
+- `공고를 선택하세요`, `법인을 선택하세요`를 기본값으로 두고, 실제 선택 전에는 `판단 검토 실행` 버튼이 비활성화되도록 정리했습니다.
+- 공고 또는 법인 선택을 변경하면 이전 판단 결과와 상세/근거 모달 상태가 초기화되도록 수정했습니다.
+- `판단 요약` 상위 제목을 `판단 결과`로 바꾸고, 판단 실행 후에만 요약과 우선 준비 항목이 보이도록 정리했습니다.
+- `판단 검토 실행 이력 보기` 문구와 `판단 검토 실행 이력으로 돌아가기` 버튼을 추가해 이력 모달에서 상세로 이동한 뒤 다시 돌아올 수 있게 했습니다.
+- 판단 요약의 우선 준비 항목에는 관련 조건 목록과 `공고 원문 보기` 링크를 함께 표시하도록 보강했습니다.
+- `부족조건 미리보기` 페이지도 공고/법인 자동 선택을 제거하고, 선택 변경 시 기존 비교 결과를 초기화하도록 수정했습니다.
+- `공고 요구조건 후보` 모달 안의 반복 `공고 요구조건 보기` 버튼을 제거하고, 요구값/정규화 값/신뢰도/추출 방식/원문을 카드에 바로 표시하도록 변경했습니다.
+- 두 페이지의 `계약서 초안 생성` 버튼은 삭제했습니다.
+- 판단 실행이 Gemini 설정 상태에서 실제 Gemini 결과를 `result.user_summary`에 저장하는 API 테스트를 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 20개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 108개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 공백 오류 없음, 기존 LF/CRLF 변환 경고만 출력됨
+
+### AI / Engineering Version (English)
+- Removed automatic default notice/corporation/latest judgment selection from the judgment review page.
+- Kept judgment and comparison results hidden until the user explicitly runs or selects a history item.
+- Added selection-change reset behavior for result and modal state.
+- Renamed the judgment summary heading to `판단 결과` and kept `판단 요약` as the summary subsection.
+- Added history-to-detail back navigation for judgment and comparison modals.
+- Expanded judgment priority actions with related requirement items and notice-source links.
+- Removed contract draft quick actions from the judgment and comparison pages.
+- Reworked the notice requirement candidate modal to show requirement details inline instead of nested per-row source buttons.
+- Added a backend API regression test proving Gemini-configured judgment runs store the Gemini user summary payload.
