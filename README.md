@@ -539,6 +539,7 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 - [AI API 세팅 가이드](docs/ai-api-setup.md)
 - [OCR 엔진 구현계획](docs/ocr-engine-implementation-plan.md)
 - [핵심 기술 요소 및 활용 기술 정리](docs/technology-summary.md)
+- [비개발자용 서비스 Rocket Pitch](docs/service-rocket-pitch.md)
 - [법인 증빙자료 자동 추출 설계](docs/corporation-evidence-auto-extraction-plan.md)
 - [Phase 1.6 안정화 계획](docs/phase-1.6-stabilization-plan.md)
 - [Phase 1.7 안정화 계획](docs/phase-1.7-stabilization-plan.md)

@@ -7209,3 +7209,70 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Added CSS for `inline-warning` and `basis-reprocess-control`.
 - Updated the force-OCR contract test to assert the warning copy and classes.
 - Verified with the backend contract test, frontend production build, encoding check, and git whitespace check.
+
+## 추가 업데이트 (2026-06-14) - FE/BE/ngrok 서버 실행
+
+### 한국어 기록
+- 사용자 요청에 따라 백엔드, 프론트엔드, ngrok 터널을 실행했다.
+- 최초 일반 권한 실행에서는 ngrok 외부 접속이 sandbox 네트워크 제한으로 실패해 권한 상승으로 재실행했다.
+- 실행 주소:
+  - 백엔드 로컬: `http://127.0.0.1:18111`
+  - 프론트엔드 로컬: `http://127.0.0.1:5199`
+  - 백엔드 ngrok: `https://0354-118-216-124-59.ngrok-free.app`
+  - 프론트엔드 ngrok: `https://8ed6-118-216-124-59.ngrok-free.app`
+- 검증:
+  - 로컬 백엔드 `/health`: HTTP 200
+  - 로컬 프론트엔드: HTTP 200
+  - ngrok 백엔드 `/health`: HTTP 200
+  - ngrok 프론트엔드: HTTP 200
+  - 백엔드 CORS: 프론트엔드 ngrok origin 허용 확인
+
+### AI / Engineering Version (English)
+- Started backend, frontend, and ngrok tunnels on user request.
+- Initial sandboxed run failed to connect ngrok externally; reran with elevated permissions.
+- Verified local backend/frontend, public ngrok backend/frontend, and CORS from the frontend ngrok origin.
+
+## 추가 업데이트 (2026-06-14) - 비개발자용 서비스 Rocket Pitch 문서 작성
+
+### 한국어 기록
+- 사용자 요청에 따라 현재 작성된 Markdown 문서들을 참고해 비개발자 대상 서비스 설명 문서를 새로 작성했다.
+- 신규 문서:
+  - `docs/service-rocket-pitch.md`
+- 문서 구성은 Rocket Pitch 흐름에 맞췄다.
+  - 문제 제기
+  - 해결 방법
+  - 제품 시연
+  - 사용 요청
+- 기술 중심 설명 대신 조달 실무자가 이해하기 쉬운 업무 흐름 중심으로 작성했다.
+- 핵심 메시지는 `최종 판단 자동화`가 아니라 `공고, 첨부파일, 법인 증빙자료, 기준문서를 묶어 부족조건과 필요서류를 빠르게 확인하는 업무 보조 포탈`로 정리했다.
+- 참고한 주요 문서:
+  - `README.md`
+  - `docs/technical-design.md`
+  - `docs/ux-design.md`
+  - `docs/technology-summary.md`
+  - `docs/eligibility-rag-implementation-plan.md`
+  - `docs/ngrok-external-access-and-contract-docx-plan.md`
+- README 문서 링크 목록에 `비개발자용 서비스 Rocket Pitch` 링크를 추가했다.
+
+### AI / Engineering Version (English)
+- Added a non-developer-facing rocket pitch document for the current service.
+- The document frames the service through problem, solution, product demo, and usage request.
+- It positions the product as a gap-first procurement review assistant rather than an automatic final-decision system.
+- Added the new document to the README document-link section.
+
+## 추가 업데이트 (2026-06-14) - Rocket Pitch 제품 시연 순서 조정
+
+### 한국어 기록
+- 사용자 피드백에 따라 `docs/service-rocket-pitch.md`의 `3. 제품 시연 흐름` 순서를 조정했다.
+- 기존에는 대시보드가 시연 1번이었지만, 조달 검토 흐름상 법인 등록과 증빙자료 준비가 먼저 나오는 편이 자연스럽다고 판단했다.
+- 변경 후 시연 흐름:
+  - 시연 1: 법인을 등록하고 증빙자료를 준비
+  - 시연 2: 대시보드에서 오늘 확인할 업무 확인
+  - 시연 3: 나라장터 공고 검색/저장
+  - 시연 4 이후: 요구조건 확인, 기준문서, 부족조건 비교, 계약서, 운영 상태
+- AI / Engineering Version의 Demo Flow도 같은 순서로 맞췄다.
+
+### AI / Engineering Version (English)
+- Reordered the product demo flow in `docs/service-rocket-pitch.md` based on user feedback.
+- Moved corporation registration and evidence preparation before the dashboard and Nara notice flow.
+- Updated the English Demo Flow to match the Korean presentation sequence.
