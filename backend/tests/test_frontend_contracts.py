@@ -16,6 +16,7 @@ NARA_COLLECTION_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "NaraColle
 NARA_SAVED_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "NaraSavedNoticesPage.tsx"
 NARA_SAVED_DETAIL_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "NaraSavedNoticeDetailPage.tsx"
 CORPORATIONS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "CorporationsPage.tsx"
+PROJECTS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "ProjectsPage.tsx"
 NOTICE_COMPARISON_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "NoticeComparisonPage.tsx"
 JUDGMENT_RUNS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "JudgmentRunsPage.tsx"
 CONTRACTS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "ContractsPage.tsx"
@@ -73,6 +74,10 @@ def nara_saved_detail_page_source() -> str:
 
 def corporations_page_source() -> str:
     return CORPORATIONS_PAGE_TSX.read_text(encoding="utf-8")
+
+
+def projects_page_source() -> str:
+    return PROJECTS_PAGE_TSX.read_text(encoding="utf-8")
 
 
 def notice_comparison_page_source() -> str:
@@ -591,8 +596,12 @@ class FrontendContractTests(unittest.TestCase):
             "공고를 선택하세요",
             "법인을 선택하세요",
             "판단 결과",
+            "판단 상태",
             "판단 요약",
             "Gemini 판단 정리",
+            "Gemini 70% 가중 반영",
+            "judgment-result-status",
+            "judgmentResultStatus",
             "판단 검토 실행 이력으로 돌아가기",
             "priority-related-list",
             "normalizeJudgmentSummaryCopy",
@@ -607,11 +616,16 @@ class FrontendContractTests(unittest.TestCase):
             '<option value="needs_followup">보강 필요</option>',
             "보강 {run.missing_count}",
             "<span>보강 필요",
+            "보강 필요",
+            "보강할",
+            "보강하세요",
             "조건별 보강 사유",
             "계약서 초안 생성",
             "setActiveRunId(runList[0].id)",
+            "setActiveRunId(run.id)",
         ]:
             self.assertNotIn(removed_visible_copy, judgment)
+            self.assertNotIn(removed_visible_copy, comparison)
         for removed_auto_select in [
             "setSelectedNoticeId(String(noticeList[0].id))",
             "setSelectedCorporationId(String(corporationList[0].id))",
@@ -619,6 +633,11 @@ class FrontendContractTests(unittest.TestCase):
             self.assertNotIn(removed_auto_select, comparison)
             self.assertNotIn(removed_auto_select, judgment)
         self.assertNotIn("계약서 초안 생성", comparison)
+        self.assertIn("historyDetailRun", judgment)
+        self.assertIn("statusSourceLabel", judgment)
+        self.assertIn("item.ai_reason", judgment)
+        self.assertIn("priority-related-list--scroll", judgment)
+        self.assertNotIn("top_priority_actions.slice(0, 3)", judgment)
         requirements_modal = comparison.split('title="공고 요구조건 후보"', 1)[1].split('title="법인 비교 프로필"', 1)[0]
         self.assertNotIn("공고 요구조건 보기", requirements_modal)
 
@@ -629,6 +648,124 @@ class FrontendContractTests(unittest.TestCase):
         visible_sources = comparison + judgment
         for raw_status in raw_user_statuses:
             self.assertNotIn(raw_status, visible_sources)
+
+    def test_judgment_page_contract_supports_gemini_assisted_judgment_shape(self) -> None:
+        types = types_source()
+        judgment = judgment_runs_page_source()
+
+        for token in [
+            "export type JudgmentAiJudgmentItem",
+            "export type JudgmentAiJudgment",
+            "deterministic_match_status: string;",
+            "ai_match_status: string;",
+            "final_match_status: string;",
+            "status_source: string;",
+            "ai_reason: string;",
+            "ai_recommended_action: string;",
+            "ai_confidence: number;",
+            "ai_judgment?: JudgmentAiJudgment;",
+        ]:
+            self.assertIn(token, types)
+
+        for token in [
+            "normalizeUserSummary",
+            "normalizeUserSummaryAction",
+            "statusSourceLabel",
+            "item.status_source",
+            "item.ai_reason",
+            "item.ai_recommended_action",
+            "gemini_weighted",
+        ]:
+            self.assertIn(token, judgment)
+        self.assertNotIn('status-badge status-badge--pending">{summary.headline_status}', judgment)
+
+    def test_sidebar_notice_and_rag_tones_are_visibly_distinct(self) -> None:
+        styles = styles_source()
+
+        self.assertIn(".nav-section--notice", styles)
+        self.assertIn("--nav-section-bg: #e0f2fe;", styles)
+        self.assertIn("--nav-section-accent: #0369a1;", styles)
+        self.assertIn(".nav-section--rag", styles)
+        self.assertIn("--nav-section-bg: #ecfdf5;", styles)
+        self.assertIn("--nav-section-accent: #047857;", styles)
+
+    def test_business_dropdowns_start_unselected_with_selection_prompts(self) -> None:
+        sources = "\n".join(
+            [
+                basis_documents_page_source(),
+                basis_rule_candidates_page_source(),
+                nara_board_page_source(),
+                contracts_page_source(),
+                corporations_page_source(),
+                notice_comparison_page_source(),
+                judgment_runs_page_source(),
+                nara_collection_page_source(),
+                operation_runs_page_source(),
+            ]
+        )
+
+        for prompt in [
+            '<option value="">공고를 선택하세요</option>',
+            '<option value="">법인을 선택하세요</option>',
+            '<option value="">판단 검토 이력을 선택하세요</option>',
+            '<option value="">기준문서를 선택하세요</option>',
+            '<option value="">근거 후보를 선택하세요</option>',
+            '<option value="">상태를 선택하세요</option>',
+            '<option value="">작업 유형을 선택하세요</option>',
+            '<option value="">카테고리를 선택하세요</option>',
+            '<option value="">새로운 법인 생성 및 추가</option>',
+            "업무 유형을 선택하세요",
+        ]:
+            self.assertIn(prompt, sources)
+
+        for stale_prompt in [
+            '<option value="">전체 상태</option>',
+            '<option value="">전체 작업</option>',
+            '<option value="">전체 유형</option>',
+            '<option value="">공고 선택</option>',
+            '<option value="">법인 선택</option>',
+            '<option value="">선택 안 함</option>',
+            '<option value="">새 법인/미연결</option>',
+            '<option value="">기준문서 선택</option>',
+            '<option value="">근거 후보 선택</option>',
+            '<option value="">전체 카테고리</option>',
+            '{ value: "", label: "전체" }',
+            '{ value: "", label: "전체 유형" }',
+        ]:
+            self.assertNotIn(stale_prompt, sources)
+
+    def test_judgment_pages_format_money_values_for_readability(self) -> None:
+        comparison = notice_comparison_page_source()
+        judgment = judgment_runs_page_source()
+
+        for source in [comparison, judgment]:
+            self.assertIn("formatRequirementValue", source)
+            self.assertIn('toLocaleString("ko-KR")', source)
+
+    def test_projects_page_uses_stable_list_layout_for_search_and_actions(self) -> None:
+        projects = projects_page_source()
+        styles = styles_source()
+
+        for token in [
+            'className="surface-card project-list-panel"',
+            'className="section-heading project-list-heading"',
+            'className="project-search-field"',
+            'className="project-card-actions"',
+        ]:
+            self.assertIn(token, projects)
+
+        for selector in [
+            ".project-list-panel",
+            ".project-list-heading",
+            ".project-search-field",
+            ".project-card-actions",
+        ]:
+            self.assertIn(selector, styles)
+
+        self.assertIn("grid-template-columns: minmax(220px, max-content) minmax(280px, 1fr);", styles)
+        self.assertIn("word-break: keep-all;", styles)
+        self.assertIn("flex-wrap: wrap;", styles)
+        self.assertIn("@media (max-width: 760px)", styles)
 
     def test_portal_theme_uses_procurement_slate_and_korean_font_stack(self) -> None:
         styles = styles_source()
@@ -672,11 +809,11 @@ class FrontendContractTests(unittest.TestCase):
         types = types_source()
 
         for source in (board, collection):
-            self.assertIn('type NaraBusinessType = "all" | "construction" | "service" | "goods" | "etc"', source)
+            self.assertIn('type NaraBusinessType = "" | "all" | "construction" | "service" | "goods" | "etc"', source)
             for value in ["all", "construction", "service", "goods", "etc"]:
                 self.assertIn(f'value: "{value}"', source)
-            self.assertIn('useState<NaraBusinessType>("all")', source)
-            self.assertIn("business_type: businessType", source)
+            self.assertIn('useState<NaraBusinessType>("")', source)
+            self.assertIn('business_type: businessType || "all"', source)
 
         self.assertIn("businessTypeLabel(item.business_type, item.business_type_label)", board)
         self.assertIn("businessTypeLabel(activeRun.criteria.business_type, activeRun.result.business_type_label)", collection)

@@ -78,6 +78,88 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertRegex(response.headers.get("X-Request-ID", ""), r"^[0-9a-f]{32}$")
 
+    def test_fallback_user_summary_removes_legacy_reinforcement_copy(self) -> None:
+        summary = runtime.deterministic_user_summary(
+            mode="judgment",
+            summary={"missing_count": 1, "matched_count": 0, "needs_review_count": 0, "uncertain_count": 0},
+            items=[
+                {
+                    "requirement_input_id": "money:1",
+                    "match_status": "missing",
+                    "label": "금액 조건",
+                    "required_value": "추정가격: 36,190,000원",
+                    "gap_reason": "보강 필요 항목입니다.",
+                    "recommended_action": "법인 프로필을 보강하세요.",
+                }
+            ],
+            evidence_links=[],
+        )
+        payload = json.dumps(summary, ensure_ascii=False)
+
+        self.assertNotIn("보강 필요", payload)
+        self.assertNotIn("보강하세요", payload)
+        self.assertIn("준비 필요", payload)
+        self.assertIn("자료를 보완하세요", payload)
+
+    def test_user_summary_sanitizer_falls_back_when_action_shape_is_invalid(self) -> None:
+        fallback = {
+            "generated_by": "fallback",
+            "headline_status": "준비 필요",
+            "plain_summary": "기본 요약",
+            "top_priority_actions": [
+                {
+                    "title": "기본 준비 항목",
+                    "reason": "기본 사유",
+                    "next_step": "기본 다음 행동",
+                    "related_requirement_ids": ["notice_requirement:1"],
+                    "documents": ["증빙서류"],
+                }
+            ],
+            "missing_groups": [],
+            "item_explanations": {},
+            "risk_notes": [],
+            "evidence_links": [],
+        }
+
+        sanitized = runtime.sanitize_user_summary_payload(
+            {
+                "headline_status": "보강 필요",
+                "plain_summary": "요약",
+                "top_priority_actions": [None, {"title": 123, "reason": None, "next_step": None}],
+                "missing_groups": "bad-shape",
+                "item_explanations": {"notice_requirement:1": None},
+                "risk_notes": [None, "citation 확인"],
+            },
+            fallback,
+            [],
+        )
+
+        self.assertEqual(sanitized["top_priority_actions"], fallback["top_priority_actions"])
+        self.assertEqual(sanitized["headline_status"], "준비 필요")
+        self.assertNotIn("citation", json.dumps(sanitized, ensure_ascii=False))
+
+    def test_fallback_user_summary_keeps_all_related_requirement_ids(self) -> None:
+        items = [
+            {
+                "requirement_input_id": f"notice_requirement:{index}",
+                "match_status": "missing",
+                "requirement_type": "license",
+                "label": f"면허 조건 {index}",
+                "required_value": f"면허 {index}",
+                "source_text": f"면허 {index} 필요",
+            }
+            for index in range(1, 8)
+        ]
+
+        summary = runtime.deterministic_user_summary(
+            mode="judgment",
+            summary={"missing_count": 7, "matched_count": 0, "needs_review_count": 0, "uncertain_count": 0},
+            items=items,
+            evidence_links=[],
+        )
+
+        self.assertEqual(summary["top_priority_actions"][0]["related_requirement_ids"], [f"notice_requirement:{index}" for index in range(1, 8)])
+
     def test_phase4a_operations_summary_handles_empty_database(self) -> None:
         response = self.client.get("/api/operations/summary")
 
@@ -2148,7 +2230,7 @@ class ApiFlowTests(unittest.TestCase):
                     "bidNtceNm": "구조화 요구조건 공고",
                     "bidNtceDt": "2026-05-05 10:00",
                     "bidClseDt": "2026-05-20 17:00",
-                    "presmptPrce": "1000000",
+                    "presmptPrce": "36190000",
                     "prtcptPsblRgnNm": "경기도",
                     "lcnsLmtNm": "조경식재공사업",
                 }
@@ -2265,7 +2347,7 @@ class ApiFlowTests(unittest.TestCase):
                     "bidNtceNm": "판단 실행 공고",
                     "bidNtceDt": "2026-05-05 10:00",
                     "bidClseDt": "2026-05-20 17:00",
-                    "presmptPrce": "1000000",
+                    "presmptPrce": "36190000",
                     "prtcptPsblRgnNm": "경기도",
                     "lcnsLmtNm": "forest business license",
                 }
@@ -3793,7 +3875,7 @@ class ApiFlowTests(unittest.TestCase):
             "/api/nara/notices/save-and-analyze",
             json={
                 "notice": {
-                    "bidNtceNo": "20260500011",
+                    "bidNtceNo": "20260590013",
                     "bidNtceOrd": "000",
                     "bidNtceNm": "요구조건 후보 공고",
                     "ntceInsttNm": "테스트 공고기관",
@@ -3802,7 +3884,7 @@ class ApiFlowTests(unittest.TestCase):
                     "bidBeginDt": "2026-05-10 09:00",
                     "bidClseDt": "2026-05-20 17:00",
                     "opengDt": "2026-05-21 11:00",
-                    "presmptPrce": "1000000",
+                    "presmptPrce": "36190000",
                     "prtcptPsblRgnNm": "경기도",
                     "lcnsLmtNm": "조경식재공사업",
                 }
@@ -3822,6 +3904,9 @@ class ApiFlowTests(unittest.TestCase):
         self.assertIn("region", requirement_types)
         self.assertIn("license", requirement_types)
         self.assertIn("date", requirement_types)
+        money_values = [item["required_value"] for item in payload["requirements"] if item["requirement_type"] == "money"]
+        self.assertIn("추정가격: 36,190,000원", money_values)
+        self.assertNotIn("추정가격: 36190000", money_values)
         self.assertNotIn("eligible", json.dumps(payload).lower())
 
     def test_corporation_comparison_profile_normalizes_profile_and_evidence(self) -> None:
@@ -4031,8 +4116,10 @@ class ApiFlowTests(unittest.TestCase):
         comparison = comparison_response.get_json()
         self.assertEqual(observed["selection"]["provider"], "gemini")
         self.assertIn("새 사실을 만들지 말고", observed["prompt"])
+        self.assertNotIn("보강 필요", observed["prompt"])
         self.assertEqual(comparison["user_summary"]["generated_by"], "gemini")
         self.assertEqual(comparison["user_summary"]["model"], "gemini-test-model")
+        self.assertNotIn("보강 필요", json.dumps(comparison["user_summary"], ensure_ascii=False))
         self.assertEqual(comparison["user_summary"]["plain_summary"], "AI가 기존 비교 결과만 쉬운 말로 정리했습니다.")
 
     def test_judgment_run_user_summary_uses_gemini_payload_when_configured(self) -> None:
@@ -4114,12 +4201,187 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(observed["selection"]["provider"], "gemini")
         self.assertIn('"mode": "judgment"', observed["prompt"])
         self.assertIn("새 사실을 만들지 말고", observed["prompt"])
+        self.assertNotIn("보강 필요", observed["prompt"])
         self.assertEqual(judgment["result"]["user_summary"]["generated_by"], "gemini")
         self.assertEqual(judgment["result"]["user_summary"]["model"], "gemini-test-model")
+        self.assertNotIn("보강 필요", json.dumps(judgment["result"]["user_summary"], ensure_ascii=False))
         self.assertEqual(
             judgment["result"]["user_summary"]["plain_summary"],
             "Gemini가 판단 검토 결과를 사람이 이해하기 쉽게 정리했습니다.",
         )
+
+    def test_judgment_run_uses_gemini_weighted_merge_for_item_statuses(self) -> None:
+        self.upload_basis_document(
+            "Forest business license is a basis evidence candidate for bidder qualification review.",
+            file_name="judgment-gemini-merge-basis.pdf",
+        )
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={
+                "name": "Gemini 병합 테스트 법인",
+                "region": "경기도",
+                "business_registration_number": "1428128387",
+                "license_summary": "",
+            },
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500015",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Gemini 보수 병합 공고",
+                    "bidNtceDt": "2026-05-05 10:00",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "forest business license",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        previous_generator = runtime.generate_json_with_ai
+        previous_gemini_key = runtime.GEMINI_API_KEY
+        observed = {}
+
+        def fake_json_generator(prompt: str, selection: dict):
+            if "judgment_assistance" in prompt:
+                observed["assistance_prompt"] = prompt
+                context = json.loads(prompt.split("[context]\n", 1)[1])
+                response_items = []
+                for item in context["items"]:
+                    if item["requirement_type"] == "region":
+                        response_items.append(
+                            {
+                                "id": item["id"],
+                                "match_status": "needs_review",
+                                "reason": "지역 조건은 공고 원문 확인이 필요합니다.",
+                                "recommended_action": "공고 원문과 법인 주소를 함께 확인하세요.",
+                                "confidence": 0.72,
+                            }
+                        )
+                    if item["requirement_type"] == "license":
+                        response_items.append(
+                            {
+                                "id": item["id"],
+                                "match_status": "matched",
+                                "reason": "Gemini가 면허 보유처럼 보인다고 제안했습니다.",
+                                "recommended_action": "면허 증빙을 검토하세요.",
+                                "confidence": 0.91,
+                            }
+                        )
+                return ({"items": response_items}, {"provider": "gemini", "model": "gemini-test-model"})
+            observed["summary_prompt"] = prompt
+            return (
+                {
+                    "headline_status": "준비 필요",
+                    "plain_summary": "Gemini 요약",
+                    "top_priority_actions": [],
+                    "missing_groups": [],
+                    "item_explanations": {},
+                    "risk_notes": [],
+                },
+                {"provider": "gemini", "model": "gemini-test-model"},
+            )
+
+        try:
+            runtime.GEMINI_API_KEY = "gemini-test-key"
+            runtime.generate_json_with_ai = fake_json_generator
+            judgment_response = self.client.post(
+                "/api/judgment-runs",
+                json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+            )
+        finally:
+            runtime.generate_json_with_ai = previous_generator
+            runtime.GEMINI_API_KEY = previous_gemini_key
+
+        self.assertEqual(judgment_response.status_code, 201)
+        payload = judgment_response.get_json()
+        self.assertIn("assistance_prompt", observed)
+        self.assertNotIn("citation", observed["assistance_prompt"])
+        ai_judgment = payload["result"]["ai_judgment"]
+        self.assertEqual(ai_judgment["generated_by"], "gemini")
+        self.assertEqual(ai_judgment["policy"], "gemini_weighted_70_conservative_merge")
+        self.assertEqual(ai_judgment["ai_weight"], 0.7)
+        self.assertEqual(ai_judgment["minimum_ai_confidence"], 0.7)
+        region_item = next(item for item in payload["result"]["items"] if item["requirement_type"] == "region")
+        license_item = next(item for item in payload["result"]["items"] if item["requirement_type"] == "license")
+        self.assertEqual(region_item["deterministic_match_status"], "matched")
+        self.assertEqual(region_item["ai_match_status"], "needs_review")
+        self.assertEqual(region_item["match_status"], "needs_review")
+        self.assertEqual(region_item["status_source"], "gemini_weighted")
+        self.assertEqual(license_item["deterministic_match_status"], "missing")
+        self.assertEqual(license_item["ai_match_status"], "matched")
+        self.assertEqual(license_item["match_status"], "matched")
+        self.assertEqual(license_item["status_source"], "gemini_weighted")
+        self.assertNotIn("citation", json.dumps(payload["result"]["ai_judgment"], ensure_ascii=False))
+
+    def test_judgment_run_invalid_gemini_assistance_falls_back_safely(self) -> None:
+        self.upload_basis_document(
+            "Forest business license is a basis evidence candidate for bidder qualification review.",
+            file_name="judgment-gemini-invalid-basis.pdf",
+        )
+        corporation_response = self.client.post(
+            "/api/corporations",
+            json={"name": "Gemini invalid 테스트 법인", "region": "경기도", "license_summary": ""},
+        )
+        self.assertEqual(corporation_response.status_code, 201)
+        corporation = corporation_response.get_json()
+        notice_response = self.client.post(
+            "/api/nara/notices/save-and-analyze",
+            json={
+                "notice": {
+                    "bidNtceNo": "20260500016",
+                    "bidNtceOrd": "000",
+                    "bidNtceNm": "Gemini invalid 판단 공고",
+                    "bidClseDt": "2026-05-20 17:00",
+                    "prtcptPsblRgnNm": "경기도",
+                    "lcnsLmtNm": "forest business license",
+                }
+            },
+        )
+        self.assertEqual(notice_response.status_code, 202)
+        notice = self.wait_for_saved_nara_notice(notice_response.get_json()["notice"]["id"])
+
+        previous_generator = runtime.generate_json_with_ai
+        previous_gemini_key = runtime.GEMINI_API_KEY
+
+        def fake_json_generator(prompt: str, selection: dict):
+            if "judgment_assistance" in prompt:
+                return ({"items": [None, {"id": 123, "match_status": "eligible", "reason": 456}]}, {"provider": "gemini", "model": "gemini-test-model"})
+            return (
+                {
+                    "headline_status": "준비 필요",
+                    "plain_summary": "Gemini 요약",
+                    "top_priority_actions": [None, {"title": 123}],
+                    "missing_groups": [],
+                    "item_explanations": {},
+                    "risk_notes": [],
+                },
+                {"provider": "gemini", "model": "gemini-test-model"},
+            )
+
+        try:
+            runtime.GEMINI_API_KEY = "gemini-test-key"
+            runtime.generate_json_with_ai = fake_json_generator
+            judgment_response = self.client.post(
+                "/api/judgment-runs",
+                json={"nara_notice_id": notice["id"], "corporation_id": corporation["id"], "top_k": 3},
+            )
+        finally:
+            runtime.generate_json_with_ai = previous_generator
+            runtime.GEMINI_API_KEY = previous_gemini_key
+
+        self.assertEqual(judgment_response.status_code, 201)
+        payload = judgment_response.get_json()
+        self.assertEqual(payload["result"]["ai_judgment"]["generated_by"], "fallback")
+        self.assertEqual(payload["result"]["ai_judgment"]["fallback_reason"], "invalid_ai_items")
+        self.assertTrue(all(item["ai_match_status"] == "" for item in payload["result"]["items"]))
+        self.assertTrue(all(item["final_match_status"] == item["deterministic_match_status"] for item in payload["result"]["items"]))
+        self.assertNotIn("보강", json.dumps(payload["result"], ensure_ascii=False))
 
     def test_notice_requirement_extraction_reads_text_candidates_without_verdict(self) -> None:
         requirements = runtime.extract_notice_requirements(

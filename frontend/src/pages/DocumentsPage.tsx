@@ -29,12 +29,12 @@ export function DocumentsPage() {
   const [loading, setLoading] = useState(true);
 
   const [projectId, setProjectId] = useState<number | "">("");
-  const [documentType, setDocumentType] = useState("general");
+  const [documentType, setDocumentType] = useState("");
   const [memo, setMemo] = useState("");
   const [revisionNote, setRevisionNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
@@ -55,9 +55,6 @@ export function DocumentsPage() {
       setProjects(projectList);
       setCorporations(corporationList);
 
-      if (!projectId && projectList.length) {
-        setProjectId(projectList[0].id);
-      }
     } catch (error) {
       setError(error instanceof Error ? error.message : "문서 이력을 불러오지 못했습니다.");
     } finally {
@@ -89,7 +86,7 @@ export function DocumentsPage() {
 
   const onUpload = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file || !projectId) return;
+    if (!file || !projectId || !documentType) return;
 
     const formData = new FormData();
     formData.append("project_id", String(projectId));
@@ -111,6 +108,7 @@ export function DocumentsPage() {
           await api.uploadDocument(formData);
           setMemo("");
           setRevisionNote("");
+          setDocumentType("");
           setFile(null);
           setError("");
           await refresh();
@@ -216,7 +214,7 @@ export function DocumentsPage() {
       [item.original_file_name, projectName, corporationName, item.document_type].some((value) =>
         value.toLowerCase().includes(keyword),
       );
-    const matchesStatus = statusFilter === "all" || item.analysis_status === statusFilter;
+    const matchesStatus = !statusFilter || item.analysis_status === statusFilter;
     return matchesKeyword && matchesStatus;
   });
 
@@ -251,7 +249,8 @@ export function DocumentsPage() {
               <div className="form-grid">
                 <label className="field">
                   <span>프로젝트 선택</span>
-                  <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))} required>
+                  <select value={projectId} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : "")} required>
+                    <option value="">프로젝트를 선택하세요</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -262,7 +261,8 @@ export function DocumentsPage() {
 
                 <label className="field">
                   <span>문서 유형</span>
-                  <select value={documentType} onChange={(e) => setDocumentType(e.target.value)}>
+                  <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} required>
+                    <option value="">문서 유형을 선택하세요</option>
                     <option value="notice">공고문</option>
                     <option value="spec">제안요청/규격</option>
                     <option value="general">일반 문서</option>
@@ -294,7 +294,7 @@ export function DocumentsPage() {
               </div>
 
               <div className="form-actions">
-                <button type="submit">문서 업로드</button>
+                <button type="submit" disabled={!projectId || !documentType || !file}>문서 업로드</button>
               </div>
             </>
           )}
@@ -332,7 +332,7 @@ export function DocumentsPage() {
               placeholder="파일명, 프로젝트명, 법인명 검색"
             />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">모든 상태</option>
+              <option value="">상태를 선택하세요</option>
               <option value="pending">pending</option>
               <option value="completed">completed</option>
               <option value="cached">cached</option>

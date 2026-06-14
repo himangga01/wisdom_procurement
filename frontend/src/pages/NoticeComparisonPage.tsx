@@ -14,6 +14,7 @@ import type {
   ResultEvidenceLink,
   SavedNaraNotice,
   UserSummary,
+  UserSummaryAction,
 } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
 
@@ -39,11 +40,81 @@ function statusTone(status: string) {
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     prepared: "준비 확인",
-    possibly_missing: "보강 필요",
+    possibly_missing: "준비 필요",
     needs_review: "사람 확인 필요",
     not_found: "법인 정보 없음",
   };
   return labels[status] ?? "확인 필요";
+}
+
+function comparisonDisplayCopy(value: string) {
+  const legacyReinforce = "\ubcf4\uac15";
+  return value
+    .split(`${legacyReinforce} 필요`)
+    .join("준비 필요")
+    .split(`${legacyReinforce}할`)
+    .join("준비할")
+    .split(`${legacyReinforce}하세요`)
+    .join("자료를 보완하세요")
+    .split(legacyReinforce)
+    .join("보완")
+    .split("citation")
+    .join("근거");
+}
+
+function normalizeUserSummaryAction(action: Partial<UserSummaryAction> | null | undefined): UserSummaryAction {
+  const title = typeof action?.title === "string" ? comparisonDisplayCopy(action.title) : "";
+  const reason = typeof action?.reason === "string" ? comparisonDisplayCopy(action.reason) : "";
+  const nextStep = typeof action?.next_step === "string" ? comparisonDisplayCopy(action.next_step) : "";
+  return {
+    title,
+    reason,
+    next_step: nextStep,
+    related_requirement_ids: Array.isArray(action?.related_requirement_ids)
+      ? action.related_requirement_ids.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+      : [],
+    documents: Array.isArray(action?.documents)
+      ? action.documents.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map(comparisonDisplayCopy)
+      : [],
+  };
+}
+
+function normalizeUserSummary(summary: UserSummary): UserSummary {
+  return {
+    ...summary,
+    headline_status: comparisonDisplayCopy(summary.headline_status || ""),
+    plain_summary: comparisonDisplayCopy(summary.plain_summary || ""),
+    top_priority_actions: (summary.top_priority_actions ?? [])
+      .map((action) => normalizeUserSummaryAction(action))
+      .filter((action) => action.title || action.reason || action.next_step),
+    missing_groups: (summary.missing_groups ?? []).map((group) => ({
+      ...group,
+      group: comparisonDisplayCopy(group.group || ""),
+      summary: comparisonDisplayCopy(group.summary || ""),
+    })),
+    item_explanations: Object.fromEntries(
+      Object.entries(summary.item_explanations ?? {}).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          user_gap_summary: comparisonDisplayCopy(value.user_gap_summary || ""),
+          next_action: comparisonDisplayCopy(value.next_action || ""),
+          evidence_hint: comparisonDisplayCopy(value.evidence_hint || ""),
+          basis_summary: comparisonDisplayCopy(value.basis_summary || ""),
+        },
+      ]),
+    ),
+    risk_notes: (summary.risk_notes ?? []).map((note) => comparisonDisplayCopy(note)),
+  };
+}
+
+function formatRequirementValue(value?: string) {
+  const text = value || "";
+  const match = text.match(/^(추정가격|예산금액|기초금액):\s*([0-9,]+)(?:원)?$/);
+  if (!match) return text;
+  const amount = Number(match[2].replace(/,/g, ""));
+  if (!Number.isFinite(amount)) return text;
+  return `${match[1]}: ${amount.toLocaleString("ko-KR")}원`;
 }
 
 function statusDescription(status: string) {
@@ -83,12 +154,12 @@ function comparisonFallbackSummary(comparison: NoticeCorporationComparison | nul
   const prepared = comparison?.prepared_count ?? 0;
   const gaps = (comparison?.possibly_missing_count ?? 0) + (comparison?.not_found_count ?? 0);
   const review = comparison?.needs_review_count ?? 0;
-  const headline = gaps ? "보강 필요" : review ? "사람 확인 필요" : prepared ? "대체로 준비됨" : "검토 필요";
+  const headline = gaps ? "준비 필요" : review ? "사람 확인 필요" : prepared ? "대체로 준비됨" : "검토 필요";
   return {
     generated_by: "fallback",
     headline_status: headline,
     plain_summary: comparison
-      ? `준비 확인 ${prepared}개, 보강 필요 ${gaps}개, 사람 확인 필요 ${review}개가 있습니다. 상세 모달에서 조건별 부족 사유와 필요한 근거를 확인하세요.`
+      ? `준비 확인 ${prepared}개, 준비 필요 ${gaps}개, 사람 확인 필요 ${review}개가 있습니다. 상세 모달에서 조건별 부족 사유와 필요한 근거를 확인하세요.`
       : "공고와 법인을 선택한 뒤 부족조건 미리보기를 실행하면 요약이 표시됩니다.",
     top_priority_actions: [],
     missing_groups: [],
@@ -100,9 +171,9 @@ function comparisonFallbackSummary(comparison: NoticeCorporationComparison | nul
 
 function usableUserSummary(summary: UserSummary | undefined, fallback: UserSummary): UserSummary {
   if (!summary?.plain_summary || !summary.headline_status) {
-    return fallback;
+    return normalizeUserSummary(fallback);
   }
-  return {
+  return normalizeUserSummary({
     ...fallback,
     ...summary,
     top_priority_actions: summary.top_priority_actions ?? fallback.top_priority_actions,
@@ -110,7 +181,7 @@ function usableUserSummary(summary: UserSummary | undefined, fallback: UserSumma
     item_explanations: summary.item_explanations ?? fallback.item_explanations,
     risk_notes: summary.risk_notes ?? fallback.risk_notes,
     evidence_links: summary.evidence_links ?? fallback.evidence_links,
-  };
+  });
 }
 
 function comparisonEvidenceLinks(comparison: NoticeCorporationComparison | null, summary: UserSummary): ResultEvidenceLink[] {
@@ -142,7 +213,7 @@ function comparisonEvidenceLinks(comparison: NoticeCorporationComparison | null,
       ref_id: String(item.requirement_candidate_id),
       requirement_candidate_id: item.requirement_candidate_id,
       label: item.label || "공고 요구조건",
-      description: item.required_value || item.source_text,
+      description: formatRequirementValue(item.required_value) || item.source_text,
     });
   });
   return links;
@@ -279,13 +350,13 @@ function EvidenceDetailContent({ state }: { state: EvidenceModalState }) {
         <article className="detail-card">
           <span>추출 조건</span>
           <strong>
-            {detail.label}: {detail.required_value}
+            {detail.label}: {formatRequirementValue(detail.required_value)}
           </strong>
           <p>신뢰도 {Math.round((detail.confidence || 0) * 100)}%</p>
         </article>
         <article className="detail-card detail-card--wide">
           <span>공고 원문</span>
-          <pre className="analysis-pre">{detail.source_text || detail.required_value}</pre>
+          <pre className="analysis-pre">{detail.source_text || formatRequirementValue(detail.required_value)}</pre>
         </article>
       </div>
     );
@@ -496,7 +567,7 @@ export function NoticeComparisonPage() {
           <p className="eyebrow">부족조건</p>
           <h3>부족조건 미리보기</h3>
           <p className="analysis-copy">
-            저장 공고와 법인 정보를 비교해 보강할 조건, 확인이 필요한 원문, 활용한 증빙을 요약합니다.
+            저장 공고와 법인 정보를 비교해 준비할 조건, 확인이 필요한 원문, 활용한 증빙을 요약합니다.
           </p>
         </div>
         <div className="row">
@@ -623,7 +694,7 @@ export function NoticeComparisonPage() {
                 data-help-ignore="true"
               >
                 <strong>{item.notice?.bid_ntce_nm || "저장 공고"}</strong>
-                <span>{item.corporation?.name || "법인"} · 보강 {item.possibly_missing_count + item.not_found_count}개 · 확인 {item.needs_review_count}개</span>
+                <span>{item.corporation?.name || "법인"} · 준비 {item.possibly_missing_count + item.not_found_count}개 · 확인 {item.needs_review_count}개</span>
                 <small>{compactDate(item.created_at)}</small>
               </button>
             ))}
@@ -665,7 +736,7 @@ export function NoticeComparisonPage() {
                   <ul className="comparison-item-list">
                     {items.map((item, index) => (
                       <li key={`${item.requirement_candidate_id}-${index}`}>
-                        <strong>{item.label}: {item.required_value}</strong>
+                        <strong>{item.label}: {formatRequirementValue(item.required_value)}</strong>
                         <span>{item.reason}</span>
                         {item.matched_value ? <small>확인값: {item.matched_value}</small> : null}
                       </li>
@@ -704,7 +775,7 @@ export function NoticeComparisonPage() {
                 <dl className="detail-list">
                   <div>
                     <dt>요구값</dt>
-                    <dd>{item.required_value || "-"}</dd>
+                    <dd>{formatRequirementValue(item.required_value) || "-"}</dd>
                   </div>
                   <div>
                     <dt>정규화 값</dt>
@@ -719,7 +790,7 @@ export function NoticeComparisonPage() {
                     <dd>{item.extraction_method || "-"}</dd>
                   </div>
                 </dl>
-                <pre className="analysis-pre">{item.source_text || item.required_value || "원문 정보 없음"}</pre>
+                <pre className="analysis-pre">{item.source_text || formatRequirementValue(item.required_value) || "원문 정보 없음"}</pre>
               </article>
             ))}
           </div>

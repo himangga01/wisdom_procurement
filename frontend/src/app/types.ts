@@ -737,7 +737,7 @@ export type UserSummary = {
       user_gap_summary: string;
       next_action: string;
       evidence_hint: string;
-      citation_summary: string;
+      basis_summary: string;
     }
   >;
   risk_notes: string[];
@@ -817,6 +817,13 @@ export type JudgmentItem = {
   required_value: string;
   source_text: string;
   match_status: string;
+  deterministic_match_status?: string;
+  ai_match_status?: string;
+  final_match_status?: string;
+  status_source?: string;
+  ai_reason?: string;
+  ai_recommended_action?: string;
+  ai_confidence?: number;
   status_label: string;
   matched_value: string;
   gap_reason: string;
@@ -829,6 +836,26 @@ export type JudgmentItem = {
   review_evidence_ready: boolean;
   basis_search_fallback_used?: boolean;
   approved_rule_candidate_ids?: number[];
+};
+
+export type JudgmentAiJudgmentItem = {
+  id: string;
+  deterministic_match_status: string;
+  ai_match_status: string;
+  final_match_status: string;
+  status_source: string;
+  ai_reason: string;
+  ai_recommended_action: string;
+  ai_confidence: number;
+};
+
+export type JudgmentAiJudgment = {
+  generated_by: string;
+  model: string;
+  policy: string;
+  fallback_reason: string;
+  items: JudgmentAiJudgmentItem[];
+  generation_error?: string;
 };
 
 export type JudgmentRun = {
@@ -866,6 +893,7 @@ export type JudgmentRun = {
       actions: string[];
       uncertainty_notes: string[];
     };
+    ai_judgment?: JudgmentAiJudgment;
     user_summary?: UserSummary;
   };
   input_snapshot: Record<string, unknown>;

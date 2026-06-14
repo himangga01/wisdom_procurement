@@ -115,7 +115,7 @@ export function OperationRunsPage() {
           </div>
           <div className="toolbar">
             <select value={operationType} onChange={(event) => setOperationType(event.target.value)}>
-              <option value="">전체 작업</option>
+              <option value="">작업 유형을 선택하세요</option>
               {Object.entries(operationTypeLabels).map(([value, label]) => (
                 <option value={value} key={value}>
                   {label}
@@ -123,7 +123,7 @@ export function OperationRunsPage() {
               ))}
             </select>
             <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">전체 상태</option>
+              <option value="">상태를 선택하세요</option>
               <option value="completed">completed</option>
               <option value="failed">failed</option>
               <option value="partial_failed">partial_failed</option>

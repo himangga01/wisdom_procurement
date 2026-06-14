@@ -5,7 +5,7 @@ import type { BasisDocument, BasisRuleCandidate } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
 
 const statusOptions = [
-  { value: "", label: "전체" },
+  { value: "", label: "상태를 선택하세요" },
   { value: "needs_review", label: "검토 필요" },
   { value: "approved", label: "승인" },
   { value: "rejected", label: "반려" },
@@ -13,7 +13,7 @@ const statusOptions = [
 ];
 
 const ruleTypeOptions = [
-  { value: "", label: "전체 유형" },
+  { value: "", label: "유형을 선택하세요" },
   { value: "region", label: "지역" },
   { value: "license", label: "면허/업종" },
   { value: "company_type", label: "기업유형" },
@@ -103,7 +103,7 @@ export function BasisRuleCandidatesPage() {
   const [basisDocuments, setBasisDocuments] = useState<BasisDocument[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [active, setActive] = useState<BasisRuleCandidate | null>(null);
-  const [status, setStatus] = useState("needs_review");
+  const [status, setStatus] = useState("");
   const [ruleType, setRuleType] = useState("");
   const [keyword, setKeyword] = useState("");
   const [basisDocumentId, setBasisDocumentId] = useState("");
@@ -334,7 +334,7 @@ export function BasisRuleCandidatesPage() {
           </div>
           <div className="toolbar">
             <select value={basisDocumentId} onChange={(event) => setBasisDocumentId(event.target.value)}>
-              <option value="">기준문서 선택</option>
+              <option value="">기준문서를 선택하세요</option>
               {basisDocuments.map((document) => (
                 <option value={document.id} key={document.id}>
                   #{document.id} {document.title} / {document.document_version || document.category}
@@ -477,7 +477,7 @@ export function BasisRuleCandidatesPage() {
                   value={form.citation_candidate_id}
                   onChange={(event) => setForm((prev) => ({ ...prev, citation_candidate_id: event.target.value }))}
                 >
-                  <option value="">근거 후보 선택</option>
+                  <option value="">근거 후보를 선택하세요</option>
                   {(active.citation_options ?? []).map((option) => (
                     <option value={option.citation_candidate_id} key={option.citation_candidate_id}>
                       {option.citation_candidate_id}

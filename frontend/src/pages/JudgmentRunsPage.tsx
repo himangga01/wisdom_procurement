@@ -54,27 +54,55 @@ function reviewStatusLabel(status: string) {
   return labels[status] ?? "검토 전";
 }
 
-function judgmentDisplayCopy(value: string) {
-  return [
-    ["보강 필요", "준비 필요"],
-    ["보강할", "준비할"],
-    ["보강 사유", "준비 사유"],
-    ["보강이 필요", "준비가 필요"],
-    ["보강하세요", "보완하세요"],
-  ].reduce((text, [from, to]) => text.split(from).join(to), value);
+function formatRequirementValue(value?: string) {
+  const text = value || "";
+  const match = text.match(/^(추정가격|예산금액|기초금액):\s*([0-9,]+)(?:원)?$/);
+  if (!match) return text;
+  const amount = Number(match[2].replace(/,/g, ""));
+  if (!Number.isFinite(amount)) return text;
+  return `${match[1]}: ${amount.toLocaleString("ko-KR")}원`;
 }
 
-function normalizeJudgmentSummaryCopy(summary: UserSummary): UserSummary {
+function judgmentDisplayCopy(value: string) {
+  const legacyReinforce = "\ubcf4\uac15";
+  return value
+    .split(`${legacyReinforce} 필요`)
+    .join("준비 필요")
+    .split(`${legacyReinforce}할`)
+    .join("준비할")
+    .split(`${legacyReinforce}하세요`)
+    .join("자료를 보완하세요")
+    .split(legacyReinforce)
+    .join("보완")
+    .split("citation")
+    .join("근거");
+}
+
+function normalizeUserSummaryAction(action: Partial<UserSummaryAction> | null | undefined): UserSummaryAction {
+  const title = typeof action?.title === "string" ? judgmentDisplayCopy(action.title) : "";
+  const reason = typeof action?.reason === "string" ? judgmentDisplayCopy(action.reason) : "";
+  const nextStep = typeof action?.next_step === "string" ? judgmentDisplayCopy(action.next_step) : "";
+  return {
+    title,
+    reason,
+    next_step: nextStep,
+    related_requirement_ids: Array.isArray(action?.related_requirement_ids)
+      ? action.related_requirement_ids.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+      : [],
+    documents: Array.isArray(action?.documents)
+      ? action.documents.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map(judgmentDisplayCopy)
+      : [],
+  };
+}
+
+function normalizeUserSummary(summary: UserSummary): UserSummary {
   return {
     ...summary,
     headline_status: judgmentDisplayCopy(summary.headline_status || ""),
     plain_summary: judgmentDisplayCopy(summary.plain_summary || ""),
-    top_priority_actions: (summary.top_priority_actions ?? []).map((action) => ({
-      ...action,
-      title: judgmentDisplayCopy(action.title || ""),
-      reason: judgmentDisplayCopy(action.reason || ""),
-      next_step: judgmentDisplayCopy(action.next_step || ""),
-    })),
+    top_priority_actions: (summary.top_priority_actions ?? [])
+      .map((action) => normalizeUserSummaryAction(action))
+      .filter((action) => action.title || action.reason || action.next_step),
     missing_groups: (summary.missing_groups ?? []).map((group) => ({
       ...group,
       group: judgmentDisplayCopy(group.group || ""),
@@ -88,11 +116,52 @@ function normalizeJudgmentSummaryCopy(summary: UserSummary): UserSummary {
           user_gap_summary: judgmentDisplayCopy(value.user_gap_summary || ""),
           next_action: judgmentDisplayCopy(value.next_action || ""),
           evidence_hint: judgmentDisplayCopy(value.evidence_hint || ""),
-          citation_summary: judgmentDisplayCopy(value.citation_summary || ""),
+          basis_summary: judgmentDisplayCopy(value.basis_summary || ""),
         },
       ]),
     ),
     risk_notes: (summary.risk_notes ?? []).map((note) => judgmentDisplayCopy(note)),
+  };
+}
+
+function normalizeJudgmentSummaryCopy(summary: UserSummary): UserSummary {
+  return normalizeUserSummary(summary);
+}
+
+function statusSourceLabel(source?: string) {
+  if (source === "gemini_weighted") return "Gemini 70% 가중 반영";
+  if (source === "gemini_assisted") return "Gemini 판단 보조 반영";
+  if (source === "fallback") return "기본 규칙 판단";
+  return "규칙 기반 판단";
+}
+
+function judgmentResultStatus(summary: UserSummary) {
+  const headline = judgmentDisplayCopy(summary.headline_status || "");
+  if (headline.includes("준비 필요")) {
+    return {
+      label: "준비 필요",
+      tone: "pending",
+      description: "부족한 조건이 있어 제출 전 자료 준비와 법인 정보 보완이 필요합니다.",
+    };
+  }
+  if (headline.includes("사람 확인")) {
+    return {
+      label: "사람 확인 필요",
+      tone: "review",
+      description: "자동 판단만으로 결론내리기 어려운 조건이 있어 공고 원문과 증빙을 함께 확인해야 합니다.",
+    };
+  }
+  if (headline.includes("준비됨") || headline.includes("준비 확인")) {
+    return {
+      label: "대체로 준비됨",
+      tone: "ready",
+      description: "자동 검토 기준으로 큰 부족 항목은 적지만 제출 전 근거와 원문을 확인하세요.",
+    };
+  }
+  return {
+    label: "검토 필요",
+    tone: "muted",
+    description: "공고와 법인 정보를 선택해 판단 검토를 실행하거나 상세 결과를 확인하세요.",
   };
 }
 
@@ -163,7 +232,7 @@ function judgmentEvidenceLinks(run: JudgmentRun | null, summary: UserSummary): R
         ref_id: String(requirementId),
         requirement_candidate_id: requirementId,
         label: item.label || "공고 요구조건",
-        description: item.required_value || item.source_text,
+        description: formatRequirementValue(item.required_value) || item.source_text,
       });
     }
     (item.review_ready_citation_candidates?.length ? item.review_ready_citation_candidates : item.citation_candidates).forEach((citation) => {
@@ -197,7 +266,7 @@ function noticeRequirementLinkFromJudgmentItem(item: JudgmentItem): ResultEviden
     ref_id: String(requirementId),
     requirement_candidate_id: requirementId,
     label: item.label || "공고 요구조건",
-    description: item.required_value || item.source_text,
+    description: formatRequirementValue(item.required_value) || item.source_text,
   };
 }
 
@@ -219,7 +288,7 @@ function judgmentItemsForAction(run: JudgmentRun | null, action: UserSummaryActi
   if (/자동|수동|검토|판단|사람|금액|일정/.test(actionText)) {
     return run.result.items.filter((item) => ["needs_review", "uncertain"].includes(item.match_status));
   }
-  if (/준비|부족|보강|필요|증빙|서류/.test(actionText)) {
+  if (/준비|부족|필요|증빙|서류/.test(actionText)) {
     return run.result.items.filter((item) => item.match_status === "missing");
   }
   return [];
@@ -264,9 +333,14 @@ function AppModal({
 }
 
 function SummaryPanel({ summary }: { summary: UserSummary }) {
+  const resultStatus = judgmentResultStatus(summary);
   return (
     <div className="result-summary-panel">
-      <span className="status-badge status-badge--pending">{summary.headline_status}</span>
+      <div className={`judgment-result-status judgment-result-status--${resultStatus.tone}`}>
+        <span>판단 상태</span>
+        <strong>{resultStatus.label}</strong>
+        <small>{resultStatus.description}</small>
+      </div>
       <h3>판단 결과</h3>
       <span className="summary-section-label">판단 요약</span>
       <p>{summary.plain_summary}</p>
@@ -344,13 +418,13 @@ function EvidenceDetailContent({ state }: { state: EvidenceModalState }) {
         <article className="detail-card">
           <span>추출 조건</span>
           <strong>
-            {detail.label}: {detail.required_value}
+            {detail.label}: {formatRequirementValue(detail.required_value)}
           </strong>
           <p>신뢰도 {Math.round((detail.confidence || 0) * 100)}%</p>
         </article>
         <article className="detail-card detail-card--wide">
           <span>공고 원문</span>
-          <pre className="analysis-pre">{detail.source_text || detail.required_value}</pre>
+          <pre className="analysis-pre">{detail.source_text || formatRequirementValue(detail.required_value)}</pre>
         </article>
       </div>
     );
@@ -394,6 +468,7 @@ export function JudgmentRunsPage() {
   const [selectedNoticeId, setSelectedNoticeId] = useState("");
   const [selectedCorporationId, setSelectedCorporationId] = useState("");
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
+  const [historyDetailRun, setHistoryDetailRun] = useState<JudgmentRun | null>(null);
   const [reviewStatus, setReviewStatus] = useState("pending");
   const [reviewerNote, setReviewerNote] = useState("");
   const [modal, setModal] = useState<JudgmentModal>(null);
@@ -408,6 +483,9 @@ export function JudgmentRunsPage() {
   );
   const userSummary = normalizeJudgmentSummaryCopy(usableUserSummary(activeRun?.result.user_summary, judgmentFallbackSummary(activeRun)));
   const evidenceLinks = judgmentEvidenceLinks(activeRun, userSummary);
+  const detailRun = detailBackTarget === "history" ? historyDetailRun : activeRun;
+  const detailSummary = normalizeJudgmentSummaryCopy(usableUserSummary(detailRun?.result.user_summary, judgmentFallbackSummary(detailRun)));
+  const detailEvidenceLinks = judgmentEvidenceLinks(detailRun, detailSummary);
 
   const refresh = async () => {
     const [noticeList, corporationList, runList] = await Promise.all([
@@ -427,10 +505,10 @@ export function JudgmentRunsPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeRun) return;
-    setReviewStatus(activeRun.review_status);
-    setReviewerNote(activeRun.reviewer_note || "");
-  }, [activeRun?.id]);
+    if (!detailRun) return;
+    setReviewStatus(detailRun.review_status);
+    setReviewerNote(detailRun.reviewer_note || "");
+  }, [detailRun?.id]);
 
   const onCreateRun = async () => {
     if (!selectedNoticeId || !selectedCorporationId) return;
@@ -453,7 +531,7 @@ export function JudgmentRunsPage() {
   };
 
   const onSaveReview = async () => {
-    if (!activeRun) return;
+    if (!detailRun) return;
     await runWithOverlay(
       {
         title: "검토 상태 저장 중",
@@ -462,12 +540,16 @@ export function JudgmentRunsPage() {
         failureMessage: "검토 상태 저장에 실패했습니다.",
       },
       async () => {
-        const updated = await api.updateJudgmentRunReview(activeRun.id, {
+        const updated = await api.updateJudgmentRunReview(detailRun.id, {
           review_status: reviewStatus,
           reviewer_note: reviewerNote,
         });
         await refresh();
-        setActiveRunId(updated.id);
+        if (detailBackTarget === "history") {
+          setHistoryDetailRun(updated);
+        } else {
+          setActiveRunId(updated.id);
+        }
       },
     );
   };
@@ -478,6 +560,7 @@ export function JudgmentRunsPage() {
     setReviewerNote("");
     setModal(null);
     setDetailBackTarget(null);
+    setHistoryDetailRun(null);
     setEvidenceModal(null);
   };
 
@@ -494,6 +577,7 @@ export function JudgmentRunsPage() {
   const closeJudgmentModal = () => {
     setModal(null);
     setDetailBackTarget(null);
+    setHistoryDetailRun(null);
   };
 
   const openEvidenceLink = async (link: ResultEvidenceLink) => {
@@ -521,13 +605,12 @@ export function JudgmentRunsPage() {
   };
 
   const openRunFromHistory = async (run: JudgmentRun) => {
-    setActiveRunId(run.id);
-    setSelectedNoticeId(String(run.nara_notice_id));
-    setSelectedCorporationId(String(run.corporation_id));
+    setHistoryDetailRun(run);
     setDetailBackTarget("history");
     setModal("detail");
     try {
       const detail = await api.getJudgmentRun(run.id);
+      setHistoryDetailRun(detail);
       setRuns((current) => current.map((item) => (item.id === detail.id ? detail : item)));
       setError("");
     } catch (err) {
@@ -616,7 +699,7 @@ export function JudgmentRunsPage() {
 
       {activeRun && userSummary.top_priority_actions.length ? (
         <div className="priority-action-list">
-          {userSummary.top_priority_actions.slice(0, 3).map((action, index) => {
+          {userSummary.top_priority_actions.map((action, index) => {
             const relatedItems = judgmentItemsForAction(activeRun, action);
             return (
             <article className="priority-action-card" key={`${action.title}-${index}`}>
@@ -624,14 +707,14 @@ export function JudgmentRunsPage() {
               <p>{action.reason}</p>
               <small>{action.next_step}</small>
               {relatedItems.length ? (
-                <div className="priority-related-list">
+                <div className="priority-related-list priority-related-list--scroll">
                   <span>관련 조건 {relatedItems.length}개</span>
                   {relatedItems.map((item) => {
                     const requirementLink = noticeRequirementLinkFromJudgmentItem(item);
                     return (
                       <div className="priority-related-item" key={item.requirement_input_id}>
                         <strong>{item.label}</strong>
-                        <p>{item.required_value || item.source_text}</p>
+                        <p>{formatRequirementValue(item.required_value) || item.source_text}</p>
                         {requirementLink ? (
                           <button type="button" className="link-button link-button--soft" onClick={() => void openEvidenceLink(requirementLink)} data-help-ignore="true">
                             공고 원문 보기
@@ -690,7 +773,7 @@ export function JudgmentRunsPage() {
             {runs.slice(0, 20).map((run) => (
               <button
                 type="button"
-                className={`history-item${activeRun?.id === run.id ? " history-item--active" : ""}`}
+                className={`history-item${historyDetailRun?.id === run.id ? " history-item--active" : ""}`}
                 key={run.id}
                 onClick={() => openRunFromHistory(run)}
                 data-demo-id="demo-judgment-run-row"
@@ -714,25 +797,26 @@ export function JudgmentRunsPage() {
             </button>
           </div>
         ) : null}
-        <SummaryPanel summary={userSummary} />
+        {detailRun ? <SummaryPanel summary={detailSummary} /> : null}
         <div className="comparison-metrics">
-          <span>준비 확인 {activeRun?.summary.matched_count ?? 0}</span>
-          <span>준비 필요 {activeRun?.summary.missing_count ?? 0}</span>
-          <span>사람 확인 {(activeRun?.summary.needs_review_count ?? 0) + (activeRun?.summary.uncertain_count ?? 0)}</span>
-          <span>근거 확인률 {Math.round(((activeRun?.summary.citation_coverage ?? 0) || 0) * 100)}%</span>
+          <span>준비 확인 {detailRun?.summary.matched_count ?? 0}</span>
+          <span>준비 필요 {detailRun?.summary.missing_count ?? 0}</span>
+          <span>사람 확인 {(detailRun?.summary.needs_review_count ?? 0) + (detailRun?.summary.uncertain_count ?? 0)}</span>
+          <span>근거 확인률 {Math.round(((detailRun?.summary.citation_coverage ?? 0) || 0) * 100)}%</span>
         </div>
 
-        {activeRun?.result.items.length ? (
+        {detailRun?.result.items.length ? (
           <div className="detail-card-list">
-            {activeRun.result.items.map((item) => {
-              const explanation = userSummary.item_explanations?.[item.requirement_input_id];
+            {detailRun.result.items.map((item) => {
+              const explanation = detailSummary.item_explanations?.[item.requirement_input_id];
               return (
                 <article className="detail-card detail-card--wide" key={item.requirement_input_id}>
                   <div className="comparison-status-heading">
                     <span className={`status-badge status-badge--${statusTone(item.match_status)}`}>{judgmentStatusLabel(item.match_status)}</span>
                     <strong>{item.label}</strong>
                   </div>
-                  <p>{item.required_value || item.source_text}</p>
+                  <p>{formatRequirementValue(item.required_value) || item.source_text}</p>
+                  <small>{statusSourceLabel(item.status_source)}</small>
                   <dl className="detail-list">
                     <div>
                       <dt>현재 확인값</dt>
@@ -740,11 +824,11 @@ export function JudgmentRunsPage() {
                     </div>
                     <div>
                       <dt>부족 사유</dt>
-                      <dd>{explanation?.user_gap_summary || item.gap_reason || "추가 확인이 필요합니다."}</dd>
+                      <dd>{explanation?.user_gap_summary || item.ai_reason || item.gap_reason || "추가 확인이 필요합니다."}</dd>
                     </div>
                     <div>
                       <dt>다음 행동</dt>
-                      <dd>{explanation?.next_action || item.recommended_action}</dd>
+                      <dd>{explanation?.next_action || item.ai_recommended_action || item.recommended_action}</dd>
                     </div>
                   </dl>
                 </article>
@@ -761,7 +845,7 @@ export function JudgmentRunsPage() {
             <h3>활용한 증빙과 원문</h3>
           </div>
         </div>
-        <EvidenceLinkList links={evidenceLinks} onOpen={openEvidenceLink} />
+        <EvidenceLinkList links={detailEvidenceLinks} onOpen={openEvidenceLink} />
 
         <div className="review-save-panel">
           <label>
@@ -782,7 +866,7 @@ export function JudgmentRunsPage() {
               placeholder="예: 면허증 업로드 후 다시 판단 검토 실행 필요"
             />
           </label>
-          <button type="button" onClick={onSaveReview} disabled={!activeRun}>
+          <button type="button" onClick={onSaveReview} disabled={!detailRun}>
             검토 결과 저장
           </button>
         </div>

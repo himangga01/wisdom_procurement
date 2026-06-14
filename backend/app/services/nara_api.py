@@ -10,7 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 from app.core.logging import get_logger, log_event, log_exception, sanitize_log_value
-from app.core.text import clean_text, parse_int
+from app.core.text import clean_text, format_korean_won_amount, parse_int
 
 DEFAULT_NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
 LOGGER = get_logger("services.nara_api")
@@ -425,8 +425,8 @@ def build_nara_summary_text(notice: dict, attachment_texts: list[str]) -> str:
         f"입찰개시: {notice.get('bid_begin_dt', '')}",
         f"입찰마감: {notice.get('bid_clse_dt', '')}",
         f"개찰일시: {notice.get('openg_dt', '')}",
-        f"추정가격: {notice.get('presmpt_prce', '')}",
-        f"기초금액: {notice.get('bssamt', '')}",
+        f"추정가격: {format_korean_won_amount(notice.get('presmpt_prce', ''))}",
+        f"기초금액: {format_korean_won_amount(notice.get('bssamt', ''))}",
         f"지역: {notice.get('region_text', '')}",
         f"면허/업종 제한: {notice.get('license_text', '')}",
         "",

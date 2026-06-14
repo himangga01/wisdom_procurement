@@ -771,7 +771,7 @@ export function BasisDocumentsPage() {
           </div>
           <div className="toolbar">
             <select value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}>
-              <option value="">전체 카테고리</option>
+              <option value="">카테고리를 선택하세요</option>
               {categories.map((item) => (
                 <option key={item} value={item}>
                   {item}

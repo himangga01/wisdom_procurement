@@ -20,9 +20,10 @@ type SortRule = {
   direction: SortDirection;
 };
 
-type NaraBusinessType = "all" | "construction" | "service" | "goods" | "etc";
+type NaraBusinessType = "" | "all" | "construction" | "service" | "goods" | "etc";
 
 const naraBusinessTypeOptions: Array<{ value: NaraBusinessType; label: string }> = [
+  { value: "", label: "업무 유형을 선택하세요" },
   { value: "all", label: "전체" },
   { value: "construction", label: "공사" },
   { value: "service", label: "용역" },
@@ -147,7 +148,7 @@ export function NaraBoardPage() {
   const { runWithOverlay } = useWorkOverlay();
   const range = defaultRange();
   const [keyword, setKeyword] = useState("");
-  const [businessType, setBusinessType] = useState<NaraBusinessType>("all");
+  const [businessType, setBusinessType] = useState<NaraBusinessType>("");
   const [startDate, setStartDate] = useState(range.start);
   const [endDate, setEndDate] = useState(range.end);
   const [pageSize, setPageSize] = useState(20);
@@ -171,7 +172,7 @@ export function NaraBoardPage() {
         keyword,
         start_date: startDate,
         end_date: endDate,
-        business_type: businessType,
+        business_type: businessType || "all",
         page_size: pageSize,
         page_no: nextPageNo,
       });

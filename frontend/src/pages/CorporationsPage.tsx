@@ -1010,7 +1010,7 @@ export function CorporationsPage() {
                     }));
                   }}
                 >
-                  <option value="">새 법인/미연결</option>
+                  <option value="">새로운 법인 생성 및 추가</option>
                   {list.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}

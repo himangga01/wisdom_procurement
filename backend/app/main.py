@@ -22,7 +22,7 @@ from werkzeug.exceptions import HTTPException
 from app.core.citations import expected_basis_citation_candidate_id
 from app.core.json_utils import parse_json_dict, parse_json_list
 from app.core.logging import configure_backend_logging, get_logger, log_event, log_exception, new_request_id
-from app.core.text import clean_text, parse_int
+from app.core.text import clean_text, format_korean_won_amount, parse_int
 from app.pipelines.corporation_evidence import (
     FIELD_LABELS,
     EvidenceExtractionResult,
@@ -183,14 +183,14 @@ REQUIREMENT_TYPE_LABELS = {
 
 COMPARISON_STATUS_LABELS = {
     "prepared": "준비 확인",
-    "possibly_missing": "보강 필요",
+    "possibly_missing": "준비 필요",
     "needs_review": "사람 확인 필요",
     "not_found": "법인 정보 없음",
 }
 
 JUDGMENT_STATUS_LABELS = {
     "matched": "준비 확인",
-    "missing": "보강 필요",
+    "missing": "준비 필요",
     "uncertain": "사람 확인 필요",
     "needs_review": "사람 확인 필요",
     "not_applicable": "적용 제외",
@@ -970,6 +970,9 @@ def render_notice_requirements_markdown(requirements: dict) -> str:
     def line(label: str, values: list[str]) -> str:
         return f"- {label}: {', '.join(values) if values else '원문 확인 필요'}"
 
+    money = requirements.get("money") if isinstance(requirements.get("money"), dict) else {}
+    presmpt_prce = format_korean_won_amount(money.get("presmpt_prce")) or "원문 확인 필요"
+
     return "\n".join(
         [
             "",
@@ -978,7 +981,7 @@ def render_notice_requirements_markdown(requirements: dict) -> str:
             line("면허/업종", requirements.get("licenses") or []),
             line("기업유형", requirements.get("company_types") or []),
             line("제출/증빙서류", requirements.get("required_documents") or []),
-            f"- 추정가격: {(requirements.get('money') or {}).get('presmpt_prce') or '원문 확인 필요'}",
+            f"- 추정가격: {presmpt_prce}",
             f"- 입찰마감: {(requirements.get('dates') or {}).get('bid_clse_dt') or '원문 확인 필요'}",
             "",
             "※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
@@ -1043,10 +1046,11 @@ def build_notice_requirement_candidates(requirements: dict) -> list[dict]:
     money = requirements.get("money") if isinstance(requirements.get("money"), dict) else {}
     for key, label in {"presmpt_prce": "추정가격", "bdgt_amt": "예산금액", "bssamt": "기초금액"}.items():
         if clean_text(money.get(key)):
+            display_value = format_korean_won_amount(money.get(key))
             candidates.append(
                 make_requirement_candidate(
                     "money",
-                    f"{label}: {money[key]}",
+                    f"{label}: {display_value}",
                     "공고 금액 조건",
                     requirement_key=key,
                     confidence=0.72,
@@ -1315,12 +1319,47 @@ def user_summary_item_key(item: dict[str, Any]) -> str:
 
 def summary_headline_from_counts(prepared: int, missing: int, needs_review: int, not_found: int = 0) -> str:
     if missing or not_found:
-        return "보강 필요"
+        return "준비 필요"
     if needs_review:
         return "사람 확인 필요"
     if prepared:
         return "대체로 준비됨"
     return "검토 필요"
+
+
+def user_display_copy(value: Any) -> str:
+    text = clean_text(value)
+    legacy_reinforce = "\ubcf4\uac15"
+    replacements = [
+        (f"{legacy_reinforce} 필요", "준비 필요"),
+        (f"{legacy_reinforce}할", "준비할"),
+        (f"{legacy_reinforce} 사유", "준비 사유"),
+        (f"{legacy_reinforce}이 필요", "준비가 필요"),
+        (f"{legacy_reinforce}하세요", "자료를 보완하세요"),
+        (legacy_reinforce, "보완"),
+        ("citation", "근거"),
+    ]
+    for source, target in replacements:
+        text = text.replace(source, target)
+    return text
+
+
+def user_display_text_field(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return user_display_copy(value)
+
+
+def sanitize_result_evidence_links(evidence_links: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+    for link in evidence_links:
+        if not isinstance(link, dict):
+            continue
+        next_link = dict(link)
+        next_link["label"] = user_display_copy(next_link.get("label"))
+        next_link["description"] = user_display_copy(next_link.get("description"))
+        sanitized.append(next_link)
+    return sanitized
 
 
 def priority_group_for_item(item: dict[str, Any]) -> str:
@@ -1364,8 +1403,8 @@ def deterministic_user_summary(
     headline = summary_headline_from_counts(prepared, missing, needs_review, not_found)
     plain_summary = (
         f"현재 결과는 {headline} 상태입니다. "
-        f"준비 확인 {prepared}개, 보강 필요 {missing + not_found}개, 사람 확인 필요 {needs_review}개가 있습니다. "
-        "먼저 보강 필요 항목의 증빙서류를 확인하고, 사람 확인 필요 항목은 공고 원문과 기준문서 근거를 함께 검토하세요."
+        f"준비 확인 {prepared}개, 준비 필요 {missing + not_found}개, 사람 확인 필요 {needs_review}개가 있습니다. "
+        "먼저 준비 필요 항목의 증빙서류를 확인하고, 사람 확인 필요 항목은 공고 원문과 기준문서 근거를 함께 검토하세요."
     )
 
     grouped: dict[str, list[dict[str, Any]]] = {}
@@ -1387,16 +1426,16 @@ def deterministic_user_summary(
             {
                 "group": group,
                 "count": len(group_items),
-                "summary": f"{group} 관련 조건 {len(group_items)}개는 추가 확인 또는 보강이 필요합니다.",
+                "summary": f"{group} 관련 조건 {len(group_items)}개는 추가 확인 또는 준비가 필요합니다.",
             }
         )
         top_priority_actions.append(
             {
                 "title": f"{group} 확인",
-                "reason": clean_text(first.get("gap_reason") or first.get("reason")) or "현재 보유 정보에서 바로 확인되지 않았습니다.",
-                "next_step": clean_text(first.get("recommended_action"))
-                or f"{group} 관련 증빙을 업로드하거나 승인된 법인 정보를 보강하세요.",
-                "related_requirement_ids": [user_summary_item_key(item) for item in group_items[:5]],
+                "reason": user_display_copy(first.get("gap_reason") or first.get("reason")) or "현재 보유 정보에서 바로 확인되지 않았습니다.",
+                "next_step": user_display_copy(first.get("recommended_action"))
+                or f"{group} 관련 증빙을 업로드하거나 승인된 법인 정보를 보완하세요.",
+                "related_requirement_ids": [user_summary_item_key(item) for item in group_items],
                 "documents": documents,
             }
         )
@@ -1404,12 +1443,12 @@ def deterministic_user_summary(
     item_explanations: dict[str, dict[str, str]] = {}
     for item in items:
         item_explanations[user_summary_item_key(item)] = {
-            "user_gap_summary": clean_text(item.get("gap_reason") or item.get("reason"))
+            "user_gap_summary": user_display_copy(item.get("gap_reason") or item.get("reason"))
             or "현재 데이터만으로는 충분히 확인되지 않았습니다.",
-            "next_action": clean_text(item.get("recommended_action"))
+            "next_action": user_display_copy(item.get("recommended_action"))
             or "관련 증빙과 원문을 확인하세요.",
             "evidence_hint": ", ".join(item.get("required_evidence_types") or []) if isinstance(item.get("required_evidence_types"), list) else "",
-            "citation_summary": "기준문서 근거는 상세 모달에서 확인하세요." if mode == "judgment" else "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요." if mode == "judgment" else "공고 요구조건 원문을 상세 모달에서 확인하세요.",
         }
 
     risk_notes = []
@@ -1435,14 +1474,61 @@ def deterministic_user_summary(
 def sanitize_user_summary_payload(payload: dict[str, Any], fallback: dict[str, Any], evidence_links: list[dict[str, Any]]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return fallback
+    raw_actions = payload.get("top_priority_actions") if isinstance(payload.get("top_priority_actions"), list) else fallback.get("top_priority_actions", [])
+    actions = []
+    for action in raw_actions:
+        if not isinstance(action, dict):
+            continue
+        related_ids = action.get("related_requirement_ids")
+        documents = action.get("documents")
+        title = user_display_text_field(action.get("title"))
+        reason = user_display_text_field(action.get("reason"))
+        next_step = user_display_text_field(action.get("next_step"))
+        if not any([title, reason, next_step]):
+            continue
+        actions.append(
+            {
+                "title": title,
+                "reason": reason,
+                "next_step": next_step,
+                "related_requirement_ids": [clean_text(value) for value in related_ids if clean_text(value)] if isinstance(related_ids, list) else [],
+                "documents": [user_display_copy(value) for value in documents if clean_text(value)] if isinstance(documents, list) else [],
+            }
+        )
+    if not actions:
+        actions = fallback.get("top_priority_actions", [])
+    raw_groups = payload.get("missing_groups") if isinstance(payload.get("missing_groups"), list) else fallback.get("missing_groups", [])
+    groups = []
+    for group in raw_groups:
+        if not isinstance(group, dict):
+            continue
+        groups.append(
+            {
+                "group": user_display_copy(group.get("group")),
+                "count": parse_int(group.get("count"), 0),
+                "summary": user_display_copy(group.get("summary")),
+            }
+        )
+    raw_explanations = payload.get("item_explanations") if isinstance(payload.get("item_explanations"), dict) else fallback.get("item_explanations", {})
+    explanations = {}
+    for key, value in raw_explanations.items():
+        if not isinstance(value, dict):
+            continue
+        explanations[clean_text(key)] = {
+            "user_gap_summary": user_display_text_field(value.get("user_gap_summary")),
+            "next_action": user_display_text_field(value.get("next_action")),
+            "evidence_hint": user_display_text_field(value.get("evidence_hint")),
+            "basis_summary": user_display_text_field(value.get("basis_summary")) or user_display_text_field(value.get("citation_summary")),
+        }
+    raw_notes = payload.get("risk_notes") if isinstance(payload.get("risk_notes"), list) else fallback.get("risk_notes", [])
     result = {
         "generated_by": clean_text(payload.get("generated_by")) or fallback.get("generated_by", "fallback"),
-        "headline_status": clean_text(payload.get("headline_status")) or fallback.get("headline_status", "검토 필요"),
-        "plain_summary": clean_text(payload.get("plain_summary")) or fallback.get("plain_summary", ""),
-        "top_priority_actions": payload.get("top_priority_actions") if isinstance(payload.get("top_priority_actions"), list) else fallback.get("top_priority_actions", []),
-        "missing_groups": payload.get("missing_groups") if isinstance(payload.get("missing_groups"), list) else fallback.get("missing_groups", []),
-        "item_explanations": payload.get("item_explanations") if isinstance(payload.get("item_explanations"), dict) else fallback.get("item_explanations", {}),
-        "risk_notes": payload.get("risk_notes") if isinstance(payload.get("risk_notes"), list) else fallback.get("risk_notes", []),
+        "headline_status": user_display_copy(payload.get("headline_status")) or fallback.get("headline_status", "검토 필요"),
+        "plain_summary": user_display_copy(payload.get("plain_summary")) or fallback.get("plain_summary", ""),
+        "top_priority_actions": actions,
+        "missing_groups": groups,
+        "item_explanations": explanations,
+        "risk_notes": [user_display_text_field(note) for note in raw_notes if user_display_text_field(note)],
         "evidence_links": evidence_links,
     }
     return result
@@ -1457,6 +1543,7 @@ def build_user_summary_with_ai(
     items: list[dict[str, Any]],
     evidence_links: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    evidence_links = sanitize_result_evidence_links(evidence_links)
     fallback = deterministic_user_summary(mode=mode, summary=summary, items=items, evidence_links=evidence_links)
     selection = resolve_ai_model_selection(AI_PROVIDER_DEFAULT, AI_MODEL_DEFAULT)
     if not selection["configured"]:
@@ -1471,10 +1558,10 @@ def build_user_summary_with_ai(
                 "label": item.get("label", ""),
                 "required_value": item.get("required_value", ""),
                 "status": item.get("match_status") or item.get("status"),
-                "reason": item.get("gap_reason") or item.get("reason", ""),
-                "recommended_action": item.get("recommended_action", ""),
+                "reason": user_display_copy(item.get("gap_reason") or item.get("reason", "")),
+                "recommended_action": user_display_copy(item.get("recommended_action", "")),
                 "required_evidence_types": item.get("required_evidence_types", []),
-                "source_text": clean_text(item.get("source_text"))[:500],
+                "source_text": user_display_copy(item.get("source_text"))[:500],
             }
         )
     prompt = "\n".join(
@@ -1482,9 +1569,9 @@ def build_user_summary_with_ai(
             "당신은 대한민국 공공조달 업무 보조자입니다.",
             "아래 자동 비교/판단 결과를 사람이 이해하기 쉬운 한국어로 정리하세요.",
             "새 사실을 만들지 말고 제공된 JSON 안의 사실만 사용하세요.",
-            "지원 가능/불가능처럼 확정 판정 표현을 쓰지 말고 준비 상태, 보강 필요, 사람 확인 필요 중심으로 쓰세요.",
+            "지원 가능/불가능처럼 확정 판정 표현을 쓰지 말고 준비 확인, 준비 필요, 사람 확인 필요 중심으로 쓰세요.",
             "결과는 반드시 JSON 객체만 반환하세요.",
-            "schema: {\"headline_status\":\"보강 필요|사람 확인 필요|대체로 준비됨|검토 필요\",\"plain_summary\":\"...\",\"top_priority_actions\":[{\"title\":\"...\",\"reason\":\"...\",\"next_step\":\"...\",\"related_requirement_ids\":[\"...\"],\"documents\":[\"...\"]}],\"missing_groups\":[{\"group\":\"...\",\"count\":1,\"summary\":\"...\"}],\"item_explanations\":{\"id\":{\"user_gap_summary\":\"...\",\"next_action\":\"...\",\"evidence_hint\":\"...\",\"citation_summary\":\"...\"}},\"risk_notes\":[\"...\"]}",
+            "schema: {\"headline_status\":\"준비 필요|사람 확인 필요|대체로 준비됨|검토 필요\",\"plain_summary\":\"...\",\"top_priority_actions\":[{\"title\":\"...\",\"reason\":\"...\",\"next_step\":\"...\",\"related_requirement_ids\":[\"...\"],\"documents\":[\"...\"]}],\"missing_groups\":[{\"group\":\"...\",\"count\":1,\"summary\":\"...\"}],\"item_explanations\":{\"id\":{\"user_gap_summary\":\"...\",\"next_action\":\"...\",\"evidence_hint\":\"...\",\"basis_summary\":\"...\"}},\"risk_notes\":[\"...\"]}",
             "",
             "[context]",
             json.dumps(
@@ -3317,17 +3404,17 @@ def judgment_action_for_item(requirement: dict, status: str, citations: list[dic
     value = requirement.get("required_value") or requirement.get("label") or "요구조건"
     if status == "matched":
         if citations:
-            return "보유 정보와 일치하는 후보가 있습니다. 기준문서 citation과 원문을 검토해 확정하세요."
-        return "보유 정보는 일치하지만 기준문서 citation 후보가 부족합니다. 원문 근거를 추가 확인하세요."
+            return "보유 정보와 일치하는 후보가 있습니다. 기준문서 근거와 원문을 검토해 확인하세요."
+        return "보유 정보는 일치하지만 기준문서 근거 후보가 부족합니다. 원문 근거를 추가 확인하세요."
     if status == "missing":
         evidence = ", ".join(requirement.get("required_evidence_types") or [])
         if evidence:
-            return f"{value} 조건을 충족할 증빙({evidence})을 준비하거나 법인 프로필을 보강하세요."
+            return f"{value} 조건을 충족할 증빙({evidence})을 준비하거나 법인 프로필을 보완하세요."
         return f"{value} 조건을 충족하는 법인 정보 또는 증빙을 확인하세요."
     if status == "needs_review":
         return f"{value} 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요."
     if not citations:
-        return "관련 기준문서 citation 후보가 부족합니다. 기준문서 검색 품질을 먼저 보강하세요."
+        return "관련 기준문서 근거 후보가 부족합니다. 기준문서 검색 품질을 먼저 확인하세요."
     return "검토가 필요한 항목입니다."
 
 
@@ -3490,6 +3577,258 @@ def approved_basis_rule_candidate_results(
     return sorted(scored, key=lambda item: item["score"], reverse=True)[: max(1, min(top_k, 20))]
 
 
+JUDGMENT_AI_ALLOWED_STATUSES = {"matched", "missing", "needs_review", "uncertain"}
+JUDGMENT_AI_WEIGHT = 0.7
+JUDGMENT_AI_MINIMUM_CONFIDENCE = 0.7
+JUDGMENT_AI_REVIEW_CONFIDENCE = 0.5
+JUDGMENT_AI_POLICY = "gemini_weighted_70_conservative_merge"
+
+
+def judgment_summary_from_items(items: list[dict[str, Any]], cited_count: int) -> dict[str, Any]:
+    counts = {status: 0 for status in JUDGMENT_STATUS_LABELS}
+    for item in items:
+        counts[item["match_status"]] = counts.get(item["match_status"], 0) + 1
+    total = len(items)
+    return {
+        "status": "review_ready",
+        "contract_version": PHASE3_CONTRACT_VERSION,
+        "requirement_count": total,
+        "matched_count": counts.get("matched", 0),
+        "missing_count": counts.get("missing", 0),
+        "uncertain_count": counts.get("uncertain", 0),
+        "needs_review_count": counts.get("needs_review", 0),
+        "not_applicable_count": counts.get("not_applicable", 0),
+        "citation_coverage": round(cited_count / total, 4) if total else 0,
+        "note": "부족조건 중심 검토 결과입니다. 준비 상태를 확정하지 않습니다.",
+    }
+
+
+def judgment_ai_fallback(items: list[dict[str, Any]], fallback_reason: str) -> dict[str, Any]:
+    return {
+        "generated_by": "fallback",
+        "model": "",
+        "policy": JUDGMENT_AI_POLICY,
+        "ai_weight": JUDGMENT_AI_WEIGHT,
+        "minimum_ai_confidence": JUDGMENT_AI_MINIMUM_CONFIDENCE,
+        "fallback_reason": fallback_reason,
+        "items": [
+            {
+                "id": item["requirement_input_id"],
+                "deterministic_match_status": item["match_status"],
+                "ai_match_status": "",
+                "final_match_status": item["match_status"],
+                "status_source": "fallback",
+                "ai_reason": "",
+                "ai_recommended_action": "",
+                "ai_confidence": 0.0,
+            }
+            for item in items
+        ],
+    }
+
+
+def parse_ai_confidence(value: Any) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(numeric, 1.0))
+
+
+def sanitize_judgment_ai_payload(payload: dict[str, Any], items: list[dict[str, Any]], usage: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return judgment_ai_fallback(items, "invalid_ai_payload")
+    item_ids = {item["requirement_input_id"] for item in items}
+    sanitized_items: list[dict[str, Any]] = []
+    raw_items = payload.get("items")
+    if not isinstance(raw_items, list):
+        return judgment_ai_fallback(items, "invalid_ai_items")
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+        item_id = clean_text(raw_item.get("id") or raw_item.get("requirement_input_id"))
+        ai_status = clean_text(raw_item.get("match_status") or raw_item.get("ai_match_status"))
+        if item_id not in item_ids or ai_status not in JUDGMENT_AI_ALLOWED_STATUSES:
+            continue
+        sanitized_items.append(
+            {
+                "id": item_id,
+                "ai_match_status": ai_status,
+                "ai_reason": user_display_text_field(raw_item.get("reason")) or user_display_text_field(raw_item.get("ai_reason")),
+                "ai_recommended_action": user_display_text_field(raw_item.get("recommended_action"))
+                or user_display_text_field(raw_item.get("ai_recommended_action")),
+                "ai_confidence": parse_ai_confidence(raw_item.get("confidence") or raw_item.get("ai_confidence")),
+            }
+        )
+    if not sanitized_items:
+        return judgment_ai_fallback(items, "invalid_ai_items")
+    return {
+        "generated_by": clean_text(usage.get("provider")) or "gemini",
+        "model": clean_text(usage.get("model")),
+        "policy": JUDGMENT_AI_POLICY,
+        "ai_weight": JUDGMENT_AI_WEIGHT,
+        "minimum_ai_confidence": JUDGMENT_AI_MINIMUM_CONFIDENCE,
+        "fallback_reason": "",
+        "items": sanitized_items,
+    }
+
+
+def build_judgment_ai_assistance(
+    *,
+    notice: sqlite3.Row | dict,
+    corporation: sqlite3.Row | dict,
+    summary: dict[str, Any],
+    items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    selection = resolve_ai_model_selection(AI_PROVIDER_DEFAULT, AI_MODEL_DEFAULT)
+    if not selection["configured"]:
+        return judgment_ai_fallback(items, "ai_not_configured")
+
+    compact_items = []
+    for item in items[:40]:
+        compact_items.append(
+            {
+                "id": item["requirement_input_id"],
+                "requirement_type": item.get("requirement_type", ""),
+                "label": item.get("label", ""),
+                "required_value": item.get("required_value", ""),
+                "deterministic_match_status": item.get("match_status", ""),
+                "matched_value": item.get("matched_value", ""),
+                "reason": user_display_copy(item.get("gap_reason", "")),
+                "recommended_action": user_display_copy(item.get("recommended_action", "")),
+                "basis_evidence_ready": bool(item.get("review_evidence_ready")),
+                "source_text": user_display_copy(item.get("source_text", ""))[:500],
+            }
+        )
+    compact_summary = dict(summary)
+    if "citation_coverage" in compact_summary:
+        compact_summary["basis_evidence_coverage"] = compact_summary.pop("citation_coverage")
+    prompt = "\n".join(
+        [
+            "judgment_assistance",
+            "당신은 대한민국 공공조달 조건별 판단 보조자입니다.",
+            "규칙 기반 결과를 검토하되 새 사실을 만들지 마세요.",
+            "허용 상태는 matched, missing, needs_review, uncertain 중 하나입니다.",
+            "근거 없는 matched 승격은 제안하지 마세요.",
+            "조건별 최종 판단에는 Gemini 판단을 약 70% 비중으로 반영합니다.",
+            "confidence가 0.70 이상이면 제공된 근거 안에서 Gemini 제안을 더 강하게 반영합니다.",
+            "불확실하거나 원문 확인이 필요한 조건은 needs_review로 제안하세요.",
+            "결과는 반드시 JSON 객체만 반환하세요.",
+            "schema: {\"items\":[{\"id\":\"...\",\"match_status\":\"matched|missing|needs_review|uncertain\",\"reason\":\"...\",\"recommended_action\":\"...\",\"confidence\":0.0}]}",
+            "",
+            "[context]",
+            json.dumps(
+                {
+                    "mode": "judgment_assistance",
+                    "policy": JUDGMENT_AI_POLICY,
+                    "ai_weight": JUDGMENT_AI_WEIGHT,
+                    "minimum_ai_confidence": JUDGMENT_AI_MINIMUM_CONFIDENCE,
+                    "notice": {
+                        "id": notice["id"] if notice else None,
+                        "name": notice["bid_ntce_nm"] if notice and "bid_ntce_nm" in notice.keys() else "",
+                    },
+                    "corporation": {
+                        "id": corporation["id"] if corporation else None,
+                        "name": corporation["name"] if corporation and "name" in corporation.keys() else "",
+                    },
+                    "summary": compact_summary,
+                    "items": compact_items,
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+    try:
+        payload, usage = generate_json_with_ai(prompt, selection)
+        return sanitize_judgment_ai_payload(payload, items, usage)
+    except Exception as exc:
+        fallback = judgment_ai_fallback(items, "ai_generation_failed")
+        fallback["generation_error"] = user_display_copy(str(exc))[:300]
+        return fallback
+
+
+def conservative_merge_judgment_status(
+    deterministic_status: str,
+    ai_status: str,
+    ai_confidence: float,
+    matched_value: str,
+    review_ready_citations: list[dict[str, Any]],
+) -> tuple[str, str]:
+    if ai_status not in JUDGMENT_AI_ALLOWED_STATUSES:
+        return deterministic_status, "fallback"
+    if ai_confidence >= JUDGMENT_AI_MINIMUM_CONFIDENCE:
+        return ai_status, "gemini_weighted"
+    if ai_confidence < JUDGMENT_AI_REVIEW_CONFIDENCE:
+        return deterministic_status, "deterministic"
+    if deterministic_status == "matched":
+        if ai_status in {"missing", "needs_review", "uncertain"}:
+            return "needs_review", "gemini_assisted"
+        return "matched", "gemini_assisted"
+    if ai_status == "matched":
+        if deterministic_status == "matched" and clean_text(matched_value) and review_ready_citations:
+            return "matched", "gemini_assisted"
+        return deterministic_status, "deterministic"
+    if deterministic_status in {"missing", "needs_review", "uncertain"} and ai_status in {"needs_review", "uncertain"}:
+        return "needs_review", "gemini_assisted"
+    if deterministic_status in {"needs_review", "uncertain"} and ai_status == "missing":
+        return "missing", "gemini_assisted"
+    return deterministic_status, "deterministic"
+
+
+def apply_judgment_ai_assistance(items: list[dict[str, Any]], ai_judgment: dict[str, Any]) -> dict[str, Any]:
+    ai_items = {
+        item["id"]: item
+        for item in ai_judgment.get("items", [])
+        if isinstance(item, dict) and clean_text(item.get("id"))
+    }
+    merged_items = []
+    for item in items:
+        deterministic_status = item["match_status"]
+        ai_item = ai_items.get(item["requirement_input_id"], {})
+        ai_status = clean_text(ai_item.get("ai_match_status"))
+        ai_confidence = parse_ai_confidence(ai_item.get("ai_confidence"))
+        final_status, status_source = conservative_merge_judgment_status(
+            deterministic_status,
+            ai_status,
+            ai_confidence,
+            item.get("matched_value", ""),
+            item.get("review_ready_citation_candidates") or [],
+        )
+        ai_reason = user_display_copy(ai_item.get("ai_reason", ""))
+        ai_recommended_action = user_display_copy(ai_item.get("ai_recommended_action", ""))
+        item["deterministic_match_status"] = deterministic_status
+        item["ai_match_status"] = ai_status
+        item["final_match_status"] = final_status
+        item["status_source"] = status_source
+        item["ai_reason"] = ai_reason
+        item["ai_recommended_action"] = ai_recommended_action
+        item["ai_confidence"] = ai_confidence
+        item["match_status"] = final_status
+        item["status_label"] = JUDGMENT_STATUS_LABELS.get(final_status, final_status)
+        if status_source == "gemini_assisted" and ai_reason:
+            item["gap_reason"] = ai_reason
+        if status_source == "gemini_assisted" and ai_recommended_action:
+            item["recommended_action"] = ai_recommended_action
+        else:
+            item["recommended_action"] = judgment_action_for_item(item, final_status, item.get("review_ready_citation_candidates") or [])
+        merged_items.append(
+            {
+                "id": item["requirement_input_id"],
+                "deterministic_match_status": deterministic_status,
+                "ai_match_status": ai_status,
+                "final_match_status": final_status,
+                "status_source": status_source,
+                "ai_reason": ai_reason,
+                "ai_recommended_action": ai_recommended_action,
+                "ai_confidence": item["ai_confidence"],
+            }
+        )
+    return {
+        **ai_judgment,
+        "items": merged_items,
+    }
+
+
 def build_judgment_run(conn: sqlite3.Connection, notice_id: int, corporation_id: int, top_k: int = 3) -> dict[str, Any] | None:
     notice = conn.execute("SELECT * FROM nara_notices WHERE id=?", (notice_id,)).fetchone()
     corporation = conn.execute("SELECT * FROM corporations WHERE id=?", (corporation_id,)).fetchone()
@@ -3551,14 +3890,14 @@ def build_judgment_run(conn: sqlite3.Connection, notice_id: int, corporation_id:
             actions.append(action)
             append_unique_text(required_documents, requirement.get("required_evidence_types") or [])
         if citation_status == "missing":
-            uncertainty_notes.append(f"{requirement['label']} / {requirement['required_value']}: 기준문서 citation 후보가 없습니다.")
+            uncertainty_notes.append(f"{requirement['label']} / {requirement['required_value']}: 기준문서 근거 후보가 없습니다.")
         elif citation_status == "weak_candidate":
             uncertainty_notes.append(
-                f"{requirement['label']} / {requirement['required_value']}: 기준문서 citation 후보 점수가 낮아 원문 검토가 필요합니다."
+                f"{requirement['label']} / {requirement['required_value']}: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다."
             )
         if basis_index_error:
             uncertainty_notes.append(
-                f"{requirement['label']} / {requirement['required_value']}: 기준문서 인덱스 오류로 검색 citation을 사용할 수 없습니다."
+                f"{requirement['label']} / {requirement['required_value']}: 기준문서 인덱스 오류로 검색 근거를 사용할 수 없습니다."
             )
         item = {
             "requirement_input_id": requirement["requirement_input_id"],
@@ -3589,31 +3928,33 @@ def build_judgment_run(conn: sqlite3.Connection, notice_id: int, corporation_id:
         }
         items.append(item)
 
-    counts = {status: 0 for status in JUDGMENT_STATUS_LABELS}
+    deterministic_summary = judgment_summary_from_items(items, cited_count)
+    ai_judgment = build_judgment_ai_assistance(
+        notice=notice,
+        corporation=corporation,
+        summary=deterministic_summary,
+        items=items,
+    )
+    ai_judgment = apply_judgment_ai_assistance(items, ai_judgment)
+
+    required_documents = []
+    actions = []
     for item in items:
-        counts[item["match_status"]] = counts.get(item["match_status"], 0) + 1
-    total = len(items)
-    citation_coverage = round(cited_count / total, 4) if total else 0
-    summary = {
-        "status": "review_ready",
-        "contract_version": PHASE3_CONTRACT_VERSION,
-        "requirement_count": total,
-        "matched_count": counts.get("matched", 0),
-        "missing_count": counts.get("missing", 0),
-        "uncertain_count": counts.get("uncertain", 0),
-        "needs_review_count": counts.get("needs_review", 0),
-        "not_applicable_count": counts.get("not_applicable", 0),
-        "citation_coverage": citation_coverage,
-        "note": "부족조건 중심 검토 결과입니다. 준비 상태를 확정하지 않습니다.",
-    }
+        if item["match_status"] in {"missing", "needs_review", "uncertain"}:
+            actions.append(user_display_copy(item.get("recommended_action")))
+            append_unique_text(required_documents, item.get("required_evidence_types") or [])
+
+    summary = judgment_summary_from_items(items, cited_count)
+    citation_coverage = summary["citation_coverage"]
     evidence_links = result_evidence_links(conn, corporation_id, items, include_basis=True)
     result = {
         "items": items,
         "preparation_guide": {
             "required_documents": required_documents,
-            "actions": _dedupe_text_items(actions),
-            "uncertainty_notes": _dedupe_text_items(uncertainty_notes),
+            "actions": _dedupe_text_items([user_display_copy(action) for action in actions]),
+            "uncertainty_notes": _dedupe_text_items([user_display_copy(note) for note in uncertainty_notes]),
         },
+        "ai_judgment": ai_judgment,
     }
     result["user_summary"] = build_user_summary_with_ai(
         mode="judgment",

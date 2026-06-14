@@ -5,9 +5,10 @@ import { api } from "../app/api";
 import type { NaraCollectionRun } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
 
-type NaraBusinessType = "all" | "construction" | "service" | "goods" | "etc";
+type NaraBusinessType = "" | "all" | "construction" | "service" | "goods" | "etc";
 
 const naraBusinessTypeOptions: Array<{ value: NaraBusinessType; label: string }> = [
+  { value: "", label: "업무 유형을 선택하세요" },
   { value: "all", label: "전체" },
   { value: "construction", label: "공사" },
   { value: "service", label: "용역" },
@@ -49,7 +50,7 @@ export function NaraCollectionRunsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [keywordFilter, setKeywordFilter] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [businessType, setBusinessType] = useState<NaraBusinessType>("all");
+  const [businessType, setBusinessType] = useState<NaraBusinessType>("");
   const [startDate, setStartDate] = useState(daysAgoIso(3));
   const [endDate, setEndDate] = useState(todayIso());
   const [pageSize, setPageSize] = useState("50");
@@ -98,7 +99,7 @@ export function NaraCollectionRunsPage() {
         try {
           const created = await api.createNaraCollectionRun({
             keyword,
-            business_type: businessType,
+            business_type: businessType || "all",
             start_date: startDate,
             end_date: endDate,
             page_size: Number(pageSize) || 50,
@@ -188,7 +189,7 @@ export function NaraCollectionRunsPage() {
           </div>
           <div className="toolbar">
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">전체 상태</option>
+              <option value="">상태를 선택하세요</option>
               <option value="completed">completed</option>
               <option value="partial_failed">partial_failed</option>
               <option value="failed">failed</option>

@@ -8272,3 +8272,103 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Removed contract draft quick actions from the judgment and comparison pages.
 - Reworked the notice requirement candidate modal to show requirement details inline instead of nested per-row source buttons.
 - Added a backend API regression test proving Gemini-configured judgment runs store the Gemini user summary payload.
+
+## 추가 업데이트 (2026-06-14) - 드롭다운 기본값, 판단 문구, 금액 표시, 이력 상세 상태 수정
+
+### 한국어 기록
+- 업무 선택형 드롭다운의 빈 값을 `공고를 선택하세요`, `법인을 선택하세요`, `기준문서를 선택하세요`, `상태를 선택하세요`, `작업 유형을 선택하세요`처럼 미선택 안내 문구로 통일했습니다.
+- 나라장터 업무유형은 화면 기본값을 미선택으로 두되, 실제 API 요청에서는 기존 운영 기본값인 `all`로 안전하게 변환되도록 유지했습니다.
+- 증빙자료 업로드의 법인 연결 빈 값은 실제 동작 의미에 맞춰 `새로운 법인 생성 및 추가`로 유지했습니다.
+- 사용자 화면, fallback 요약, Gemini 요약 프롬프트/정규화, 판단 action 문구에서 `보강 필요`, `보강할`, `보강하세요` 표현이 다시 노출되지 않도록 `준비 필요`, `준비할 항목`, `자료를 보완하세요`, `확인 필요` 중심으로 정리했습니다.
+- 공고 요구조건 후보 생성 단계에서 추정가격/예산금액/기초금액 숫자를 `36,190,000원` 형태로 정규화하고, 프론트 상세/요약 출력에서도 방어적으로 한 번 더 금액 포맷을 적용했습니다.
+- 판단 실행 이력에서 과거 결과를 클릭해 상세를 보더라도 메인 `판단 결과` 영역이 활성화되지 않도록 `historyDetailRun` 상태를 분리했습니다.
+- 프론트 계약 테스트에는 드롭다운 기본값, 제거 문구 재발 방지, 금액 포맷 helper, 이력 상세 상태 분리를 검증하는 케이스를 추가했습니다.
+- API 테스트에는 금액 요구조건 후보의 원화 포맷, Gemini 프롬프트/저장 요약, fallback 요약 내 제거 문구 재발 방지 검증을 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 22개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 109개 통과
+- `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Normalized business dropdown empty states to explicit Korean selection prompts while preserving system defaults such as Nara `all` at API-request time.
+- Kept the corporation evidence blank corporation option as `새로운 법인 생성 및 추가` because the empty value means creating a new corporation profile.
+- Removed user-facing reinforcement wording from frontend display copy, backend fallback summaries, Gemini prompts, and judgment action text.
+- Added Korean won formatting for notice requirement amount candidates at backend generation time and defensive frontend render time.
+- Split judgment history detail state from the active run so viewing a historical run no longer populates the main judgment result panel.
+- Added frontend contract and API regression coverage for dropdown prompts, removed copy, money formatting, Gemini/fallback prompt safety, and history detail state isolation.
+
+## 추가 업데이트 (2026-06-14) - Gemini 보수적 판단 병합과 판단 UX 안정화
+
+### 한국어 기록
+- `판단 검토` 실행에서 Gemini가 단순 사후 요약만 하던 구조를 보강해, 조건별 판단 보조 단계에 참여하도록 수정했습니다.
+- 병합 정책은 `conservative_merge`로 고정했습니다. 규칙 기반 판단을 기본값으로 유지하고, Gemini는 `matched -> needs_review` 같은 보수적 하향 조정이나 `missing/needs_review` 사유 보완에만 반영됩니다.
+- Gemini가 근거 없이 `missing -> matched`를 제안해도 최종 `match_status`는 `missing`으로 유지되도록 막았습니다.
+- 판단 결과 JSON에 `result.ai_judgment`를 추가해 `generated_by`, `model`, `policy`, `fallback_reason`, 조건별 `deterministic_match_status`, `ai_match_status`, `final_match_status`, `status_source`, `ai_reason`, `ai_recommended_action`, `ai_confidence`를 저장하도록 했습니다.
+- Gemini 판단 보조 응답이 `[null]`, 잘못된 status, 숫자 필드처럼 잘못된 shape를 반환해도 기존 규칙 기반 판단으로 안전하게 fallback하도록 검증/정규화했습니다.
+- 사용자 요약의 `top_priority_actions`, `missing_groups`, `item_explanations`, `risk_notes`도 내부 원소 타입을 검증하고, 잘못된 action shape는 fallback action으로 대체하도록 보강했습니다.
+- 우선 준비 항목의 관련 조건 ID를 그룹당 5개로 자르지 않고 전체 포함하도록 변경했습니다.
+- 프론트 판단 상세에는 Gemini 판단 보조 반영 여부와 AI 사유/다음 행동을 안전하게 표시하고, 관련 조건 목록은 카드 안에서 스크롤되도록 정리했습니다.
+- 사용자 표시 모델에서 `citation_summary`는 `basis_summary`로 바꿔 불필요한 영문 용어가 요약 JSON/화면에 새지 않게 정리했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 23개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 113개 통과
+- `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Added Gemini-assisted judgment as a conservative merge step before final judgment result persistence.
+- Stored `result.ai_judgment` with model metadata, policy, fallback reason, and per-item deterministic/AI/final status fields.
+- Blocked unsupported AI-only `missing -> matched` promotion while allowing conservative downgrades such as `matched -> needs_review`.
+- Added strict-ish sanitization for Gemini judgment payloads and user summary nested action/group/explanation/note shapes.
+- Preserved deterministic rule judgment as the fallback path when Gemini is unconfigured, fails, or returns invalid item shapes.
+- Removed the five-related-requirement cap from fallback priority actions and removed the frontend three-action cap.
+- Added frontend support for AI-assisted judgment metadata and scrollable full related-condition lists.
+
+## 추가 업데이트 (2026-06-15) - 프로젝트 관리 목록 UX 깨짐 수정
+
+### 한국어 기록
+- `프로젝트 관리` 페이지의 `운영 중인 프로젝트` 제목이 검색창과 같은 flex 줄에서 폭을 빼앗겨 한 글자 단위로 줄바꿈되는 문제를 확인했습니다.
+- 프로젝트 목록 카드에 `project-list-panel`, `project-list-heading`, `project-search-field` 전용 클래스를 추가해 제목 영역과 검색창을 grid 기반 toolbar로 분리했습니다.
+- 좁은 화면에서는 프로젝트 목록 heading이 한 열로 내려가도록 760px 반응형 규칙을 추가했습니다.
+- 프로젝트 카드의 `편집`, `프로젝트 삭제` 버튼 영역을 `project-card-actions`로 분리하고, 기존 삭제 버튼의 상단 여백을 전용 action row 안에서는 제거해 버튼과 도움말 아이콘 정렬이 깨지지 않게 했습니다.
+- 같은 UX 깨짐이 재발하지 않도록 `test_projects_page_uses_stable_list_layout_for_search_and_actions` 프론트 계약 테스트를 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts.FrontendContractTests.test_projects_page_uses_stable_list_layout_for_search_and_actions -v`: 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 24개 통과
+- `npm run build`: 통과
+
+### AI / Engineering Version (English)
+- Fixed the Projects page list heading layout where the title and search input shared a fragile flex row and caused Korean title wrapping.
+- Added Projects-page-specific layout hooks for the list panel, heading, search field, and card actions.
+- Switched the project list toolbar to a two-column grid with a 760px single-column fallback.
+- Isolated project card actions so delete-button spacing and adjacent help triggers stay aligned.
+- Added a frontend contract test covering the stable project-list layout and responsive CSS hooks.
+
+## 추가 업데이트 (2026-06-15) - 판단 상태 UX 명확화, NAV 색상 분리, Gemini 70% 가중 판단 반영
+
+### 한국어 기록
+- `판단 검토`의 `판단 결과` 상단에 작게 노출되던 요약 상태 배지를 제거하고, `판단 상태` 전용 박스로 변경했습니다.
+- 판단 상태는 `준비 필요`, `사람 확인 필요`, `대체로 준비됨`, `검토 필요`를 큰 제목과 설명 문장으로 함께 보여주도록 정리했습니다.
+- 기존 저장 결과나 Gemini 응답에 남아 있을 수 있는 `보강 필요`, `보강할`, `보강하세요` 표현은 `판단 검토`와 `부족조건 미리보기` 화면 표시 직전에 각각 `준비 필요`, `준비할`, `자료를 보완하세요`로 정규화되도록 보강했습니다.
+- 왼쪽 NAV의 `공고 업무`는 하늘색 계열, `기준문서 / RAG`는 초록색 계열로 분리해 두 메뉴의 배경색이 겹쳐 보이지 않게 수정했습니다.
+- Gemini 조건별 판단 병합 정책을 `gemini_weighted_70_conservative_merge`로 변경했습니다.
+- Gemini 판단 보조 응답의 `confidence`가 0.70 이상이면 조건별 최종 상태가 Gemini 제안을 우선 반영하도록 변경했습니다.
+- Gemini가 미설정이거나 실패하거나 confidence가 낮으면 기존 규칙 기반 판단 또는 보수 병합으로 fallback합니다.
+- 판단 결과 JSON에는 `ai_weight: 0.7`, `minimum_ai_confidence: 0.7`, `status_source: gemini_weighted`를 남겨 운영자가 어떤 기준으로 상태가 정해졌는지 확인할 수 있게 했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 25개 통과
+- `py -3.13 -m unittest tests.test_api_flows -v`: 113개 통과
+- `npm run build`: 통과
+- `rg -n '보강 필요|보강할|보강하세요' frontend\src backend\app`: 실제 출력 경로 매칭 없음
+
+### AI / Engineering Version (English)
+- Replaced the tiny judgment summary status badge with a dedicated `판단 상태` status panel.
+- Added explicit user-facing status labels and explanations for ready, needs preparation, needs human review, and neutral review states.
+- Normalized legacy reinforcement wording at render time for both judgment review and notice comparison pages.
+- Split sidebar notice and RAG section colors into visibly distinct cyan and green tones.
+- Changed judgment AI policy to `gemini_weighted_70_conservative_merge`.
+- When Gemini item confidence is at least 0.70, the final item status follows the Gemini proposal and stores `status_source: gemini_weighted`.
+- Preserved deterministic and conservative fallback behavior for unconfigured AI, failed AI, invalid AI, or low-confidence AI responses.

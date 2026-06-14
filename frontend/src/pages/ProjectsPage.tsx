@@ -34,9 +34,6 @@ export function ProjectsPage() {
       .listCorporations()
       .then((data) => {
         setCorporations(data);
-        if (!corporationId && data.length) {
-          setCorporationId(data[0].id);
-        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : "법인 목록을 불러오지 못했습니다."));
   };
@@ -165,7 +162,8 @@ export function ProjectsPage() {
 
                 <label className="field">
                   <span>연결 법인</span>
-                  <select value={corporationId} onChange={(e) => setCorporationId(Number(e.target.value))} required>
+                  <select value={corporationId} onChange={(e) => setCorporationId(e.target.value ? Number(e.target.value) : "")} required>
+                    <option value="">법인을 선택하세요</option>
                     {corporations.map((corp) => (
                       <option key={corp.id} value={corp.id}>
                         {corp.name}
@@ -210,18 +208,21 @@ export function ProjectsPage() {
         </div>
       ) : null}
 
-      <div className="surface-card">
-        <div className="section-heading">
+      <div className="surface-card project-list-panel">
+        <div className="section-heading project-list-heading">
           <div>
             <p className="eyebrow">프로젝트 목록</p>
             <h3>운영 중인 프로젝트</h3>
           </div>
-          <input
-            className="search-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="프로젝트명, 법인명, 상태 검색"
-          />
+          <label className="project-search-field">
+            <input
+              className="search-input"
+              aria-label="프로젝트 검색"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="프로젝트명, 법인명, 상태 검색"
+            />
+          </label>
         </div>
 
         {filtered.length === 0 ? (
@@ -242,7 +243,7 @@ export function ProjectsPage() {
                 </div>
                 <p className="project-meta">연결 법인: {corporationMap[item.corporation_id]?.name ?? `#${item.corporation_id}`}</p>
                 <p className="project-copy">{item.notes || "아직 프로젝트 메모가 없습니다."}</p>
-                <div className="row">
+                <div className="project-card-actions">
                   <button type="button" className="button-secondary" onClick={() => startEdit(item)}>
                     편집
                   </button>
@@ -286,6 +287,7 @@ export function ProjectsPage() {
                 onChange={(e) => setEditForm((prev) => ({ ...prev, corporation_id: Number(e.target.value) }))}
                 required
               >
+                <option value="">법인을 선택하세요</option>
                 {corporations.map((corp) => (
                   <option key={corp.id} value={corp.id}>
                     {corp.name}
@@ -300,6 +302,7 @@ export function ProjectsPage() {
                 value={editForm.status}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value }))}
               >
+                <option value="">상태를 선택하세요</option>
                 <option value="active">active</option>
                 <option value="paused">paused</option>
                 <option value="archived">archived</option>

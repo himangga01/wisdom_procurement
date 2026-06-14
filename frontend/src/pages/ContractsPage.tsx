@@ -6,7 +6,7 @@ import type { ContractCustomFields, ContractDocument, ContractPreview, Corporati
 import { useWorkOverlay } from "../app/workOverlay";
 
 const reviewStatusOptions = [
-  ["", "전체"],
+  ["", "상태를 선택하세요"],
   ["draft", "초안"],
   ["needs_review", "검토 필요"],
   ["approved", "승인"],
@@ -97,8 +97,6 @@ export function ContractsPage() {
     setNotices(noticeList);
     setCorporations(corporationList);
     setJudgmentRuns(runList);
-    if (!selectedNoticeId && noticeList.length) setSelectedNoticeId(String(noticeList[0].id));
-    if (!selectedCorporationId && corporationList.length) setSelectedCorporationId(String(corporationList[0].id));
   };
 
   useEffect(() => {
@@ -234,7 +232,7 @@ export function ContractsPage() {
                 data-demo-id="demo-contract-notice-select"
                 onChange={(event) => setSelectedNoticeId(event.target.value)}
               >
-                <option value="">공고 선택</option>
+                <option value="">공고를 선택하세요</option>
                 {notices.map((notice) => (
                   <option key={notice.id} value={notice.id}>
                     {notice.bid_ntce_nm || "제목 없음"} / {notice.bid_ntce_no}
@@ -249,7 +247,7 @@ export function ContractsPage() {
                 data-demo-id="demo-contract-corporation-select"
                 onChange={(event) => setSelectedCorporationId(event.target.value)}
               >
-                <option value="">법인 선택</option>
+                <option value="">법인을 선택하세요</option>
                 {corporations.map((corporation) => (
                   <option key={corporation.id} value={corporation.id}>
                     {corporation.name}
@@ -264,7 +262,7 @@ export function ContractsPage() {
                 data-demo-id="demo-contract-judgment-select"
                 onChange={(event) => setSelectedJudgmentRunId(event.target.value)}
               >
-                <option value="">선택 안 함</option>
+                <option value="">판단 검토 이력을 선택하세요</option>
                 {compatibleJudgmentRuns.map((run) => (
                   <option key={run.id} value={run.id}>
                     #{run.id} / 부족 {run.missing_count} / 확인 {run.needs_review_count}
