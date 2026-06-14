@@ -135,23 +135,47 @@ function statusSourceLabel(source?: string) {
   return "규칙 기반 판단";
 }
 
-function judgmentResultStatus(summary: UserSummary) {
-  const headline = judgmentDisplayCopy(summary.headline_status || "");
-  if (headline.includes("준비 필요")) {
+function judgmentResultStatus(summary: UserSummary, runSummary?: JudgmentRun["summary"] | null) {
+  const missingCount = runSummary?.missing_count ?? 0;
+  const reviewCount = (runSummary?.needs_review_count ?? 0) + (runSummary?.uncertain_count ?? 0);
+  const matchedCount = runSummary?.matched_count ?? 0;
+  if (runSummary && missingCount > 0) {
     return {
       label: "준비 필요",
       tone: "pending",
       description: "부족한 조건이 있어 제출 전 자료 준비와 법인 정보 보완이 필요합니다.",
     };
   }
-  if (headline.includes("사람 확인")) {
+  if (runSummary && reviewCount > 0) {
     return {
       label: "사람 확인 필요",
       tone: "review",
       description: "자동 판단만으로 결론내리기 어려운 조건이 있어 공고 원문과 증빙을 함께 확인해야 합니다.",
     };
   }
-  if (headline.includes("준비됨") || headline.includes("준비 확인")) {
+  if (runSummary && matchedCount > 0) {
+    return {
+      label: "대체로 준비됨",
+      tone: "ready",
+      description: "자동 검토 기준으로 큰 부족 항목은 적지만 제출 전 근거와 원문을 확인하세요.",
+    };
+  }
+  const headline = judgmentDisplayCopy(summary.headline_status || "");
+  if (/준비 필요/.test(headline)) {
+    return {
+      label: "준비 필요",
+      tone: "pending",
+      description: "부족한 조건이 있어 제출 전 자료 준비와 법인 정보 보완이 필요합니다.",
+    };
+  }
+  if (/사람 확인/.test(headline)) {
+    return {
+      label: "사람 확인 필요",
+      tone: "review",
+      description: "자동 판단만으로 결론내리기 어려운 조건이 있어 공고 원문과 증빙을 함께 확인해야 합니다.",
+    };
+  }
+  if (/준비됨|준비 확인/.test(headline)) {
     return {
       label: "대체로 준비됨",
       tone: "ready",
@@ -332,8 +356,8 @@ function AppModal({
   );
 }
 
-function SummaryPanel({ summary }: { summary: UserSummary }) {
-  const resultStatus = judgmentResultStatus(summary);
+function SummaryPanel({ summary, runSummary }: { summary: UserSummary; runSummary?: JudgmentRun["summary"] | null }) {
+  const resultStatus = judgmentResultStatus(summary, runSummary);
   return (
     <div className="result-summary-panel">
       <div className={`judgment-result-status judgment-result-status--${resultStatus.tone}`}>
@@ -689,7 +713,7 @@ export function JudgmentRunsPage() {
       </div>
 
       {activeRun ? (
-        <SummaryPanel summary={userSummary} />
+        <SummaryPanel summary={userSummary} runSummary={activeRun?.summary ?? null} />
       ) : (
         <div className="empty-state empty-state--info">
           <strong>아직 판단 검토 결과가 없습니다.</strong>
@@ -797,7 +821,7 @@ export function JudgmentRunsPage() {
             </button>
           </div>
         ) : null}
-        {detailRun ? <SummaryPanel summary={detailSummary} /> : null}
+        {detailRun ? <SummaryPanel summary={detailSummary} runSummary={detailRun.summary} /> : null}
         <div className="comparison-metrics">
           <span>준비 확인 {detailRun?.summary.matched_count ?? 0}</span>
           <span>준비 필요 {detailRun?.summary.missing_count ?? 0}</span>

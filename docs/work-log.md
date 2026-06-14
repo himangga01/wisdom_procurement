@@ -8372,3 +8372,36 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Changed judgment AI policy to `gemini_weighted_70_conservative_merge`.
 - When Gemini item confidence is at least 0.70, the final item status follows the Gemini proposal and stores `status_source: gemini_weighted`.
 - Preserved deterministic and conservative fallback behavior for unconfigured AI, failed AI, invalid AI, or low-confidence AI responses.
+
+## 추가 업데이트 (2026-06-15) - Gemini 판단 병합 근거 게이트와 결과 UX 안정화
+
+### 한국어 기록
+- 코드리뷰 후속 수정에서 `외부 첨부 URL 검증의 DNS rebinding/TOCTOU 한계` 항목은 사용자 지시에 따라 이번 수정 범위에서 제외했습니다.
+- 수정 계획은 다음 순서로 잡았습니다.
+  1. Gemini 70% 가중 판단이 로컬 근거 없이 `matched`로 승격되는 경로 차단
+  2. `gemini_weighted` 상태에서도 Gemini 사유와 다음 행동이 결과 JSON에 보존되도록 수정
+  3. AI JSON 호출에 명시적 request timeout 추가
+  4. 판단 검토 상태 패널을 Gemini 요약 문구가 아니라 실제 판단 카운트 기준으로 계산
+  5. 부족조건 미리보기 상태 표시도 비교 카운트 기준의 명확한 패널로 교체
+  6. `UserSummary.item_explanations` 타입의 `basis_summary` / `citation_summary` 호환성 정리
+- 백엔드 판단 병합 정책을 보강했습니다. Gemini confidence가 0.70 이상이어도, deterministic 판단이나 검토 가능한 로컬 근거가 없으면 `missing/needs_review -> matched` 승격을 막고 `needs_review`로 남깁니다.
+- `gemini_weighted`로 상태가 바뀐 항목도 `gap_reason`, `recommended_action`에 Gemini가 제안한 사유와 행동을 반영하도록 수정했습니다.
+- `AI_REQUEST_TIMEOUT_SECONDS` 설정값을 추가하고, Gemini 클라이언트에는 `HttpOptions(timeout=...)`, OpenAI 클라이언트에는 `timeout=...`을 적용했습니다.
+- 판단 검토 페이지의 상태 패널은 `JudgmentRun.summary`의 `missing_count`, `needs_review_count`, `uncertain_count`, `matched_count`를 우선 사용합니다. Gemini 요약 문장이 틀리거나 오래되어도 상태 배지가 흔들리지 않게 했습니다.
+- 부족조건 미리보기 페이지도 기존 작은 `status-badge` 대신 `준비 필요 / 사람 확인 필요 / 대체로 준비됨 / 검토 필요` 상태 패널을 사용하고, 판단 기준은 실제 비교 카운트로 맞췄습니다.
+- 프론트 타입에는 현재 백엔드 필드인 `basis_summary`를 기준으로 두고, 기존 저장 데이터나 과거 응답 호환을 위해 `citation_summary?: string`을 optional로 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_api_flows -v`: 114개 통과. 기존 테스트 환경에서 `ResourceWarning` 1건이 출력됐지만 실패는 없었습니다.
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 25개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+
+### AI / Engineering Version (English)
+- Excluded the external attachment URL DNS rebinding/TOCTOU limitation from this change set per user instruction.
+- Added a local-evidence gate to the Gemini 70% weighted judgment merge so high-confidence AI cannot promote `missing/needs_review` to `matched` without deterministic or reviewable local evidence.
+- Preserved Gemini reason/action fields for both `gemini_assisted` and `gemini_weighted` result sources.
+- Added explicit AI request timeout configuration through `AI_REQUEST_TIMEOUT_SECONDS`, Gemini `HttpOptions`, and OpenAI client `timeout`.
+- Changed the judgment result status panel to prefer canonical `JudgmentRun.summary` counts over the Gemini-generated headline.
+- Replaced the notice comparison summary headline badge with a count-derived status panel.
+- Updated the frontend `UserSummary.item_explanations` type to support canonical `basis_summary` plus optional legacy `citation_summary`.

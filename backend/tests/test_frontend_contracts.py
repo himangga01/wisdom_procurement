@@ -636,8 +636,15 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("historyDetailRun", judgment)
         self.assertIn("statusSourceLabel", judgment)
         self.assertIn("item.ai_reason", judgment)
+        self.assertIn('runSummary?: JudgmentRun["summary"] | null', judgment)
+        self.assertIn("judgmentResultStatus(summary, runSummary)", judgment)
+        self.assertIn("runSummary?.missing_count", judgment)
+        self.assertNotIn("headline.includes", judgment)
         self.assertIn("priority-related-list--scroll", judgment)
         self.assertNotIn("top_priority_actions.slice(0, 3)", judgment)
+        self.assertIn("comparisonResultStatus(comparison)", comparison)
+        self.assertIn("comparison?.possibly_missing_count", comparison)
+        self.assertNotIn('status-badge status-badge--pending">{summary.headline_status}', comparison)
         requirements_modal = comparison.split('title="공고 요구조건 후보"', 1)[1].split('title="법인 비교 프로필"', 1)[0]
         self.assertNotIn("공고 요구조건 보기", requirements_modal)
 
@@ -664,6 +671,8 @@ class FrontendContractTests(unittest.TestCase):
             "ai_recommended_action: string;",
             "ai_confidence: number;",
             "ai_judgment?: JudgmentAiJudgment;",
+            "basis_summary: string;",
+            "citation_summary?: string;",
         ]:
             self.assertIn(token, types)
 

@@ -738,6 +738,7 @@ export type UserSummary = {
       next_action: string;
       evidence_hint: string;
       basis_summary: string;
+      citation_summary?: string;
     }
   >;
   risk_notes: string[];

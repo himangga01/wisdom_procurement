@@ -4313,11 +4313,23 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(region_item["ai_match_status"], "needs_review")
         self.assertEqual(region_item["match_status"], "needs_review")
         self.assertEqual(region_item["status_source"], "gemini_weighted")
+        self.assertEqual(region_item["gap_reason"], "지역 조건은 공고 원문 확인이 필요합니다.")
+        self.assertEqual(region_item["recommended_action"], "공고 원문과 법인 주소를 함께 확인하세요.")
         self.assertEqual(license_item["deterministic_match_status"], "missing")
         self.assertEqual(license_item["ai_match_status"], "matched")
-        self.assertEqual(license_item["match_status"], "matched")
-        self.assertEqual(license_item["status_source"], "gemini_weighted")
+        self.assertEqual(license_item["match_status"], "needs_review")
+        self.assertEqual(license_item["status_source"], "gemini_assisted")
+        self.assertEqual(license_item["gap_reason"], "Gemini가 면허 보유처럼 보인다고 제안했습니다.")
+        self.assertEqual(license_item["recommended_action"], "면허 증빙을 검토하세요.")
         self.assertNotIn("citation", json.dumps(payload["result"]["ai_judgment"], ensure_ascii=False))
+
+    def test_ai_json_generation_uses_explicit_request_timeout_contract(self) -> None:
+        source = Path(runtime.__file__).read_text(encoding="utf-8")
+
+        self.assertIn("AI_REQUEST_TIMEOUT_SECONDS", source)
+        self.assertIn("timeout=AI_REQUEST_TIMEOUT_SECONDS", source)
+        self.assertIn("build_gemini_http_options()", source)
+        self.assertIn("http_options=build_gemini_http_options()", source)
 
     def test_judgment_run_invalid_gemini_assistance_falls_back_safely(self) -> None:
         self.upload_basis_document(

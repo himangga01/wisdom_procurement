@@ -219,6 +219,38 @@ function comparisonEvidenceLinks(comparison: NoticeCorporationComparison | null,
   return links;
 }
 
+function comparisonResultStatus(comparison?: NoticeCorporationComparison | null) {
+  const gapCount = (comparison?.possibly_missing_count ?? 0) + (comparison?.not_found_count ?? 0);
+  const reviewCount = comparison?.needs_review_count ?? 0;
+  const preparedCount = comparison?.prepared_count ?? 0;
+  if (gapCount > 0) {
+    return {
+      label: "준비 필요",
+      tone: "pending",
+      description: "공고 요구조건과 비교했을 때 준비하거나 등록해야 할 법인 자료가 있습니다.",
+    };
+  }
+  if (reviewCount > 0) {
+    return {
+      label: "사람 확인 필요",
+      tone: "review",
+      description: "자동 비교만으로 확정하기 어려운 조건이 있어 공고 원문과 증빙을 함께 확인해야 합니다.",
+    };
+  }
+  if (preparedCount > 0) {
+    return {
+      label: "대체로 준비됨",
+      tone: "ready",
+      description: "현재 법인 정보와 일치하는 조건이 확인되었습니다. 제출 전 원문과 근거를 확인하세요.",
+    };
+  }
+  return {
+    label: "검토 필요",
+    tone: "muted",
+    description: "공고와 법인을 선택한 뒤 부족조건 미리보기를 실행하세요.",
+  };
+}
+
 function AppModal({
   title,
   open,
@@ -257,11 +289,25 @@ function AppModal({
   );
 }
 
-function SummaryPanel({ summary, onOpenDetail }: { summary: UserSummary; onOpenDetail?: () => void }) {
+function SummaryPanel({
+  summary,
+  comparison,
+  onOpenDetail,
+}: {
+  summary: UserSummary;
+  comparison?: NoticeCorporationComparison | null;
+  onOpenDetail?: () => void;
+}) {
+  const resultStatus = comparisonResultStatus(comparison);
   return (
     <div className="result-summary-panel">
-      <span className="status-badge status-badge--pending">{summary.headline_status}</span>
-      <h3>요약</h3>
+      <div className={`judgment-result-status judgment-result-status--${resultStatus.tone}`}>
+        <span>미리보기 상태</span>
+        <strong>{resultStatus.label}</strong>
+        <small>{resultStatus.description}</small>
+      </div>
+      <h3>비교 결과</h3>
+      <span className="summary-section-label">비교 요약</span>
       <p>{summary.plain_summary}</p>
       {summary.generated_by ? <small>정리 방식: {summary.generated_by === "fallback" ? "기본 요약" : "AI 요약"}</small> : null}
       {onOpenDetail ? (
@@ -647,7 +693,7 @@ export function NoticeComparisonPage() {
       </div>
 
       {comparison ? (
-        <SummaryPanel summary={userSummary} onOpenDetail={() => setModal("detail")} />
+        <SummaryPanel summary={userSummary} comparison={comparison} onOpenDetail={() => setModal("detail")} />
       ) : (
         <div className="empty-state empty-state--info">
           <strong>아직 비교 결과가 없습니다.</strong>
@@ -710,7 +756,7 @@ export function NoticeComparisonPage() {
             </button>
           </div>
         ) : null}
-        <SummaryPanel summary={userSummary} />
+        <SummaryPanel summary={userSummary} comparison={comparison} />
         {userSummary.top_priority_actions.length ? (
           <div className="priority-action-list">
             {userSummary.top_priority_actions.map((action) => (

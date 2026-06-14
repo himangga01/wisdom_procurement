@@ -121,6 +121,7 @@ OPENAI_MODEL_PRIMARY = os.getenv("OPENAI_MODEL_PRIMARY", "gpt-5.4-mini")
 OPENAI_MODEL_SECONDARY = os.getenv("OPENAI_MODEL_SECONDARY", "gpt-5.4")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL_PRIMARY = os.getenv("GEMINI_MODEL_PRIMARY", "gemini-2.5-flash")
+AI_REQUEST_TIMEOUT_SECONDS = max(5, parse_int(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60"), 60))
 NARA_API_SERVICE_KEY = os.getenv("NARA_API_SERVICE_KEY", "")
 NARA_BID_PUBLIC_API_BASE_URL = os.getenv(
     "NARA_BID_PUBLIC_API_BASE_URL",
@@ -3756,7 +3757,12 @@ def conservative_merge_judgment_status(
 ) -> tuple[str, str]:
     if ai_status not in JUDGMENT_AI_ALLOWED_STATUSES:
         return deterministic_status, "fallback"
+    has_local_match_evidence = deterministic_status == "matched" or (
+        bool(clean_text(matched_value)) and bool(review_ready_citations)
+    )
     if ai_confidence >= JUDGMENT_AI_MINIMUM_CONFIDENCE:
+        if ai_status == "matched" and not has_local_match_evidence:
+            return "needs_review", "gemini_assisted"
         return ai_status, "gemini_weighted"
     if ai_confidence < JUDGMENT_AI_REVIEW_CONFIDENCE:
         return deterministic_status, "deterministic"
@@ -3805,9 +3811,10 @@ def apply_judgment_ai_assistance(items: list[dict[str, Any]], ai_judgment: dict[
         item["ai_confidence"] = ai_confidence
         item["match_status"] = final_status
         item["status_label"] = JUDGMENT_STATUS_LABELS.get(final_status, final_status)
-        if status_source == "gemini_assisted" and ai_reason:
+        ai_influenced = status_source in {"gemini_assisted", "gemini_weighted"}
+        if ai_influenced and ai_reason:
             item["gap_reason"] = ai_reason
-        if status_source == "gemini_assisted" and ai_recommended_action:
+        if ai_influenced and ai_recommended_action:
             item["recommended_action"] = ai_recommended_action
         else:
             item["recommended_action"] = judgment_action_for_item(item, final_status, item.get("review_ready_citation_candidates") or [])
@@ -4293,6 +4300,12 @@ def parse_json_object(raw_text: str) -> dict:
     return payload
 
 
+def build_gemini_http_options() -> Any:
+    from google.genai import types as genai_types
+
+    return genai_types.HttpOptions(timeout=AI_REQUEST_TIMEOUT_SECONDS * 1000)
+
+
 def generate_json_with_ai(prompt: str, selection: dict) -> tuple[dict, dict]:
     provider = selection["provider"]
     model = selection["model"]
@@ -4302,7 +4315,7 @@ def generate_json_with_ai(prompt: str, selection: dict) -> tuple[dict, dict]:
     if provider == "gemini":
         from google import genai
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=GEMINI_API_KEY, http_options=build_gemini_http_options())
         response = client.models.generate_content(
             model=model,
             contents=prompt,
@@ -4313,7 +4326,7 @@ def generate_json_with_ai(prompt: str, selection: dict) -> tuple[dict, dict]:
     if provider == "openai":
         from openai import OpenAI
 
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=OPENAI_API_KEY, timeout=AI_REQUEST_TIMEOUT_SECONDS)
         response = client.responses.create(
             model=model,
             input=prompt,
@@ -5013,7 +5026,7 @@ def summarize_with_openai(text: str, model: str | None = None) -> tuple[dict, st
     from openai import OpenAI
 
     model_name = model or OPENAI_MODEL_PRIMARY
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = OpenAI(api_key=OPENAI_API_KEY, timeout=AI_REQUEST_TIMEOUT_SECONDS)
     resp = client.responses.create(
         model=model_name,
         input=[
@@ -5035,7 +5048,7 @@ def summarize_with_gemini(text: str, model: str | None = None) -> tuple[dict, st
     from google import genai
 
     model_name = model or GEMINI_MODEL_PRIMARY
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options=build_gemini_http_options())
     response = client.models.generate_content(
         model=model_name,
         contents=build_summary_prompt(text),
