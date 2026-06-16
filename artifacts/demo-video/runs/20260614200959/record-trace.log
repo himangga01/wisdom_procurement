@@ -1,0 +1,30 @@
+[2026-06-14T20:10:43.827Z] data-ready seed=20260614200959
+[2026-06-14T20:10:44.243Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=full-workflow-demo
+[2026-06-14T20:10:48.006Z] sidebar-click sidebar-basis-documents
+[2026-06-14T20:10:59.303Z] scene basis-documents: interactive navigation done
+[2026-06-14T20:11:00.558Z] scene basis-documents: overlay start
+[2026-06-14T20:11:00.561Z] scene basis-documents: overlay done
+[2026-06-14T20:11:00.564Z] scene basis-documents: text checks done
+[2026-06-14T20:11:07.069Z] scene basis-documents: screenshot start
+[2026-06-14T20:11:07.154Z] scene basis-documents: screenshot done
+[2026-06-14T20:11:07.154Z] scene basis-documents: captured
+[2026-06-14T20:11:07.155Z] scene notice-comparison: open http://127.0.0.1:5199/notice-comparison mode=full-workflow-demo
+[2026-06-14T20:11:09.344Z] sidebar-click sidebar-notice-comparison
+[2026-06-14T20:11:28.263Z] scene notice-comparison: interactive navigation done
+[2026-06-14T20:11:29.515Z] scene notice-comparison: overlay start
+[2026-06-14T20:11:29.521Z] scene notice-comparison: overlay done
+[2026-06-14T20:11:29.524Z] scene notice-comparison: text checks done
+[2026-06-14T20:11:35.127Z] scene notice-comparison: screenshot start
+[2026-06-14T20:11:35.199Z] scene notice-comparison: screenshot done
+[2026-06-14T20:11:35.200Z] scene notice-comparison: captured
+[2026-06-14T20:11:35.200Z] scene judgment-runs: open http://127.0.0.1:5199/judgment-runs mode=full-workflow-demo
+[2026-06-14T20:11:37.355Z] sidebar-click sidebar-judgment-runs
+[2026-06-14T20:11:54.961Z] scene judgment-runs: interactive navigation done
+[2026-06-14T20:11:56.225Z] scene judgment-runs: overlay start
+[2026-06-14T20:11:56.228Z] scene judgment-runs: overlay done
+[2026-06-14T20:11:56.231Z] scene judgment-runs: text checks done
+[2026-06-14T20:12:02.439Z] scene judgment-runs: screenshot start
+[2026-06-14T20:12:02.563Z] scene judgment-runs: screenshot done
+[2026-06-14T20:12:02.564Z] scene judgment-runs: captured
+[2026-06-14T20:12:02.564Z] browser close start
+[2026-06-14T20:12:03.558Z] browser close done

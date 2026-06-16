@@ -1,0 +1,30 @@
+[2026-06-14T20:13:34.145Z] data-ready seed=20260614201249
+[2026-06-14T20:13:34.584Z] scene contracts: open http://127.0.0.1:5199/contracts?notice_id=41&corporation_id=45&judgment_run_id=23 mode=full-workflow-demo
+[2026-06-14T20:13:49.516Z] contract download captured: contract-22-제품-시연용-정보통신-용역-공고-20260614201249-계약서-초안.docx
+[2026-06-14T20:13:49.518Z] scene contracts: interactive navigation done
+[2026-06-14T20:13:50.777Z] scene contracts: overlay start
+[2026-06-14T20:13:50.783Z] scene contracts: overlay done
+[2026-06-14T20:13:50.787Z] scene contracts: text checks done
+[2026-06-14T20:13:56.999Z] scene contracts: screenshot start
+[2026-06-14T20:13:57.079Z] scene contracts: screenshot done
+[2026-06-14T20:13:57.080Z] scene contracts: captured
+[2026-06-14T20:13:57.080Z] scene operations: open http://127.0.0.1:5199/operations mode=full-workflow-demo
+[2026-06-14T20:13:59.238Z] sidebar-click sidebar-operations
+[2026-06-14T20:14:00.190Z] scene operations: interactive navigation done
+[2026-06-14T20:14:01.445Z] scene operations: overlay start
+[2026-06-14T20:14:01.449Z] scene operations: overlay done
+[2026-06-14T20:14:01.449Z] scene operations: text checks done
+[2026-06-14T20:14:05.664Z] scene operations: screenshot start
+[2026-06-14T20:14:05.717Z] scene operations: screenshot done
+[2026-06-14T20:14:05.717Z] scene operations: captured
+[2026-06-14T20:14:05.718Z] scene operation-runs: open http://127.0.0.1:5199/operation-runs mode=full-workflow-demo
+[2026-06-14T20:14:07.902Z] sidebar-click sidebar-operation-runs
+[2026-06-14T20:14:10.533Z] scene operation-runs: interactive navigation done
+[2026-06-14T20:14:11.787Z] scene operation-runs: overlay start
+[2026-06-14T20:14:11.791Z] scene operation-runs: overlay done
+[2026-06-14T20:14:11.793Z] scene operation-runs: text checks done
+[2026-06-14T20:14:16.395Z] scene operation-runs: screenshot start
+[2026-06-14T20:14:16.470Z] scene operation-runs: screenshot done
+[2026-06-14T20:14:16.470Z] scene operation-runs: captured
+[2026-06-14T20:14:16.471Z] browser close start
+[2026-06-14T20:14:17.193Z] browser close done

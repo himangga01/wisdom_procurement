@@ -1,0 +1,12 @@
+[2026-06-14T18:55:26.913Z] data-ready seed=20260614185442
+[2026-06-14T18:55:27.342Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=full-workflow-demo
+[2026-06-14T18:55:31.086Z] sidebar-click sidebar-basis-documents
+[2026-06-14T18:55:42.413Z] scene basis-documents: interactive navigation done
+[2026-06-14T18:55:43.667Z] scene basis-documents: overlay start
+[2026-06-14T18:55:43.671Z] scene basis-documents: overlay done
+[2026-06-14T18:55:43.674Z] scene basis-documents: text checks done
+[2026-06-14T18:55:50.177Z] scene basis-documents: screenshot start
+[2026-06-14T18:55:50.263Z] scene basis-documents: screenshot done
+[2026-06-14T18:55:50.264Z] scene basis-documents: captured
+[2026-06-14T18:55:50.264Z] browser close start
+[2026-06-14T18:55:51.701Z] browser close done

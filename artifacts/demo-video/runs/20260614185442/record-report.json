@@ -1,0 +1,28 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260614185442",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614185442",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614185442\\raw-video\\service-demo-20260614185442.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614185442\\demo-data.json",
+  "scenes": [
+    {
+      "id": "basis-documents",
+      "title": "4. 기준문서 관리와 RAG 업로드",
+      "route": "/basis-documents",
+      "url": "http://127.0.0.1:5199/basis-documents",
+      "status": "passed",
+      "started_at": "2026-06-14T18:55:27.343Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614185442\\screenshots\\01-basis-documents.png",
+      "finished_at": "2026-06-14T18:55:50.264Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T18:55:27.343Z",
+  "finished_at": "2026-06-14T18:55:51.702Z"
+}

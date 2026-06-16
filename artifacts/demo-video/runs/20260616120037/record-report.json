@@ -1,0 +1,48 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260616120037",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037\\raw-video\\service-demo-20260616120037.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037\\demo-data.json",
+  "scenes": [
+    {
+      "id": "contracts",
+      "title": "7. 계약서 생성",
+      "route": "/contracts?notice_id=45&corporation_id=49&judgment_run_id=27",
+      "url": "http://127.0.0.1:5199/contracts?notice_id=45&corporation_id=49&judgment_run_id=27",
+      "status": "passed",
+      "started_at": "2026-06-16T12:01:40.055Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037\\screenshots\\01-contracts.png",
+      "finished_at": "2026-06-16T12:02:27.487Z"
+    },
+    {
+      "id": "operations",
+      "title": "8. 운영 상태 확인",
+      "route": "/operations",
+      "url": "http://127.0.0.1:5199/operations",
+      "status": "passed",
+      "started_at": "2026-06-16T12:02:27.488Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037\\screenshots\\02-operations.png",
+      "finished_at": "2026-06-16T12:02:48.151Z"
+    },
+    {
+      "id": "operation-runs",
+      "title": "9. 작업 이력 확인",
+      "route": "/operation-runs",
+      "url": "http://127.0.0.1:5199/operation-runs",
+      "status": "passed",
+      "started_at": "2026-06-16T12:02:48.151Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616120037\\screenshots\\03-operation-runs.png",
+      "finished_at": "2026-06-16T12:03:13.885Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-16T12:01:40.055Z",
+  "finished_at": "2026-06-16T12:03:15.516Z"
+}

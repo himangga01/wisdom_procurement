@@ -1,0 +1,48 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260614200959",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959\\raw-video\\service-demo-20260614200959.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959\\demo-data.json",
+  "scenes": [
+    {
+      "id": "basis-documents",
+      "title": "4. 기준문서 관리와 RAG 업로드",
+      "route": "/basis-documents",
+      "url": "http://127.0.0.1:5199/basis-documents",
+      "status": "passed",
+      "started_at": "2026-06-14T20:10:44.244Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959\\screenshots\\01-basis-documents.png",
+      "finished_at": "2026-06-14T20:11:07.154Z"
+    },
+    {
+      "id": "notice-comparison",
+      "title": "5. 부족조건 미리보기",
+      "route": "/notice-comparison",
+      "url": "http://127.0.0.1:5199/notice-comparison",
+      "status": "passed",
+      "started_at": "2026-06-14T20:11:07.155Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959\\screenshots\\02-notice-comparison.png",
+      "finished_at": "2026-06-14T20:11:35.199Z"
+    },
+    {
+      "id": "judgment-runs",
+      "title": "6. 판단 검토",
+      "route": "/judgment-runs",
+      "url": "http://127.0.0.1:5199/judgment-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T20:11:35.200Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200959\\screenshots\\03-judgment-runs.png",
+      "finished_at": "2026-06-14T20:12:02.564Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T20:10:44.244Z",
+  "finished_at": "2026-06-14T20:12:03.559Z"
+}

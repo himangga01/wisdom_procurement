@@ -1,0 +1,37 @@
+[2026-06-16T11:51:36.389Z] data-ready seed=20260616114952
+[2026-06-16T11:51:36.820Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=full-workflow-demo
+[2026-06-16T11:51:46.572Z] sidebar-click sidebar-basis-documents
+[2026-06-16T11:51:57.887Z] action-result-hold basis-upload-result 3000ms
+[2026-06-16T11:52:15.859Z] scene basis-documents: interactive navigation done
+[2026-06-16T11:52:20.125Z] scene basis-documents: overlay start
+[2026-06-16T11:52:20.129Z] scene basis-documents: overlay done
+[2026-06-16T11:52:20.132Z] scene basis-documents: text checks done
+[2026-06-16T11:52:29.639Z] scene basis-documents: screenshot start
+[2026-06-16T11:52:29.722Z] scene basis-documents: screenshot done
+[2026-06-16T11:52:29.724Z] scene basis-documents: captured
+[2026-06-16T11:52:29.724Z] scene notice-comparison: open http://127.0.0.1:5199/notice-comparison mode=full-workflow-demo
+[2026-06-16T11:52:34.908Z] sidebar-click sidebar-notice-comparison
+[2026-06-16T11:52:50.578Z] action-result-hold comparison-summary 3000ms
+[2026-06-16T11:52:58.903Z] action-result-hold comparison-requirements-modal 3000ms
+[2026-06-16T11:53:17.356Z] action-result-hold comparison-detail-modal 3000ms
+[2026-06-16T11:53:29.924Z] scene notice-comparison: interactive navigation done
+[2026-06-16T11:53:34.184Z] scene notice-comparison: overlay start
+[2026-06-16T11:53:34.188Z] scene notice-comparison: overlay done
+[2026-06-16T11:53:34.191Z] scene notice-comparison: text checks done
+[2026-06-16T11:53:42.807Z] scene notice-comparison: screenshot start
+[2026-06-16T11:53:42.877Z] scene notice-comparison: screenshot done
+[2026-06-16T11:53:42.877Z] scene notice-comparison: captured
+[2026-06-16T11:53:42.877Z] scene judgment-runs: open http://127.0.0.1:5199/judgment-runs mode=full-workflow-demo
+[2026-06-16T11:53:48.042Z] sidebar-click sidebar-judgment-runs
+[2026-06-16T11:54:04.077Z] action-result-hold judgment-summary 3000ms
+[2026-06-16T11:54:17.769Z] action-result-hold judgment-detail-modal 3000ms
+[2026-06-16T11:54:26.124Z] action-result-hold judgment-evidence-modal 3000ms
+[2026-06-16T11:54:38.705Z] scene judgment-runs: interactive navigation done
+[2026-06-16T11:54:42.957Z] scene judgment-runs: overlay start
+[2026-06-16T11:54:42.962Z] scene judgment-runs: overlay done
+[2026-06-16T11:54:42.965Z] scene judgment-runs: text checks done
+[2026-06-16T11:54:52.172Z] scene judgment-runs: screenshot start
+[2026-06-16T11:54:52.287Z] scene judgment-runs: screenshot done
+[2026-06-16T11:54:52.288Z] scene judgment-runs: captured
+[2026-06-16T11:54:52.288Z] browser close start
+[2026-06-16T11:54:53.870Z] browser close done

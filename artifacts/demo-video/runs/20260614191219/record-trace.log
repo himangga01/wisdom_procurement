@@ -1,0 +1,12 @@
+[2026-06-14T19:13:04.227Z] data-ready seed=20260614191219
+[2026-06-14T19:13:04.704Z] scene judgment-runs: open http://127.0.0.1:5199/judgment-runs mode=full-workflow-demo
+[2026-06-14T19:13:08.462Z] sidebar-click sidebar-judgment-runs
+[2026-06-14T19:13:26.105Z] scene judgment-runs: interactive navigation done
+[2026-06-14T19:13:27.369Z] scene judgment-runs: overlay start
+[2026-06-14T19:13:27.374Z] scene judgment-runs: overlay done
+[2026-06-14T19:13:27.377Z] scene judgment-runs: text checks done
+[2026-06-14T19:13:33.579Z] scene judgment-runs: screenshot start
+[2026-06-14T19:13:33.711Z] scene judgment-runs: screenshot done
+[2026-06-14T19:13:33.711Z] scene judgment-runs: captured
+[2026-06-14T19:13:33.712Z] browser close start
+[2026-06-14T19:13:34.676Z] browser close done

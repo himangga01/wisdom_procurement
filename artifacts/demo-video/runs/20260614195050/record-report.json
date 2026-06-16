@@ -1,0 +1,74 @@
+{
+  "status": "completed_with_warnings",
+  "mode": "full-workflow-demo",
+  "seed": "20260614195050",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\raw-video\\service-demo-20260614195050.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\demo-data.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "SMART 조달청 계산기",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-14T19:51:35.960Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\screenshots\\01-intro.png",
+      "finished_at": "2026-06-14T19:51:43.054Z"
+    },
+    {
+      "id": "corporations",
+      "title": "1. 법인 등록과 증빙 업로드",
+      "route": "/corporations",
+      "url": "http://127.0.0.1:5199/corporations",
+      "status": "passed",
+      "started_at": "2026-06-14T19:51:43.055Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\screenshots\\02-corporations.png",
+      "finished_at": "2026-06-14T19:52:43.566Z"
+    },
+    {
+      "id": "nara-board",
+      "title": "2. 나라장터 공고 검색과 선택",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-14T19:52:43.567Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\screenshots\\03-nara-board.png",
+      "finished_at": "2026-06-14T19:54:02.177Z"
+    },
+    {
+      "id": "saved-notice",
+      "title": "3. 저장 공고 요구조건 확인",
+      "route": "/nara-saved-notices/37",
+      "url": "http://127.0.0.1:5199/nara-saved-notices/37",
+      "status": "passed",
+      "started_at": "2026-06-14T19:54:02.178Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614195050\\screenshots\\04-saved-notice.png",
+      "finished_at": "2026-06-14T19:54:14.563Z"
+    }
+  ],
+  "warnings": [
+    {
+      "scene": "nara-board",
+      "type": "live_nara_result_wait_failed",
+      "message": "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-demo-id=\"demo-nara-result-list\"]').first() to be visible\u001b[22m\n"
+    },
+    {
+      "scene": "nara-board",
+      "type": "missing_or_disabled_demo_selector",
+      "selector": "demo-nara-result-row"
+    }
+  ],
+  "console_errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 409 (CONFLICT)"
+    }
+  ],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T19:51:35.960Z",
+  "finished_at": "2026-06-14T19:54:15.361Z"
+}

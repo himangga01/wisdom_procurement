@@ -1,0 +1,63 @@
+{
+  "status": "completed_with_warnings",
+  "mode": "full-workflow-demo",
+  "seed": "20260614200159",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\raw-video\\service-demo-20260614200159.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\demo-data.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "SMART 조달청 계산기",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-14T20:02:47.091Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\screenshots\\01-intro.png",
+      "finished_at": "2026-06-14T20:02:54.226Z"
+    },
+    {
+      "id": "corporations",
+      "title": "1. 법인 등록과 증빙 업로드",
+      "route": "/corporations",
+      "url": "http://127.0.0.1:5199/corporations",
+      "status": "passed",
+      "started_at": "2026-06-14T20:02:54.227Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\screenshots\\02-corporations.png",
+      "finished_at": "2026-06-14T20:03:56.241Z"
+    },
+    {
+      "id": "nara-board",
+      "title": "2. 나라장터 공고 검색과 선택",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-14T20:03:56.242Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\screenshots\\03-nara-board.png",
+      "finished_at": "2026-06-14T20:04:19.527Z"
+    },
+    {
+      "id": "saved-notice",
+      "title": "3. 저장 공고 요구조건 확인",
+      "route": "/nara-saved-notices/38",
+      "url": "http://127.0.0.1:5199/nara-saved-notices/38",
+      "status": "passed",
+      "started_at": "2026-06-14T20:04:19.528Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614200159\\screenshots\\04-saved-notice.png",
+      "finished_at": "2026-06-14T20:04:31.948Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 409 (CONFLICT)"
+    }
+  ],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T20:02:47.091Z",
+  "finished_at": "2026-06-14T20:04:32.926Z"
+}

@@ -1,0 +1,33 @@
+[2026-06-16T12:01:39.622Z] data-ready seed=20260616120037
+[2026-06-16T12:01:40.054Z] scene contracts: open http://127.0.0.1:5199/contracts?notice_id=45&corporation_id=49&judgment_run_id=27 mode=full-workflow-demo
+[2026-06-16T12:02:10.924Z] action-result-hold contract-list 3000ms
+[2026-06-16T12:02:13.938Z] contract download skipped for stable video
+[2026-06-16T12:02:13.938Z] scene contracts: interactive navigation done
+[2026-06-16T12:02:18.202Z] scene contracts: overlay start
+[2026-06-16T12:02:18.207Z] scene contracts: overlay done
+[2026-06-16T12:02:18.211Z] scene contracts: text checks done
+[2026-06-16T12:02:27.423Z] scene contracts: screenshot start
+[2026-06-16T12:02:27.487Z] scene contracts: screenshot done
+[2026-06-16T12:02:27.487Z] scene contracts: captured
+[2026-06-16T12:02:27.488Z] scene operations: open http://127.0.0.1:5199/operations mode=full-workflow-demo
+[2026-06-16T12:02:32.670Z] sidebar-click sidebar-operations
+[2026-06-16T12:02:33.603Z] action-result-hold operations-summary 3000ms
+[2026-06-16T12:02:36.620Z] scene operations: interactive navigation done
+[2026-06-16T12:02:40.872Z] scene operations: overlay start
+[2026-06-16T12:02:40.877Z] scene operations: overlay done
+[2026-06-16T12:02:40.878Z] scene operations: text checks done
+[2026-06-16T12:02:48.088Z] scene operations: screenshot start
+[2026-06-16T12:02:48.150Z] scene operations: screenshot done
+[2026-06-16T12:02:48.151Z] scene operations: captured
+[2026-06-16T12:02:48.151Z] scene operation-runs: open http://127.0.0.1:5199/operation-runs mode=full-workflow-demo
+[2026-06-16T12:02:53.305Z] sidebar-click sidebar-operation-runs
+[2026-06-16T12:02:58.924Z] action-result-hold operation-run-detail 3000ms
+[2026-06-16T12:03:01.939Z] scene operation-runs: interactive navigation done
+[2026-06-16T12:03:06.204Z] scene operation-runs: overlay start
+[2026-06-16T12:03:06.208Z] scene operation-runs: overlay done
+[2026-06-16T12:03:06.211Z] scene operation-runs: text checks done
+[2026-06-16T12:03:13.816Z] scene operation-runs: screenshot start
+[2026-06-16T12:03:13.884Z] scene operation-runs: screenshot done
+[2026-06-16T12:03:13.885Z] scene operation-runs: captured
+[2026-06-16T12:03:13.885Z] browser close start
+[2026-06-16T12:03:15.515Z] browser close done

@@ -1,8 +1,11 @@
 {
-  "mode": "stable-demo",
+  "mode": "full-workflow-demo",
   "frontendUrl": "http://127.0.0.1:5199",
   "backendUrl": "http://127.0.0.1:18111",
   "outputDir": "artifacts/demo-video",
+  "naraKeyword": "전자칠판",
+  "naraBusinessType": "goods",
+  "evidenceFileLimit": 4,
   "video": {
     "width": 1440,
     "height": 900,
@@ -12,7 +15,6 @@
   "scenes": [
     "intro",
     "corporations",
-    "dashboard",
     "nara-board",
     "saved-notice",
     "basis-documents",

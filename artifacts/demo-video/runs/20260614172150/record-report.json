@@ -1,0 +1,135 @@
+{
+  "status": "completed_with_warnings",
+  "mode": "full-workflow-demo",
+  "seed": "20260614172150",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150",
+  "raw_video_path": null,
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\demo-data.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "SMART 조달청 계산기",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-14T17:23:33.324Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\01-intro.png",
+      "finished_at": "2026-06-14T17:23:40.503Z"
+    },
+    {
+      "id": "corporations",
+      "title": "1. 법인 등록과 증빙 업로드",
+      "route": "/corporations",
+      "url": "http://127.0.0.1:5199/corporations",
+      "status": "passed",
+      "started_at": "2026-06-14T17:23:40.504Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\02-corporations.png",
+      "finished_at": "2026-06-14T17:23:54.527Z"
+    },
+    {
+      "id": "nara-board",
+      "title": "2. 나라장터 공고 검색과 선택",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-14T17:23:54.527Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\03-nara-board.png",
+      "finished_at": "2026-06-14T17:24:10.876Z"
+    },
+    {
+      "id": "basis-documents",
+      "title": "4. 기준문서 관리와 RAG 업로드",
+      "route": "/basis-documents",
+      "url": "http://127.0.0.1:5199/basis-documents",
+      "status": "passed",
+      "started_at": "2026-06-14T17:24:10.877Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\04-basis-documents.png",
+      "finished_at": "2026-06-14T17:24:23.718Z"
+    },
+    {
+      "id": "notice-comparison",
+      "title": "5. 부족조건 미리보기",
+      "route": "/notice-comparison",
+      "url": "http://127.0.0.1:5199/notice-comparison",
+      "status": "passed",
+      "started_at": "2026-06-14T17:24:23.719Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\05-notice-comparison.png",
+      "finished_at": "2026-06-14T17:24:36.862Z"
+    },
+    {
+      "id": "judgment-runs",
+      "title": "6. 판단 검토",
+      "route": "/judgment-runs",
+      "url": "http://127.0.0.1:5199/judgment-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T17:24:36.862Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\06-judgment-runs.png",
+      "finished_at": "2026-06-14T17:24:50.628Z"
+    },
+    {
+      "id": "contracts",
+      "title": "7. 계약서 생성",
+      "route": "/contracts?notice_id=27&corporation_id=30&judgment_run_id=9",
+      "url": "http://127.0.0.1:5199/contracts?notice_id=27&corporation_id=30&judgment_run_id=9",
+      "status": "passed",
+      "started_at": "2026-06-14T17:24:50.629Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\07-contracts.png",
+      "finished_at": "2026-06-14T17:25:05.384Z"
+    },
+    {
+      "id": "operations",
+      "title": "8. 운영 상태 확인",
+      "route": "/operations",
+      "url": "http://127.0.0.1:5199/operations",
+      "status": "passed",
+      "started_at": "2026-06-14T17:25:05.385Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\08-operations.png",
+      "finished_at": "2026-06-14T17:25:14.026Z"
+    },
+    {
+      "id": "operation-runs",
+      "title": "9. 작업 이력 확인",
+      "route": "/operation-runs",
+      "url": "http://127.0.0.1:5199/operation-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T17:25:14.027Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614172150\\screenshots\\09-operation-runs.png",
+      "finished_at": "2026-06-14T17:25:24.749Z"
+    }
+  ],
+  "warnings": [
+    {
+      "scene": "corporations",
+      "type": "business_registration_upload_skipped_in_dry_run",
+      "file": "D:\\project\\wisdom_procurement\\source\\test_doc\\1.벡트_사업자등록증.pdf"
+    },
+    {
+      "scene": "nara-board",
+      "type": "live_nara_search_skipped_in_dry_run",
+      "keyword": "전자칠판",
+      "business_type": "goods"
+    },
+    {
+      "scene": "basis-documents",
+      "type": "basis_upload_skipped_in_dry_run",
+      "file": "D:\\project\\wisdom_procurement\\source\\rag_doc\\RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf"
+    },
+    {
+      "scene": "operations",
+      "type": "missing_or_disabled_demo_selector",
+      "selector": "demo-operation-error-detail"
+    },
+    {
+      "scene": "operation-runs",
+      "type": "missing_or_disabled_demo_selector",
+      "selector": "demo-operation-error-detail"
+    }
+  ],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T17:23:33.324Z",
+  "finished_at": "2026-06-14T17:25:24.864Z"
+}

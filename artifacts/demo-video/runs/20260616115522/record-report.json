@@ -1,0 +1,128 @@
+{
+  "status": "completed_with_warnings",
+  "mode": "full-workflow-demo",
+  "seed": "20260616115522",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522\\raw-video\\service-demo-20260616115522.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522\\demo-data.json",
+  "scenes": [
+    {
+      "id": "contracts",
+      "title": "7. 계약서 생성",
+      "route": "/contracts?notice_id=44&corporation_id=48&judgment_run_id=26",
+      "url": "http://127.0.0.1:5199/contracts?notice_id=44&corporation_id=48&judgment_run_id=26",
+      "status": "passed",
+      "started_at": "2026-06-16T11:57:11.699Z",
+      "warning": {
+        "scene": "contracts",
+        "type": "missing_expected_text",
+        "values": [
+          "제품 시연 계약서 초안 20260616115522"
+        ]
+      },
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522\\screenshots\\01-contracts.png",
+      "finished_at": "2026-06-16T11:58:16.384Z"
+    },
+    {
+      "id": "operations",
+      "title": "8. 운영 상태 확인",
+      "route": "/operations",
+      "url": "http://127.0.0.1:5199/operations",
+      "status": "passed",
+      "started_at": "2026-06-16T11:58:16.385Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522\\screenshots\\02-operations.png",
+      "finished_at": "2026-06-16T11:58:41.646Z"
+    },
+    {
+      "id": "operation-runs",
+      "title": "9. 작업 이력 확인",
+      "route": "/operation-runs",
+      "url": "http://127.0.0.1:5199/operation-runs",
+      "status": "passed",
+      "started_at": "2026-06-16T11:58:41.647Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616115522\\screenshots\\03-operation-runs.png",
+      "finished_at": "2026-06-16T11:59:07.430Z"
+    }
+  ],
+  "warnings": [
+    {
+      "scene": "contracts",
+      "type": "missing_expected_text",
+      "values": [
+        "제품 시연 계약서 초안 20260616115522"
+      ]
+    }
+  ],
+  "console_errors": [],
+  "console_warnings": [
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-MediumItalic-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-Regular-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-RegularItalic-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-Medium-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-Text.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-SemiBoldItalic.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-SemiBold.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-TextItalic.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-MediumItalic-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-Regular-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-RegularItalic-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/euclid-square/EuclidSquare-Medium-WebS.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-Text.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-SemiBoldItalic.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-SemiBold.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource https://assets.ngrok.com/fonts/ibm-plex-mono/IBMPlexMono-TextItalic.woff was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    }
+  ],
+  "request_failures": [],
+  "started_at": "2026-06-16T11:57:11.699Z",
+  "finished_at": "2026-06-16T11:59:08.943Z"
+}

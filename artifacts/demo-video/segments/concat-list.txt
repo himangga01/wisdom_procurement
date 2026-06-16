@@ -1,0 +1,3 @@
+file 'D:/project/wisdom_procurement/artifacts/demo-video/segments/service-demo-segment-01.mp4'
+file 'D:/project/wisdom_procurement/artifacts/demo-video/segments/service-demo-segment-02.mp4'
+file 'D:/project/wisdom_procurement/artifacts/demo-video/segments/service-demo-segment-03.mp4'

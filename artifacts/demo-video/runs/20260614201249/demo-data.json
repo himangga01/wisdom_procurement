@@ -1,0 +1,2922 @@
+{
+  "seed": "20260614201249",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614201249",
+  "warnings": [],
+  "corporation": {
+    "business_address": "경기도 성남시 분당구 데모로 10",
+    "business_category": "정보통신 서비스",
+    "business_item": "공공기관 업무 포털 구축, 영상정보 처리장치 유지관리",
+    "business_registration_number": "142-81-01249",
+    "business_type": "소프트웨어 개발 및 정보통신 공사업",
+    "certifications_json": "[\"중소기업확인서\"]",
+    "company_size_classification": "소기업",
+    "corporate_registration_number": "",
+    "created_at": "2026-06-14T20:12:49.129577+00:00",
+    "direct_production_items_json": "[\"정보시스템 유지관리 서비스\"]",
+    "evidence_expiry_summary": "중소기업확인서 2026-12-31 만료",
+    "evidence_verification_status": "evidence_reviewed",
+    "headquarters_address": "경기도 성남시 분당구 데모로 10",
+    "id": 45,
+    "internal_notes": "서비스 시연 영상 자동 생성 데이터",
+    "license_summary": "정보통신공사업 등록 준비 필요",
+    "management_group_name": "제품 시연 그룹 20260614201249",
+    "name": "시연 법인 20260614201249",
+    "opening_date": "",
+    "preference_tags_json": "[\"공공조달 시연용\"]",
+    "procurement_registration_status": "조달업체 등록 완료",
+    "region": "경기도",
+    "representative_name": "김시연",
+    "updated_at": "2026-06-14T20:12:49.129577+00:00"
+  },
+  "evidence": {
+    "candidates": [],
+    "classification_confidence": 0.96,
+    "classification_status": "manual",
+    "corporation_id": 45,
+    "created_at": "2026-06-14T20:12:49.146485+00:00",
+    "document_type": "business_registration_certificate",
+    "error_message": "",
+    "extracted_text": "Business Registration Certificate Corporation: Demo Smart Procurement 20260614201249 Business registration number: 142-81-01249 Representative: Demo Owner Address: Demo-ro 10, Seongnam-si, Gyeonggi-do",
+    "extracted_text_preview": "Business Registration Certificate Corporation: Demo Smart Procurement 20260614201249 Business registration number: 142-81-01249 Representative: Demo Owner Address: Demo-ro 10, Seongnam-si, Gyeonggi-do",
+    "extraction_json": "{\"document_type\": \"business_registration_certificate\", \"classification_confidence\": 0.96, \"classification_status\": \"manual\", \"candidates\": [], \"warnings\": [\"사업자등록 관련 문서로 보이지만 자동 추출 후보가 없습니다.\", \"AI 업태/종목 정리 실패: ClientError\"], \"pipeline\": {\"parser\": {\"engine\": \"opendataloader-pdf\", \"engine_version\": \"2.4.7\", \"page_count\": 1, \"char_count\": 200, \"markdown_char_count\": 202, \"table_count\": 0, \"table_row_count\": 0, \"pages\": [{\"page_number\": 1, \"char_count\": 200, \"char_start\": 0, \"char_end\": 200, \"table_count\": 0}], \"tables\": [], \"needs_ocr\": false, \"options\": {\"table_method\": \"cluster\", \"reading_order\": \"xycut\", \"format\": [\"markdown\", \"json\"], \"threads\": \"1\", \"timeout_seconds\": 180}}, \"ocr\": {\"text\": \"Business Registration Certificate Corporation: Demo Smart Procurement 20260614201249 Business registration number: 142-81-01249 Representative: Demo Owner Address: Demo-ro 10, Seongnam-si, Gyeonggi-do\", \"status\": \"skipped\", \"engine\": \"none\", \"language\": \"kor+eng\", \"page_count\": 0, \"pages\": [], \"average_confidence\": null, \"warnings\": [], \"error_message\": \"\"}}}",
+    "extraction_status": "completed",
+    "file_size": 817,
+    "id": 52,
+    "management_group_name": "제품 시연 그룹 20260614201249",
+    "memo": "제품 시연 영상용 사업자등록 증빙 샘플",
+    "mime_type": "application/pdf",
+    "ocr_status": "skipped",
+    "original_file_name": "사업자등록증명-20260614201249.pdf",
+    "review_status": "pending",
+    "stored_file_path": "D:\\project\\wisdom_procurement\\backend\\storage\\corporation-evidence\\45\\aa2a02678fba4afba5f7c5185e1b79cb.pdf",
+    "updated_at": "2026-06-14T20:12:49.146485+00:00"
+  },
+  "notice": {
+    "analysis_status": "completed",
+    "analysis_summary_json": "{\"document_summary\": \"공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\", \"key_dates\": [], \"requirements\": [\"공고일시: 2026-06-14 09:00\", \"입찰개시: 2026-06-15 09:00\", \"입찰마감: 2026-06-30 17:00\", \"개찰일시: 2026-07-01 10:00\", \"추정가격: 25,000,000원\", \"기초금액: 23,000,000원\"], \"required_documents\": [], \"risks\": [], \"questions_to_check\": [\"핵심 일정/제출 서류를 원문에서 재확인하세요.\"], \"confidence_note\": \"Fallback summary (no API key or API failed)\", \"notice_requirements\": {\"extraction_method\": \"rule_based_phase_1_7_stabilized\", \"regions\": [\"경기도\", \"경기\"], \"licenses\": [\"information communication construction license\"], \"company_types\": [], \"required_documents\": [], \"requirement_lines\": [\"면허/업종 제한: information communication construction license\"], \"money\": {\"presmpt_prce\": \"25000000\", \"bdgt_amt\": \"\", \"bssamt\": \"23000000\"}, \"dates\": {\"bid_ntce_dt\": \"2026-06-14 09:00\", \"bid_begin_dt\": \"2026-06-15 09:00\", \"bid_clse_dt\": \"2026-06-30 17:00\", \"openg_dt\": \"2026-07-01 10:00\"}, \"uncertainty_notes\": [\"Phase 1.7에서는 요구조건 후보와 부족 가능성만 정리하며 최종 자격 판정은 수행하지 않습니다.\"]}}",
+    "analysis_summary_markdown": "## 문서 요약\n공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\n\n## 요구사항\n- 공고일시: 2026-06-14 09:00\n- 입찰개시: 2026-06-15 09:00\n- 입찰마감: 2026-06-30 17:00\n- 개찰일시: 2026-07-01 10:00\n- 추정가격: 25,000,000원\n- 기초금액: 23,000,000원\n\n신뢰도 메모: Fallback summary (no API key or API failed)\n\n## 공고 요구조건 구조화 후보\n- 지역: 경기도, 경기\n- 면허/업종: information communication construction license\n- 기업유형: 원문 확인 필요\n- 제출/증빙서류: 원문 확인 필요\n- 추정가격: 25,000,000원\n- 입찰마감: 2026-06-30 17:00\n\n※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
+    "attachments": [],
+    "bdgt_amt": "",
+    "bid_begin_dt": "2026-06-15 09:00",
+    "bid_clse_dt": "2026-06-30 17:00",
+    "bid_ntce_dt": "2026-06-14 09:00",
+    "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+    "bid_ntce_no": "DEMO20260614201249",
+    "bid_ntce_ord": "000",
+    "bssamt": "23000000",
+    "business_type": "service",
+    "business_type_label": "용역",
+    "created_at": "2026-06-14T20:12:50.838471+00:00",
+    "detail_json": "{\"errors\": [], \"items\": [], \"business_type\": \"service\", \"notice\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"basis_amount\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"license_limit\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eligible_region\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eorder_attachments\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}}",
+    "dminstt_nm": "시연 수요기관",
+    "download_status": "no_supported_attachments",
+    "error_message": "",
+    "id": 41,
+    "license_text": "information communication construction license",
+    "ntce_instt_nm": "시연 발주기관",
+    "openg_dt": "2026-07-01 10:00",
+    "presmpt_prce": "25000000",
+    "raw_json": "{\"bidNtceNo\": \"DEMO20260614201249\", \"bidNtceOrd\": \"000\", \"bidNtceNm\": \"제품 시연용 정보통신 용역 공고 20260614201249\", \"ntceInsttNm\": \"시연 발주기관\", \"dminsttNm\": \"시연 수요기관\", \"bidNtceDt\": \"2026-06-14 09:00\", \"bidBeginDt\": \"2026-06-15 09:00\", \"bidClseDt\": \"2026-06-30 17:00\", \"opengDt\": \"2026-07-01 10:00\", \"presmptPrce\": \"25000000\", \"bssamt\": \"23000000\", \"prtcptPsblRgnNm\": \"경기도\", \"lcnsLmtNm\": \"information communication construction license\", \"bidNtceDtlUrl\": \"https://example.go.kr/demo-notice\", \"business_type\": \"service\", \"_nara_business_type\": \"service\", \"business_type_label\": \"용역\"}",
+    "region_text": "경기도",
+    "save_status": "saved",
+    "source_url": "https://example.go.kr/demo-notice",
+    "updated_at": "2026-06-14T20:12:54.370583+00:00"
+  },
+  "requirements_summary": {
+    "count": 10,
+    "structured_count": 10,
+    "contract_version": "phase3_gap_judgment_contract_v1"
+  },
+  "basis_document": {
+    "category": "demo",
+    "chunk_count": 1,
+    "chunk_status": "completed",
+    "created_at": "2026-06-14T20:12:54.422173+00:00",
+    "document_version": "2026.06-demo",
+    "effective_date": "2026-06-14",
+    "error_message": "",
+    "extracted_text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review.",
+    "file_hash": "913f59191bc1b50e1808befa11e0fd586e0bc9c9048d2f091c80aa411e4c53b6",
+    "file_size": 1088,
+    "id": 25,
+    "index_status": "completed",
+    "issuing_agency": "SMART Procurement Demo",
+    "memo": "제품 시연 영상 자동 생성 기준문서",
+    "metadata": {
+      "chunker": {
+        "max_chars": 1600,
+        "name": "paragraph-window-v1+opendataloader-table-row-v1",
+        "overlap_chars": 180,
+        "table_row_chunk_count": 0
+      },
+      "indexer": {
+        "name": "local-token-v1",
+        "vector_count": 1
+      },
+      "normalizer": {
+        "char_count": 463,
+        "name": "basis-normalize-v1"
+      },
+      "ocr": {
+        "average_confidence": null,
+        "engine": "none",
+        "error_message": "",
+        "language": "kor+eng",
+        "page_count": 0,
+        "pages": [],
+        "status": "skipped",
+        "text": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review.",
+        "warnings": []
+      },
+      "options": {
+        "force_ocr": false
+      },
+      "parser": {
+        "char_count": 463,
+        "engine": "opendataloader-pdf",
+        "engine_version": "2.4.7",
+        "markdown_char_count": 465,
+        "needs_ocr": false,
+        "options": {
+          "format": [
+            "markdown",
+            "json"
+          ],
+          "reading_order": "xycut",
+          "table_method": "cluster",
+          "threads": "1",
+          "timeout_seconds": 180
+        },
+        "page_count": 1,
+        "pages": [
+          {
+            "char_count": 463,
+            "char_end": 463,
+            "char_start": 0,
+            "page_number": 1,
+            "table_count": 0
+          }
+        ],
+        "table_count": 0,
+        "table_row_count": 0,
+        "tables_preview": []
+      }
+    },
+    "mime_type": "application/pdf",
+    "ocr_status": "skipped",
+    "original_file_name": "demo-basis-20260614201249.pdf",
+    "page_count": 1,
+    "parse_status": "completed",
+    "processed_at": "2026-06-15T05:13:01+09:00",
+    "processing_status": "completed",
+    "source_url": "",
+    "stored_file_path": "D:\\project\\wisdom_procurement\\backend\\storage\\basis\\c6f44e4a224f467cb04f3658cf590773.pdf",
+    "title": "제품 시연 기준문서 20260614201249",
+    "updated_at": "2026-06-15T05:13:01+09:00",
+    "vector_count": 1
+  },
+  "basis_search_summary": {
+    "index_source": "json_basis_index",
+    "result_count": 3
+  },
+  "comparison": {
+    "corporation": {
+      "business_address": "경기도 성남시 분당구 데모로 10",
+      "business_category": "정보통신 서비스",
+      "business_item": "공공기관 업무 포털 구축, 영상정보 처리장치 유지관리",
+      "business_registration_number": "142-81-01249",
+      "business_type": "소프트웨어 개발 및 정보통신 공사업",
+      "certifications_json": "[\"중소기업확인서\"]",
+      "company_size_classification": "소기업",
+      "corporate_registration_number": "",
+      "created_at": "2026-06-14T20:12:49.129577+00:00",
+      "direct_production_items_json": "[\"정보시스템 유지관리 서비스\"]",
+      "evidence_expiry_summary": "중소기업확인서 2026-12-31 만료",
+      "evidence_verification_status": "evidence_reviewed",
+      "headquarters_address": "경기도 성남시 분당구 데모로 10",
+      "id": 45,
+      "internal_notes": "서비스 시연 영상 자동 생성 데이터",
+      "license_summary": "정보통신공사업 등록 준비 필요",
+      "management_group_name": "제품 시연 그룹 20260614201249",
+      "name": "시연 법인 20260614201249",
+      "opening_date": "",
+      "preference_tags_json": "[\"공공조달 시연용\"]",
+      "procurement_registration_status": "조달업체 등록 완료",
+      "region": "경기도",
+      "representative_name": "김시연",
+      "updated_at": "2026-06-14T20:12:49.129577+00:00"
+    },
+    "corporation_id": 45,
+    "created_at": "2026-06-14T20:13:03.911342+00:00",
+    "id": 29,
+    "items": [
+      {
+        "confidence": 0.84,
+        "label": "지역 제한",
+        "matched_value": "경기도",
+        "normalized_value": "경기도",
+        "reason": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.",
+        "required_value": "경기도",
+        "requirement_candidate_id": 290,
+        "requirement_type": "region",
+        "source_text": "공고 지역 제한",
+        "status": "prepared",
+        "status_label": "준비 확인"
+      },
+      {
+        "confidence": 0.84,
+        "label": "지역 제한",
+        "matched_value": "경기도",
+        "normalized_value": "경기",
+        "reason": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.",
+        "required_value": "경기",
+        "requirement_candidate_id": 291,
+        "requirement_type": "region",
+        "source_text": "공고 지역 제한",
+        "status": "prepared",
+        "status_label": "준비 확인"
+      },
+      {
+        "confidence": 0.86,
+        "label": "면허/업종",
+        "matched_value": "",
+        "normalized_value": "informationcommunicationconstructionlicense",
+        "reason": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.",
+        "required_value": "information communication construction license",
+        "requirement_candidate_id": 292,
+        "requirement_type": "license",
+        "source_text": "공고 면허/업종 제한",
+        "status": "possibly_missing",
+        "status_label": "준비 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "금액 조건",
+        "matched_value": "",
+        "normalized_value": "추정가격25000000원",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "추정가격: 25,000,000원",
+        "requirement_candidate_id": 293,
+        "requirement_type": "money",
+        "source_text": "공고 금액 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "금액 조건",
+        "matched_value": "",
+        "normalized_value": "기초금액23000000원",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "기초금액: 23,000,000원",
+        "requirement_candidate_id": 294,
+        "requirement_type": "money",
+        "source_text": "공고 금액 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "일정 조건",
+        "matched_value": "",
+        "normalized_value": "공고일시202606140900",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "공고일시: 2026-06-14 09:00",
+        "requirement_candidate_id": 295,
+        "requirement_type": "date",
+        "source_text": "공고 일정 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "일정 조건",
+        "matched_value": "",
+        "normalized_value": "입찰개시202606150900",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "입찰개시: 2026-06-15 09:00",
+        "requirement_candidate_id": 296,
+        "requirement_type": "date",
+        "source_text": "공고 일정 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "일정 조건",
+        "matched_value": "",
+        "normalized_value": "입찰마감202606301700",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "입찰마감: 2026-06-30 17:00",
+        "requirement_candidate_id": 297,
+        "requirement_type": "date",
+        "source_text": "공고 일정 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.72,
+        "label": "일정 조건",
+        "matched_value": "",
+        "normalized_value": "개찰일시202607011000",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "개찰일시: 2026-07-01 10:00",
+        "requirement_candidate_id": 298,
+        "requirement_type": "date",
+        "source_text": "공고 일정 조건",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      },
+      {
+        "confidence": 0.64,
+        "label": "원문 요구조건",
+        "matched_value": "",
+        "normalized_value": "면허업종제한informationcommunicationconstructionlicense",
+        "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+        "required_value": "면허/업종 제한: information communication construction license",
+        "requirement_candidate_id": 299,
+        "requirement_type": "requirement_line",
+        "source_text": "면허/업종 제한: information communication construction license",
+        "status": "needs_review",
+        "status_label": "사람 확인 필요"
+      }
+    ],
+    "nara_notice_id": 41,
+    "needs_review_count": 7,
+    "not_found_count": 0,
+    "notice": {
+      "analysis_status": "completed",
+      "analysis_summary_json": "{\"document_summary\": \"공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\", \"key_dates\": [], \"requirements\": [\"공고일시: 2026-06-14 09:00\", \"입찰개시: 2026-06-15 09:00\", \"입찰마감: 2026-06-30 17:00\", \"개찰일시: 2026-07-01 10:00\", \"추정가격: 25,000,000원\", \"기초금액: 23,000,000원\"], \"required_documents\": [], \"risks\": [], \"questions_to_check\": [\"핵심 일정/제출 서류를 원문에서 재확인하세요.\"], \"confidence_note\": \"Fallback summary (no API key or API failed)\", \"notice_requirements\": {\"extraction_method\": \"rule_based_phase_1_7_stabilized\", \"regions\": [\"경기도\", \"경기\"], \"licenses\": [\"information communication construction license\"], \"company_types\": [], \"required_documents\": [], \"requirement_lines\": [\"면허/업종 제한: information communication construction license\"], \"money\": {\"presmpt_prce\": \"25000000\", \"bdgt_amt\": \"\", \"bssamt\": \"23000000\"}, \"dates\": {\"bid_ntce_dt\": \"2026-06-14 09:00\", \"bid_begin_dt\": \"2026-06-15 09:00\", \"bid_clse_dt\": \"2026-06-30 17:00\", \"openg_dt\": \"2026-07-01 10:00\"}, \"uncertainty_notes\": [\"Phase 1.7에서는 요구조건 후보와 부족 가능성만 정리하며 최종 자격 판정은 수행하지 않습니다.\"]}}",
+      "analysis_summary_markdown": "## 문서 요약\n공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\n\n## 요구사항\n- 공고일시: 2026-06-14 09:00\n- 입찰개시: 2026-06-15 09:00\n- 입찰마감: 2026-06-30 17:00\n- 개찰일시: 2026-07-01 10:00\n- 추정가격: 25,000,000원\n- 기초금액: 23,000,000원\n\n신뢰도 메모: Fallback summary (no API key or API failed)\n\n## 공고 요구조건 구조화 후보\n- 지역: 경기도, 경기\n- 면허/업종: information communication construction license\n- 기업유형: 원문 확인 필요\n- 제출/증빙서류: 원문 확인 필요\n- 추정가격: 25,000,000원\n- 입찰마감: 2026-06-30 17:00\n\n※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
+      "bdgt_amt": "",
+      "bid_begin_dt": "2026-06-15 09:00",
+      "bid_clse_dt": "2026-06-30 17:00",
+      "bid_ntce_dt": "2026-06-14 09:00",
+      "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+      "bid_ntce_no": "DEMO20260614201249",
+      "bid_ntce_ord": "000",
+      "bssamt": "23000000",
+      "business_type": "service",
+      "created_at": "2026-06-14T20:12:50.838471+00:00",
+      "detail_json": "{\"errors\": [], \"items\": [], \"business_type\": \"service\", \"notice\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"basis_amount\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"license_limit\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eligible_region\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eorder_attachments\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}}",
+      "dminstt_nm": "시연 수요기관",
+      "download_status": "no_supported_attachments",
+      "error_message": "",
+      "id": 41,
+      "license_text": "information communication construction license",
+      "ntce_instt_nm": "시연 발주기관",
+      "openg_dt": "2026-07-01 10:00",
+      "presmpt_prce": "25000000",
+      "raw_json": "{\"bidNtceNo\": \"DEMO20260614201249\", \"bidNtceOrd\": \"000\", \"bidNtceNm\": \"제품 시연용 정보통신 용역 공고 20260614201249\", \"ntceInsttNm\": \"시연 발주기관\", \"dminsttNm\": \"시연 수요기관\", \"bidNtceDt\": \"2026-06-14 09:00\", \"bidBeginDt\": \"2026-06-15 09:00\", \"bidClseDt\": \"2026-06-30 17:00\", \"opengDt\": \"2026-07-01 10:00\", \"presmptPrce\": \"25000000\", \"bssamt\": \"23000000\", \"prtcptPsblRgnNm\": \"경기도\", \"lcnsLmtNm\": \"information communication construction license\", \"bidNtceDtlUrl\": \"https://example.go.kr/demo-notice\", \"business_type\": \"service\", \"_nara_business_type\": \"service\", \"business_type_label\": \"용역\"}",
+      "region_text": "경기도",
+      "save_status": "saved",
+      "source_url": "https://example.go.kr/demo-notice",
+      "updated_at": "2026-06-14T20:12:54.370583+00:00"
+    },
+    "possibly_missing_count": 1,
+    "prepared_count": 2,
+    "profile": {
+      "approved_evidence_count": 0,
+      "approved_evidence_documents": [],
+      "approved_evidence_labels": [],
+      "business_types": [
+        "정보통신 서비스",
+        "소프트웨어 개발 및 정보통신 공사업",
+        "공공기관 업무 포털 구축",
+        "영상정보 처리장치 유지관리",
+        "정보시스템 유지관리 서비스"
+      ],
+      "certifications": [
+        "중소기업확인서"
+      ],
+      "company_types": [
+        "소기업",
+        "중소기업확인서",
+        "공공조달 시연용"
+      ],
+      "corporation_id": 45,
+      "corporation_name": "시연 법인 20260614201249",
+      "direct_production_items": [
+        "정보시스템 유지관리 서비스"
+      ],
+      "licenses": [
+        "정보통신공사업 등록 준비 필요",
+        "조달업체 등록 완료",
+        "소프트웨어 개발 및 정보통신 공사업",
+        "공공기관 업무 포털 구축",
+        "영상정보 처리장치 유지관리",
+        "정보통신 서비스"
+      ],
+      "management_group_name": "제품 시연 그룹 20260614201249",
+      "preference_tags": [
+        "공공조달 시연용"
+      ],
+      "profile_note": "공고 요구조건 비교를 위한 정규화 프로필입니다. 원문과 증빙 확인 후 검토 결과로 사용하세요.",
+      "regions": [
+        "경기도",
+        "경기",
+        "성남시",
+        "분당구"
+      ],
+      "required_documents": [
+        "사업자등록증",
+        "사업자등록증명",
+        "중소기업확인서",
+        "직접생산확인증명서",
+        "나라장터 경쟁입찰참가자격 등록증",
+        "면허/등록/허가증"
+      ]
+    },
+    "prompt_version": "phase_1_7_rule_v1",
+    "requirement_count": 10,
+    "result_json": "{\"items\": [{\"requirement_candidate_id\": 290, \"requirement_type\": \"region\", \"label\": \"지역 제한\", \"required_value\": \"경기도\", \"normalized_value\": \"경기도\", \"source_text\": \"공고 지역 제한\", \"confidence\": 0.84, \"status\": \"prepared\", \"status_label\": \"준비 확인\", \"matched_value\": \"경기도\", \"reason\": \"법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.\"}, {\"requirement_candidate_id\": 291, \"requirement_type\": \"region\", \"label\": \"지역 제한\", \"required_value\": \"경기\", \"normalized_value\": \"경기\", \"source_text\": \"공고 지역 제한\", \"confidence\": 0.84, \"status\": \"prepared\", \"status_label\": \"준비 확인\", \"matched_value\": \"경기도\", \"reason\": \"법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.\"}, {\"requirement_candidate_id\": 292, \"requirement_type\": \"license\", \"label\": \"면허/업종\", \"required_value\": \"information communication construction license\", \"normalized_value\": \"informationcommunicationconstructionlicense\", \"source_text\": \"공고 면허/업종 제한\", \"confidence\": 0.86, \"status\": \"possibly_missing\", \"status_label\": \"준비 필요\", \"matched_value\": \"\", \"reason\": \"법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.\"}, {\"requirement_candidate_id\": 293, \"requirement_type\": \"money\", \"label\": \"금액 조건\", \"required_value\": \"추정가격: 25,000,000원\", \"normalized_value\": \"추정가격25000000원\", \"source_text\": \"공고 금액 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 294, \"requirement_type\": \"money\", \"label\": \"금액 조건\", \"required_value\": \"기초금액: 23,000,000원\", \"normalized_value\": \"기초금액23000000원\", \"source_text\": \"공고 금액 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 295, \"requirement_type\": \"date\", \"label\": \"일정 조건\", \"required_value\": \"공고일시: 2026-06-14 09:00\", \"normalized_value\": \"공고일시202606140900\", \"source_text\": \"공고 일정 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 296, \"requirement_type\": \"date\", \"label\": \"일정 조건\", \"required_value\": \"입찰개시: 2026-06-15 09:00\", \"normalized_value\": \"입찰개시202606150900\", \"source_text\": \"공고 일정 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 297, \"requirement_type\": \"date\", \"label\": \"일정 조건\", \"required_value\": \"입찰마감: 2026-06-30 17:00\", \"normalized_value\": \"입찰마감202606301700\", \"source_text\": \"공고 일정 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 298, \"requirement_type\": \"date\", \"label\": \"일정 조건\", \"required_value\": \"개찰일시: 2026-07-01 10:00\", \"normalized_value\": \"개찰일시202607011000\", \"source_text\": \"공고 일정 조건\", \"confidence\": 0.72, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}, {\"requirement_candidate_id\": 299, \"requirement_type\": \"requirement_line\", \"label\": \"원문 요구조건\", \"required_value\": \"면허/업종 제한: information communication construction license\", \"normalized_value\": \"면허업종제한informationcommunicationconstructionlicense\", \"source_text\": \"면허/업종 제한: information communication construction license\", \"confidence\": 0.64, \"status\": \"needs_review\", \"status_label\": \"사람 확인 필요\", \"matched_value\": \"\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\"}], \"profile\": {\"corporation_id\": 45, \"corporation_name\": \"시연 법인 20260614201249\", \"management_group_name\": \"제품 시연 그룹 20260614201249\", \"regions\": [\"경기도\", \"경기\", \"성남시\", \"분당구\"], \"business_types\": [\"정보통신 서비스\", \"소프트웨어 개발 및 정보통신 공사업\", \"공공기관 업무 포털 구축\", \"영상정보 처리장치 유지관리\", \"정보시스템 유지관리 서비스\"], \"licenses\": [\"정보통신공사업 등록 준비 필요\", \"조달업체 등록 완료\", \"소프트웨어 개발 및 정보통신 공사업\", \"공공기관 업무 포털 구축\", \"영상정보 처리장치 유지관리\", \"정보통신 서비스\"], \"company_types\": [\"소기업\", \"중소기업확인서\", \"공공조달 시연용\"], \"certifications\": [\"중소기업확인서\"], \"preference_tags\": [\"공공조달 시연용\"], \"direct_production_items\": [\"정보시스템 유지관리 서비스\"], \"required_documents\": [\"사업자등록증\", \"사업자등록증명\", \"중소기업확인서\", \"직접생산확인증명서\", \"나라장터 경쟁입찰참가자격 등록증\", \"면허/등록/허가증\"], \"approved_evidence_count\": 0, \"approved_evidence_labels\": [], \"approved_evidence_documents\": [], \"profile_note\": \"공고 요구조건 비교를 위한 정규화 프로필입니다. 원문과 증빙 확인 후 검토 결과로 사용하세요.\"}, \"user_summary\": {\"generated_by\": \"fallback\", \"headline_status\": \"준비 필요\", \"plain_summary\": \"현재 결과는 준비 필요 상태입니다. 준비 확인 2개, 준비 필요 1개, 사람 확인 필요 7개가 있습니다. 먼저 준비 필요 항목의 증빙서류를 확인하고, 사람 확인 필요 항목은 공고 원문과 기준문서 근거를 함께 검토하세요.\", \"top_priority_actions\": [{\"title\": \"면허/등록/허가 확인\", \"reason\": \"법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.\", \"next_step\": \"면허/등록/허가 관련 증빙을 업로드하거나 승인된 법인 정보를 보완하세요.\", \"related_requirement_ids\": [\"requirement:292\", \"requirement:299\"], \"documents\": [\"면허/등록/허가\"]}, {\"title\": \"기타 확인 항목 확인\", \"reason\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_step\": \"기타 확인 항목 관련 증빙을 업로드하거나 승인된 법인 정보를 보완하세요.\", \"related_requirement_ids\": [\"requirement:293\", \"requirement:294\", \"requirement:295\", \"requirement:296\", \"requirement:297\", \"requirement:298\"], \"documents\": []}], \"missing_groups\": [{\"group\": \"면허/등록/허가\", \"count\": 2, \"summary\": \"면허/등록/허가 관련 조건 2개는 추가 확인 또는 준비가 필요합니다.\"}, {\"group\": \"기타 확인 항목\", \"count\": 6, \"summary\": \"기타 확인 항목 관련 조건 6개는 추가 확인 또는 준비가 필요합니다.\"}], \"item_explanations\": {\"requirement:290\": {\"user_gap_summary\": \"법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:291\": {\"user_gap_summary\": \"법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:292\": {\"user_gap_summary\": \"법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:293\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:294\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:295\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:296\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:297\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:298\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}, \"requirement:299\": {\"user_gap_summary\": \"자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.\", \"next_action\": \"관련 증빙과 원문을 확인하세요.\", \"evidence_hint\": \"\", \"basis_summary\": \"공고 요구조건 원문을 상세 모달에서 확인하세요.\"}}, \"risk_notes\": [\"사람 확인 필요 항목은 자동 비교만으로 결론을 내리지 말고 원문과 증빙을 다시 확인하세요.\"], \"evidence_links\": [{\"type\": \"notice_requirement\", \"ref_id\": \"290\", \"requirement_candidate_id\": 290, \"label\": \"지역 제한\", \"description\": \"경기도\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"291\", \"requirement_candidate_id\": 291, \"label\": \"지역 제한\", \"description\": \"경기\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"292\", \"requirement_candidate_id\": 292, \"label\": \"면허/업종\", \"description\": \"information communication construction license\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"293\", \"requirement_candidate_id\": 293, \"label\": \"금액 조건\", \"description\": \"추정가격: 25,000,000원\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"294\", \"requirement_candidate_id\": 294, \"label\": \"금액 조건\", \"description\": \"기초금액: 23,000,000원\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"295\", \"requirement_candidate_id\": 295, \"label\": \"일정 조건\", \"description\": \"공고일시: 2026-06-14 09:00\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"296\", \"requirement_candidate_id\": 296, \"label\": \"일정 조건\", \"description\": \"입찰개시: 2026-06-15 09:00\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"297\", \"requirement_candidate_id\": 297, \"label\": \"일정 조건\", \"description\": \"입찰마감: 2026-06-30 17:00\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"298\", \"requirement_candidate_id\": 298, \"label\": \"일정 조건\", \"description\": \"개찰일시: 2026-07-01 10:00\"}, {\"type\": \"notice_requirement\", \"ref_id\": \"299\", \"requirement_candidate_id\": 299, \"label\": \"원문 요구조건\", \"description\": \"면허/업종 제한: information communication construction license\"}], \"generation_error\": \"429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \"}}",
+    "status": "preview",
+    "summary": {
+      "needs_review_count": 7,
+      "not_found_count": 0,
+      "note": "부족조건 미리보기 결과입니다. 최종 자격 판정이 아닙니다.",
+      "possibly_missing_count": 1,
+      "prepared_count": 2,
+      "requirement_count": 10,
+      "status": "preview_only"
+    },
+    "summary_json": "{\"requirement_count\": 10, \"prepared_count\": 2, \"possibly_missing_count\": 1, \"needs_review_count\": 7, \"not_found_count\": 0, \"status\": \"preview_only\", \"note\": \"부족조건 미리보기 결과입니다. 최종 자격 판정이 아닙니다.\"}",
+    "updated_at": "2026-06-14T20:13:03.911342+00:00",
+    "user_summary": {
+      "evidence_links": [
+        {
+          "description": "경기도",
+          "label": "지역 제한",
+          "ref_id": "290",
+          "requirement_candidate_id": 290,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "경기",
+          "label": "지역 제한",
+          "ref_id": "291",
+          "requirement_candidate_id": 291,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "information communication construction license",
+          "label": "면허/업종",
+          "ref_id": "292",
+          "requirement_candidate_id": 292,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "추정가격: 25,000,000원",
+          "label": "금액 조건",
+          "ref_id": "293",
+          "requirement_candidate_id": 293,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "기초금액: 23,000,000원",
+          "label": "금액 조건",
+          "ref_id": "294",
+          "requirement_candidate_id": 294,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "공고일시: 2026-06-14 09:00",
+          "label": "일정 조건",
+          "ref_id": "295",
+          "requirement_candidate_id": 295,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "입찰개시: 2026-06-15 09:00",
+          "label": "일정 조건",
+          "ref_id": "296",
+          "requirement_candidate_id": 296,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "입찰마감: 2026-06-30 17:00",
+          "label": "일정 조건",
+          "ref_id": "297",
+          "requirement_candidate_id": 297,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "개찰일시: 2026-07-01 10:00",
+          "label": "일정 조건",
+          "ref_id": "298",
+          "requirement_candidate_id": 298,
+          "type": "notice_requirement"
+        },
+        {
+          "description": "면허/업종 제한: information communication construction license",
+          "label": "원문 요구조건",
+          "ref_id": "299",
+          "requirement_candidate_id": 299,
+          "type": "notice_requirement"
+        }
+      ],
+      "generated_by": "fallback",
+      "generation_error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. ",
+      "headline_status": "준비 필요",
+      "item_explanations": {
+        "requirement:290": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다."
+        },
+        "requirement:291": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다."
+        },
+        "requirement:292": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다."
+        },
+        "requirement:293": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:294": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:295": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:296": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:297": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:298": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        },
+        "requirement:299": {
+          "basis_summary": "공고 요구조건 원문을 상세 모달에서 확인하세요.",
+          "evidence_hint": "",
+          "next_action": "관련 증빙과 원문을 확인하세요.",
+          "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+        }
+      },
+      "missing_groups": [
+        {
+          "count": 2,
+          "group": "면허/등록/허가",
+          "summary": "면허/등록/허가 관련 조건 2개는 추가 확인 또는 준비가 필요합니다."
+        },
+        {
+          "count": 6,
+          "group": "기타 확인 항목",
+          "summary": "기타 확인 항목 관련 조건 6개는 추가 확인 또는 준비가 필요합니다."
+        }
+      ],
+      "plain_summary": "현재 결과는 준비 필요 상태입니다. 준비 확인 2개, 준비 필요 1개, 사람 확인 필요 7개가 있습니다. 먼저 준비 필요 항목의 증빙서류를 확인하고, 사람 확인 필요 항목은 공고 원문과 기준문서 근거를 함께 검토하세요.",
+      "risk_notes": [
+        "사람 확인 필요 항목은 자동 비교만으로 결론을 내리지 말고 원문과 증빙을 다시 확인하세요."
+      ],
+      "top_priority_actions": [
+        {
+          "documents": [
+            "면허/등록/허가"
+          ],
+          "next_step": "면허/등록/허가 관련 증빙을 업로드하거나 승인된 법인 정보를 보완하세요.",
+          "reason": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.",
+          "related_requirement_ids": [
+            "requirement:292",
+            "requirement:299"
+          ],
+          "title": "면허/등록/허가 확인"
+        },
+        {
+          "documents": [],
+          "next_step": "기타 확인 항목 관련 증빙을 업로드하거나 승인된 법인 정보를 보완하세요.",
+          "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "related_requirement_ids": [
+            "requirement:293",
+            "requirement:294",
+            "requirement:295",
+            "requirement:296",
+            "requirement:297",
+            "requirement:298"
+          ],
+          "title": "기타 확인 항목 확인"
+        }
+      ]
+    }
+  },
+  "judgment_run": {
+    "citation_coverage": 0.7,
+    "corporation": {
+      "business_address": "경기도 성남시 분당구 데모로 10",
+      "business_category": "정보통신 서비스",
+      "business_item": "공공기관 업무 포털 구축, 영상정보 처리장치 유지관리",
+      "business_registration_number": "142-81-01249",
+      "business_type": "소프트웨어 개발 및 정보통신 공사업",
+      "certifications_json": "[\"중소기업확인서\"]",
+      "company_size_classification": "소기업",
+      "corporate_registration_number": "",
+      "created_at": "2026-06-14T20:12:49.129577+00:00",
+      "direct_production_items_json": "[\"정보시스템 유지관리 서비스\"]",
+      "evidence_expiry_summary": "중소기업확인서 2026-12-31 만료",
+      "evidence_verification_status": "evidence_reviewed",
+      "headquarters_address": "경기도 성남시 분당구 데모로 10",
+      "id": 45,
+      "internal_notes": "서비스 시연 영상 자동 생성 데이터",
+      "license_summary": "정보통신공사업 등록 준비 필요",
+      "management_group_name": "제품 시연 그룹 20260614201249",
+      "name": "시연 법인 20260614201249",
+      "opening_date": "",
+      "preference_tags_json": "[\"공공조달 시연용\"]",
+      "procurement_registration_status": "조달업체 등록 완료",
+      "region": "경기도",
+      "representative_name": "김시연",
+      "updated_at": "2026-06-14T20:12:49.129577+00:00"
+    },
+    "corporation_id": 45,
+    "created_at": "2026-06-14T20:13:34.024825+00:00",
+    "id": 23,
+    "input_snapshot": {
+      "approved_rule_candidate_policy": "approved candidates are preferred before generic basis search; generic search is fallback",
+      "basis_citation_min_score": 0.25,
+      "basis_search_top_k": 3,
+      "corporation": {
+        "id": 45,
+        "name": "시연 법인 20260614201249"
+      },
+      "corporation_profile": {
+        "approved_evidence_count": 0,
+        "approved_evidence_documents": [],
+        "approved_evidence_labels": [],
+        "business_types": [
+          "정보통신 서비스",
+          "소프트웨어 개발 및 정보통신 공사업",
+          "공공기관 업무 포털 구축",
+          "영상정보 처리장치 유지관리",
+          "정보시스템 유지관리 서비스"
+        ],
+        "certifications": [
+          "중소기업확인서"
+        ],
+        "company_types": [
+          "소기업",
+          "중소기업확인서",
+          "공공조달 시연용"
+        ],
+        "corporation_id": 45,
+        "corporation_name": "시연 법인 20260614201249",
+        "direct_production_items": [
+          "정보시스템 유지관리 서비스"
+        ],
+        "licenses": [
+          "정보통신공사업 등록 준비 필요",
+          "조달업체 등록 완료",
+          "소프트웨어 개발 및 정보통신 공사업",
+          "공공기관 업무 포털 구축",
+          "영상정보 처리장치 유지관리",
+          "정보통신 서비스"
+        ],
+        "management_group_name": "제품 시연 그룹 20260614201249",
+        "preference_tags": [
+          "공공조달 시연용"
+        ],
+        "profile_note": "공고 요구조건 비교를 위한 정규화 프로필입니다. 원문과 증빙 확인 후 검토 결과로 사용하세요.",
+        "regions": [
+          "경기도",
+          "경기",
+          "성남시",
+          "분당구"
+        ],
+        "required_documents": [
+          "사업자등록증",
+          "사업자등록증명",
+          "중소기업확인서",
+          "직접생산확인증명서",
+          "나라장터 경쟁입찰참가자격 등록증",
+          "면허/등록/허가증"
+        ]
+      },
+      "notice": {
+        "analysis_status": "completed",
+        "analysis_summary_json": "{\"document_summary\": \"공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\", \"key_dates\": [], \"requirements\": [\"공고일시: 2026-06-14 09:00\", \"입찰개시: 2026-06-15 09:00\", \"입찰마감: 2026-06-30 17:00\", \"개찰일시: 2026-07-01 10:00\", \"추정가격: 25,000,000원\", \"기초금액: 23,000,000원\"], \"required_documents\": [], \"risks\": [], \"questions_to_check\": [\"핵심 일정/제출 서류를 원문에서 재확인하세요.\"], \"confidence_note\": \"Fallback summary (no API key or API failed)\", \"notice_requirements\": {\"extraction_method\": \"rule_based_phase_1_7_stabilized\", \"regions\": [\"경기도\", \"경기\"], \"licenses\": [\"information communication construction license\"], \"company_types\": [], \"required_documents\": [], \"requirement_lines\": [\"면허/업종 제한: information communication construction license\"], \"money\": {\"presmpt_prce\": \"25000000\", \"bdgt_amt\": \"\", \"bssamt\": \"23000000\"}, \"dates\": {\"bid_ntce_dt\": \"2026-06-14 09:00\", \"bid_begin_dt\": \"2026-06-15 09:00\", \"bid_clse_dt\": \"2026-06-30 17:00\", \"openg_dt\": \"2026-07-01 10:00\"}, \"uncertainty_notes\": [\"Phase 1.7에서는 요구조건 후보와 부족 가능성만 정리하며 최종 자격 판정은 수행하지 않습니다.\"]}}",
+        "analysis_summary_markdown": "## 문서 요약\n공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\n\n## 요구사항\n- 공고일시: 2026-06-14 09:00\n- 입찰개시: 2026-06-15 09:00\n- 입찰마감: 2026-06-30 17:00\n- 개찰일시: 2026-07-01 10:00\n- 추정가격: 25,000,000원\n- 기초금액: 23,000,000원\n\n신뢰도 메모: Fallback summary (no API key or API failed)\n\n## 공고 요구조건 구조화 후보\n- 지역: 경기도, 경기\n- 면허/업종: information communication construction license\n- 기업유형: 원문 확인 필요\n- 제출/증빙서류: 원문 확인 필요\n- 추정가격: 25,000,000원\n- 입찰마감: 2026-06-30 17:00\n\n※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
+        "bdgt_amt": "",
+        "bid_begin_dt": "2026-06-15 09:00",
+        "bid_clse_dt": "2026-06-30 17:00",
+        "bid_ntce_dt": "2026-06-14 09:00",
+        "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+        "bid_ntce_no": "DEMO20260614201249",
+        "bid_ntce_ord": "000",
+        "bssamt": "23000000",
+        "business_type": "service",
+        "created_at": "2026-06-14T20:12:50.838471+00:00",
+        "detail_json": "{\"errors\": [], \"items\": [], \"business_type\": \"service\", \"notice\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"basis_amount\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"license_limit\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eligible_region\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eorder_attachments\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}}",
+        "dminstt_nm": "시연 수요기관",
+        "download_status": "no_supported_attachments",
+        "error_message": "",
+        "id": 41,
+        "license_text": "information communication construction license",
+        "ntce_instt_nm": "시연 발주기관",
+        "openg_dt": "2026-07-01 10:00",
+        "presmpt_prce": "25000000",
+        "raw_json": "{\"bidNtceNo\": \"DEMO20260614201249\", \"bidNtceOrd\": \"000\", \"bidNtceNm\": \"제품 시연용 정보통신 용역 공고 20260614201249\", \"ntceInsttNm\": \"시연 발주기관\", \"dminsttNm\": \"시연 수요기관\", \"bidNtceDt\": \"2026-06-14 09:00\", \"bidBeginDt\": \"2026-06-15 09:00\", \"bidClseDt\": \"2026-06-30 17:00\", \"opengDt\": \"2026-07-01 10:00\", \"presmptPrce\": \"25000000\", \"bssamt\": \"23000000\", \"prtcptPsblRgnNm\": \"경기도\", \"lcnsLmtNm\": \"information communication construction license\", \"bidNtceDtlUrl\": \"https://example.go.kr/demo-notice\", \"business_type\": \"service\", \"_nara_business_type\": \"service\", \"business_type_label\": \"용역\"}",
+        "region_text": "경기도",
+        "save_status": "saved",
+        "source_url": "https://example.go.kr/demo-notice",
+        "updated_at": "2026-06-14T20:12:54.370583+00:00"
+      },
+      "notice_requirements": [
+        {
+          "comparison_strategy": "controlled_text_match",
+          "confidence": 0.84,
+          "label": "지역 제한",
+          "needs_review": false,
+          "normalized_value": "경기도",
+          "related_profile_fields": [
+            "region",
+            "business_address",
+            "headquarters_address"
+          ],
+          "required_evidence_types": [
+            "사업장 소재지 증빙"
+          ],
+          "required_value": "경기도",
+          "requirement_candidate_id": 290,
+          "requirement_input_id": "notice_requirement:290",
+          "requirement_type": "region",
+          "source_text": "공고 지역 제한",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "controlled_text_match",
+          "confidence": 0.84,
+          "label": "지역 제한",
+          "needs_review": false,
+          "normalized_value": "경기",
+          "related_profile_fields": [
+            "region",
+            "business_address",
+            "headquarters_address"
+          ],
+          "required_evidence_types": [
+            "사업장 소재지 증빙"
+          ],
+          "required_value": "경기",
+          "requirement_candidate_id": 291,
+          "requirement_input_id": "notice_requirement:291",
+          "requirement_type": "region",
+          "source_text": "공고 지역 제한",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "controlled_text_match",
+          "confidence": 0.86,
+          "label": "면허/업종",
+          "needs_review": false,
+          "normalized_value": "informationcommunicationconstructionlicense",
+          "related_profile_fields": [
+            "license_summary",
+            "business_type",
+            "business_item",
+            "procurement_registration_status"
+          ],
+          "required_evidence_types": [
+            "면허/등록/허가증"
+          ],
+          "required_value": "information communication construction license",
+          "requirement_candidate_id": 292,
+          "requirement_input_id": "notice_requirement:292",
+          "requirement_type": "license",
+          "source_text": "공고 면허/업종 제한",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "금액 조건",
+          "needs_review": true,
+          "normalized_value": "추정가격25000000원",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "추정가격: 25,000,000원",
+          "requirement_candidate_id": 293,
+          "requirement_input_id": "notice_requirement:293",
+          "requirement_type": "money",
+          "source_text": "공고 금액 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "금액 조건",
+          "needs_review": true,
+          "normalized_value": "기초금액23000000원",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "기초금액: 23,000,000원",
+          "requirement_candidate_id": 294,
+          "requirement_input_id": "notice_requirement:294",
+          "requirement_type": "money",
+          "source_text": "공고 금액 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "일정 조건",
+          "needs_review": true,
+          "normalized_value": "공고일시202606140900",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "공고일시: 2026-06-14 09:00",
+          "requirement_candidate_id": 295,
+          "requirement_input_id": "notice_requirement:295",
+          "requirement_type": "date",
+          "source_text": "공고 일정 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "일정 조건",
+          "needs_review": true,
+          "normalized_value": "입찰개시202606150900",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "입찰개시: 2026-06-15 09:00",
+          "requirement_candidate_id": 296,
+          "requirement_input_id": "notice_requirement:296",
+          "requirement_type": "date",
+          "source_text": "공고 일정 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "일정 조건",
+          "needs_review": true,
+          "normalized_value": "입찰마감202606301700",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "입찰마감: 2026-06-30 17:00",
+          "requirement_candidate_id": 297,
+          "requirement_input_id": "notice_requirement:297",
+          "requirement_type": "date",
+          "source_text": "공고 일정 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.72,
+          "label": "일정 조건",
+          "needs_review": true,
+          "normalized_value": "개찰일시202607011000",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "개찰일시: 2026-07-01 10:00",
+          "requirement_candidate_id": 298,
+          "requirement_input_id": "notice_requirement:298",
+          "requirement_type": "date",
+          "source_text": "공고 일정 조건",
+          "status": "phase3_input_candidate"
+        },
+        {
+          "comparison_strategy": "manual_review",
+          "confidence": 0.64,
+          "label": "원문 요구조건",
+          "needs_review": true,
+          "normalized_value": "면허업종제한informationcommunicationconstructionlicense",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "면허/업종 제한: information communication construction license",
+          "requirement_candidate_id": 299,
+          "requirement_input_id": "notice_requirement:299",
+          "requirement_type": "requirement_line",
+          "source_text": "면허/업종 제한: information communication construction license",
+          "status": "phase3_input_candidate"
+        }
+      ]
+    },
+    "matched_count": 2,
+    "missing_count": 1,
+    "nara_notice_id": 41,
+    "needs_review_count": 7,
+    "not_applicable_count": 0,
+    "notice": {
+      "analysis_status": "completed",
+      "analysis_summary_json": "{\"document_summary\": \"공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\", \"key_dates\": [], \"requirements\": [\"공고일시: 2026-06-14 09:00\", \"입찰개시: 2026-06-15 09:00\", \"입찰마감: 2026-06-30 17:00\", \"개찰일시: 2026-07-01 10:00\", \"추정가격: 25,000,000원\", \"기초금액: 23,000,000원\"], \"required_documents\": [], \"risks\": [], \"questions_to_check\": [\"핵심 일정/제출 서류를 원문에서 재확인하세요.\"], \"confidence_note\": \"Fallback summary (no API key or API failed)\", \"notice_requirements\": {\"extraction_method\": \"rule_based_phase_1_7_stabilized\", \"regions\": [\"경기도\", \"경기\"], \"licenses\": [\"information communication construction license\"], \"company_types\": [], \"required_documents\": [], \"requirement_lines\": [\"면허/업종 제한: information communication construction license\"], \"money\": {\"presmpt_prce\": \"25000000\", \"bdgt_amt\": \"\", \"bssamt\": \"23000000\"}, \"dates\": {\"bid_ntce_dt\": \"2026-06-14 09:00\", \"bid_begin_dt\": \"2026-06-15 09:00\", \"bid_clse_dt\": \"2026-06-30 17:00\", \"openg_dt\": \"2026-07-01 10:00\"}, \"uncertainty_notes\": [\"Phase 1.7에서는 요구조건 후보와 부족 가능성만 정리하며 최종 자격 판정은 수행하지 않습니다.\"]}}",
+      "analysis_summary_markdown": "## 문서 요약\n공고명: 제품 시연용 정보통신 용역 공고 20260614201249 공고번호: DEMO20260614201249-000 공고기관: 시연 발주기관 수요기관: 시연 수요기관\n\n## 요구사항\n- 공고일시: 2026-06-14 09:00\n- 입찰개시: 2026-06-15 09:00\n- 입찰마감: 2026-06-30 17:00\n- 개찰일시: 2026-07-01 10:00\n- 추정가격: 25,000,000원\n- 기초금액: 23,000,000원\n\n신뢰도 메모: Fallback summary (no API key or API failed)\n\n## 공고 요구조건 구조화 후보\n- 지역: 경기도, 경기\n- 면허/업종: information communication construction license\n- 기업유형: 원문 확인 필요\n- 제출/증빙서류: 원문 확인 필요\n- 추정가격: 25,000,000원\n- 입찰마감: 2026-06-30 17:00\n\n※ 위 항목은 자동 추출 후보이며, 최종 자격 판정이 아닙니다.",
+      "bdgt_amt": "",
+      "bid_begin_dt": "2026-06-15 09:00",
+      "bid_clse_dt": "2026-06-30 17:00",
+      "bid_ntce_dt": "2026-06-14 09:00",
+      "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+      "bid_ntce_no": "DEMO20260614201249",
+      "bid_ntce_ord": "000",
+      "bssamt": "23000000",
+      "business_type": "service",
+      "created_at": "2026-06-14T20:12:50.838471+00:00",
+      "detail_json": "{\"errors\": [], \"items\": [], \"business_type\": \"service\", \"notice\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"basis_amount\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"license_limit\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eligible_region\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}, \"eorder_attachments\": {\"http_status\": 200, \"header\": {\"resultCode\": \"00\", \"resultMsg\": \"정상\"}, \"total_count\": 0, \"items\": []}}",
+      "dminstt_nm": "시연 수요기관",
+      "download_status": "no_supported_attachments",
+      "error_message": "",
+      "id": 41,
+      "license_text": "information communication construction license",
+      "ntce_instt_nm": "시연 발주기관",
+      "openg_dt": "2026-07-01 10:00",
+      "presmpt_prce": "25000000",
+      "raw_json": "{\"bidNtceNo\": \"DEMO20260614201249\", \"bidNtceOrd\": \"000\", \"bidNtceNm\": \"제품 시연용 정보통신 용역 공고 20260614201249\", \"ntceInsttNm\": \"시연 발주기관\", \"dminsttNm\": \"시연 수요기관\", \"bidNtceDt\": \"2026-06-14 09:00\", \"bidBeginDt\": \"2026-06-15 09:00\", \"bidClseDt\": \"2026-06-30 17:00\", \"opengDt\": \"2026-07-01 10:00\", \"presmptPrce\": \"25000000\", \"bssamt\": \"23000000\", \"prtcptPsblRgnNm\": \"경기도\", \"lcnsLmtNm\": \"information communication construction license\", \"bidNtceDtlUrl\": \"https://example.go.kr/demo-notice\", \"business_type\": \"service\", \"_nara_business_type\": \"service\", \"business_type_label\": \"용역\"}",
+      "region_text": "경기도",
+      "save_status": "saved",
+      "source_url": "https://example.go.kr/demo-notice",
+      "updated_at": "2026-06-14T20:12:54.370583+00:00"
+    },
+    "result": {
+      "ai_judgment": {
+        "ai_weight": 0.7,
+        "fallback_reason": "ai_generation_failed",
+        "generated_by": "fallback",
+        "generation_error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. ",
+        "items": [
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "matched",
+            "final_match_status": "matched",
+            "id": "notice_requirement:290",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "matched",
+            "final_match_status": "matched",
+            "id": "notice_requirement:291",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "missing",
+            "final_match_status": "missing",
+            "id": "notice_requirement:292",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:293",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:294",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:295",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:296",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:297",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:298",
+            "status_source": "fallback"
+          },
+          {
+            "ai_confidence": 0,
+            "ai_match_status": "",
+            "ai_reason": "",
+            "ai_recommended_action": "",
+            "deterministic_match_status": "needs_review",
+            "final_match_status": "needs_review",
+            "id": "notice_requirement:299",
+            "status_source": "fallback"
+          }
+        ],
+        "minimum_ai_confidence": 0.7,
+        "model": "",
+        "policy": "gemini_weighted_70_conservative_merge"
+      },
+      "items": [
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19355,
+              "citation_candidate_id": "basis:1:chunk:19355",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 2,
+              "page_start": 1,
+              "score": 0.2857,
+              "section_title": "제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+              "source_type": "basis_search",
+              "text_preview": "중소벤처기업부 고시 제2025-116호\n\n중소기업자간 경쟁제품 직접생산 확인기준\n\n중소기업청 고시 제2007- 2호(2007. 1. 3. 제정)\n\n중소기업청 고시 제2010-33호(2010. 10. 8. 일부개정)\n\n중소기업청 고시 제2012- 4호(2012. 1. 17. 일부개정)\n\n중소벤처기업부고시 제2017-5호(2017. 8. 29. 일부개정)\n\n중소벤처기업부고시 제2020-35호(2020. 4. 8. 일부개정)\n\n중소벤처기업부고시 제2021-31호(2021. 5.11. 일부개정)\n\n중소벤처기업부고시 제2022-23호(2022. 4. 1. 일부개정)\n\n중소벤처기업부고시 제2023-55호(2023. 5. 23. 폐지제정)\n\n중소벤처기업부고시 제2024-13호(2024. 3. 4. 폐지제정)\n\n중소벤처기업부고시 제2024-100호(2024. 11. 29. 일부개정)\n\n중소벤처기업부고시 제2025-116호(2025. 11. 19. 일부개정)\n\n- 1 -\n\n- 2 -\n\n# 제1장 총"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19417,
+              "citation_candidate_id": "basis:1:chunk:19417",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 48,
+              "page_start": 47,
+              "score": 0.2857,
+              "section_title": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (",
+              "source_type": "basis_search",
+              "text_preview": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (한국전력공사 확인) - 원부자재 매입세금계산서 - 실적증명서 (매출세금계산서, 입금통장사본) | |\n\n- 93 -\n\n[ 별첨 18-3 ]\n\n[ 별첨 18-4 ]\n\n생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 설계 | 제작시방서 또는 규격서에 따라 설계설비(CAD)를 이용하여 제작 도면을 작성하는 공정 |\n| 2 | 원재료 및 부분품 구입 | 제작에 소요되는 원재료와 부분품을 발주 및 구입하는 공정 |\n| 3 | 구조물 제작 | 원재료 및 절단·절곡된 철판 등 부분품을 크레인 등을 이용하여 투입 공정 장소 또는 조립장소 등에 운반하여 드릴머신, 절단기, 용접기 등을 이용하여 구조물을 제작도면에 따라 가공 및 제작하는 공정 |\n| 4 | 조립 및 용접 | 케이싱 및 구성부품을 조립"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19418,
+              "citation_candidate_id": "basis:1:chunk:19418",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 49,
+              "page_start": 48,
+              "score": 0.2857,
+              "section_title": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위",
+              "source_type": "basis_search",
+              "text_preview": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위치한진수시설(플로팅도크등)의 보유(선박국적증서 등) 증빙 - (납품시 확인) 선박 운송 장비(임차허용), 지방자치 단체 노선허가 - 공유수면 점용·사용 허가 증빙 |\n\n- 95 -\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산인력 | ① 기술/기능인력 : 다음 각 호 중 최소 1개 분야에 해당하는 자 - 국가기술자격법에 의한 관련 자격 취득자 - 공업계전문대학 이상 관련 학과 이수자 - 근로자직업능력개발법에 의거 관련 과정 이수자 - 강선업 및 경금속제선업은 3년이상 실무에 종사한 자 - 합성수지선(FRP선)업은 해당분야 2년이상 실무 종사자 ※ 붙임 18-1 “선박 세부 제품별 생산공장, 생산시설, 생산인원 기준 등” 참조 (단, 상시근로자에서 대표자 및 일용근로자는 제외하며, 생산인력은 세"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "matched",
+          "final_match_status": "matched",
+          "gap_reason": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.",
+          "label": "지역 제한",
+          "match_status": "matched",
+          "matched_value": "경기도",
+          "recommended_action": "보유 정보와 일치하는 후보가 있습니다. 기준문서 근거와 원문을 검토해 확인하세요.",
+          "related_profile_fields": [
+            "region",
+            "business_address",
+            "headquarters_address"
+          ],
+          "required_evidence_types": [
+            "사업장 소재지 증빙"
+          ],
+          "required_value": "경기도",
+          "requirement_candidate_id": 290,
+          "requirement_input_id": "notice_requirement:290",
+          "requirement_type": "region",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19355,
+              "citation_candidate_id": "basis:1:chunk:19355",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 2,
+              "page_start": 1,
+              "score": 0.2857,
+              "section_title": "제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+              "source_type": "basis_search",
+              "text_preview": "중소벤처기업부 고시 제2025-116호\n\n중소기업자간 경쟁제품 직접생산 확인기준\n\n중소기업청 고시 제2007- 2호(2007. 1. 3. 제정)\n\n중소기업청 고시 제2010-33호(2010. 10. 8. 일부개정)\n\n중소기업청 고시 제2012- 4호(2012. 1. 17. 일부개정)\n\n중소벤처기업부고시 제2017-5호(2017. 8. 29. 일부개정)\n\n중소벤처기업부고시 제2020-35호(2020. 4. 8. 일부개정)\n\n중소벤처기업부고시 제2021-31호(2021. 5.11. 일부개정)\n\n중소벤처기업부고시 제2022-23호(2022. 4. 1. 일부개정)\n\n중소벤처기업부고시 제2023-55호(2023. 5. 23. 폐지제정)\n\n중소벤처기업부고시 제2024-13호(2024. 3. 4. 폐지제정)\n\n중소벤처기업부고시 제2024-100호(2024. 11. 29. 일부개정)\n\n중소벤처기업부고시 제2025-116호(2025. 11. 19. 일부개정)\n\n- 1 -\n\n- 2 -\n\n# 제1장 총"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19417,
+              "citation_candidate_id": "basis:1:chunk:19417",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 48,
+              "page_start": 47,
+              "score": 0.2857,
+              "section_title": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (",
+              "source_type": "basis_search",
+              "text_preview": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (한국전력공사 확인) - 원부자재 매입세금계산서 - 실적증명서 (매출세금계산서, 입금통장사본) | |\n\n- 93 -\n\n[ 별첨 18-3 ]\n\n[ 별첨 18-4 ]\n\n생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 설계 | 제작시방서 또는 규격서에 따라 설계설비(CAD)를 이용하여 제작 도면을 작성하는 공정 |\n| 2 | 원재료 및 부분품 구입 | 제작에 소요되는 원재료와 부분품을 발주 및 구입하는 공정 |\n| 3 | 구조물 제작 | 원재료 및 절단·절곡된 철판 등 부분품을 크레인 등을 이용하여 투입 공정 장소 또는 조립장소 등에 운반하여 드릴머신, 절단기, 용접기 등을 이용하여 구조물을 제작도면에 따라 가공 및 제작하는 공정 |\n| 4 | 조립 및 용접 | 케이싱 및 구성부품을 조립"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19418,
+              "citation_candidate_id": "basis:1:chunk:19418",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 49,
+              "page_start": 48,
+              "score": 0.2857,
+              "section_title": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위",
+              "source_type": "basis_search",
+              "text_preview": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위치한진수시설(플로팅도크등)의 보유(선박국적증서 등) 증빙 - (납품시 확인) 선박 운송 장비(임차허용), 지방자치 단체 노선허가 - 공유수면 점용·사용 허가 증빙 |\n\n- 95 -\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산인력 | ① 기술/기능인력 : 다음 각 호 중 최소 1개 분야에 해당하는 자 - 국가기술자격법에 의한 관련 자격 취득자 - 공업계전문대학 이상 관련 학과 이수자 - 근로자직업능력개발법에 의거 관련 과정 이수자 - 강선업 및 경금속제선업은 3년이상 실무에 종사한 자 - 합성수지선(FRP선)업은 해당분야 2년이상 실무 종사자 ※ 붙임 18-1 “선박 세부 제품별 생산공장, 생산시설, 생산인원 기준 등” 참조 (단, 상시근로자에서 대표자 및 일용근로자는 제외하며, 생산인력은 세"
+            }
+          ],
+          "source_text": "공고 지역 제한",
+          "status_label": "준비 확인",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19355,
+              "citation_candidate_id": "basis:1:chunk:19355",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 2,
+              "page_start": 1,
+              "score": 0.2857,
+              "section_title": "제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+              "source_type": "basis_search",
+              "text_preview": "중소벤처기업부 고시 제2025-116호\n\n중소기업자간 경쟁제품 직접생산 확인기준\n\n중소기업청 고시 제2007- 2호(2007. 1. 3. 제정)\n\n중소기업청 고시 제2010-33호(2010. 10. 8. 일부개정)\n\n중소기업청 고시 제2012- 4호(2012. 1. 17. 일부개정)\n\n중소벤처기업부고시 제2017-5호(2017. 8. 29. 일부개정)\n\n중소벤처기업부고시 제2020-35호(2020. 4. 8. 일부개정)\n\n중소벤처기업부고시 제2021-31호(2021. 5.11. 일부개정)\n\n중소벤처기업부고시 제2022-23호(2022. 4. 1. 일부개정)\n\n중소벤처기업부고시 제2023-55호(2023. 5. 23. 폐지제정)\n\n중소벤처기업부고시 제2024-13호(2024. 3. 4. 폐지제정)\n\n중소벤처기업부고시 제2024-100호(2024. 11. 29. 일부개정)\n\n중소벤처기업부고시 제2025-116호(2025. 11. 19. 일부개정)\n\n- 1 -\n\n- 2 -\n\n# 제1장 총"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19417,
+              "citation_candidate_id": "basis:1:chunk:19417",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 48,
+              "page_start": 47,
+              "score": 0.2857,
+              "section_title": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (",
+              "source_type": "basis_search",
+              "text_preview": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (한국전력공사 확인) - 원부자재 매입세금계산서 - 실적증명서 (매출세금계산서, 입금통장사본) | |\n\n- 93 -\n\n[ 별첨 18-3 ]\n\n[ 별첨 18-4 ]\n\n생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 설계 | 제작시방서 또는 규격서에 따라 설계설비(CAD)를 이용하여 제작 도면을 작성하는 공정 |\n| 2 | 원재료 및 부분품 구입 | 제작에 소요되는 원재료와 부분품을 발주 및 구입하는 공정 |\n| 3 | 구조물 제작 | 원재료 및 절단·절곡된 철판 등 부분품을 크레인 등을 이용하여 투입 공정 장소 또는 조립장소 등에 운반하여 드릴머신, 절단기, 용접기 등을 이용하여 구조물을 제작도면에 따라 가공 및 제작하는 공정 |\n| 4 | 조립 및 용접 | 케이싱 및 구성부품을 조립"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19418,
+              "citation_candidate_id": "basis:1:chunk:19418",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 49,
+              "page_start": 48,
+              "score": 0.2857,
+              "section_title": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위",
+              "source_type": "basis_search",
+              "text_preview": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위치한진수시설(플로팅도크등)의 보유(선박국적증서 등) 증빙 - (납품시 확인) 선박 운송 장비(임차허용), 지방자치 단체 노선허가 - 공유수면 점용·사용 허가 증빙 |\n\n- 95 -\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산인력 | ① 기술/기능인력 : 다음 각 호 중 최소 1개 분야에 해당하는 자 - 국가기술자격법에 의한 관련 자격 취득자 - 공업계전문대학 이상 관련 학과 이수자 - 근로자직업능력개발법에 의거 관련 과정 이수자 - 강선업 및 경금속제선업은 3년이상 실무에 종사한 자 - 합성수지선(FRP선)업은 해당분야 2년이상 실무 종사자 ※ 붙임 18-1 “선박 세부 제품별 생산공장, 생산시설, 생산인원 기준 등” 참조 (단, 상시근로자에서 대표자 및 일용근로자는 제외하며, 생산인력은 세"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "matched",
+          "final_match_status": "matched",
+          "gap_reason": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다.",
+          "label": "지역 제한",
+          "match_status": "matched",
+          "matched_value": "경기도",
+          "recommended_action": "보유 정보와 일치하는 후보가 있습니다. 기준문서 근거와 원문을 검토해 확인하세요.",
+          "related_profile_fields": [
+            "region",
+            "business_address",
+            "headquarters_address"
+          ],
+          "required_evidence_types": [
+            "사업장 소재지 증빙"
+          ],
+          "required_value": "경기",
+          "requirement_candidate_id": 291,
+          "requirement_input_id": "notice_requirement:291",
+          "requirement_type": "region",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19355,
+              "citation_candidate_id": "basis:1:chunk:19355",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 2,
+              "page_start": 1,
+              "score": 0.2857,
+              "section_title": "제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+              "source_type": "basis_search",
+              "text_preview": "중소벤처기업부 고시 제2025-116호\n\n중소기업자간 경쟁제품 직접생산 확인기준\n\n중소기업청 고시 제2007- 2호(2007. 1. 3. 제정)\n\n중소기업청 고시 제2010-33호(2010. 10. 8. 일부개정)\n\n중소기업청 고시 제2012- 4호(2012. 1. 17. 일부개정)\n\n중소벤처기업부고시 제2017-5호(2017. 8. 29. 일부개정)\n\n중소벤처기업부고시 제2020-35호(2020. 4. 8. 일부개정)\n\n중소벤처기업부고시 제2021-31호(2021. 5.11. 일부개정)\n\n중소벤처기업부고시 제2022-23호(2022. 4. 1. 일부개정)\n\n중소벤처기업부고시 제2023-55호(2023. 5. 23. 폐지제정)\n\n중소벤처기업부고시 제2024-13호(2024. 3. 4. 폐지제정)\n\n중소벤처기업부고시 제2024-100호(2024. 11. 29. 일부개정)\n\n중소벤처기업부고시 제2025-116호(2025. 11. 19. 일부개정)\n\n- 1 -\n\n- 2 -\n\n# 제1장 총"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19417,
+              "citation_candidate_id": "basis:1:chunk:19417",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 48,
+              "page_start": 47,
+              "score": 0.2857,
+              "section_title": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (",
+              "source_type": "basis_search",
+              "text_preview": "능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (한국전력공사 확인) - 원부자재 매입세금계산서 - 실적증명서 (매출세금계산서, 입금통장사본) | |\n\n- 93 -\n\n[ 별첨 18-3 ]\n\n[ 별첨 18-4 ]\n\n생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 설계 | 제작시방서 또는 규격서에 따라 설계설비(CAD)를 이용하여 제작 도면을 작성하는 공정 |\n| 2 | 원재료 및 부분품 구입 | 제작에 소요되는 원재료와 부분품을 발주 및 구입하는 공정 |\n| 3 | 구조물 제작 | 원재료 및 절단·절곡된 철판 등 부분품을 크레인 등을 이용하여 투입 공정 장소 또는 조립장소 등에 운반하여 드릴머신, 절단기, 용접기 등을 이용하여 구조물을 제작도면에 따라 가공 및 제작하는 공정 |\n| 4 | 조립 및 용접 | 케이싱 및 구성부품을 조립"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19418,
+              "citation_candidate_id": "basis:1:chunk:19418",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 49,
+              "page_start": 48,
+              "score": 0.2857,
+              "section_title": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위",
+              "source_type": "basis_search",
+              "text_preview": "| - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위치한진수시설(플로팅도크등)의 보유(선박국적증서 등) 증빙 - (납품시 확인) 선박 운송 장비(임차허용), 지방자치 단체 노선허가 - 공유수면 점용·사용 허가 증빙 |\n\n- 95 -\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산인력 | ① 기술/기능인력 : 다음 각 호 중 최소 1개 분야에 해당하는 자 - 국가기술자격법에 의한 관련 자격 취득자 - 공업계전문대학 이상 관련 학과 이수자 - 근로자직업능력개발법에 의거 관련 과정 이수자 - 강선업 및 경금속제선업은 3년이상 실무에 종사한 자 - 합성수지선(FRP선)업은 해당분야 2년이상 실무 종사자 ※ 붙임 18-1 “선박 세부 제품별 생산공장, 생산시설, 생산인원 기준 등” 참조 (단, 상시근로자에서 대표자 및 일용근로자는 제외하며, 생산인력은 세"
+            }
+          ],
+          "source_text": "공고 지역 제한",
+          "status_label": "준비 확인",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 5,
+              "basis_document_title": "제품 시연 기준문서 20260614102642",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29055,
+              "citation_candidate_id": "basis:5:chunk:29055",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 6,
+              "basis_document_title": "제품 시연 기준문서 20260614103052",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29056,
+              "citation_candidate_id": "basis:6:chunk:29056",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 7,
+              "basis_document_title": "제품 시연 기준문서 debug-corp-1",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29057,
+              "citation_candidate_id": "basis:7:chunk:29057",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "missing",
+          "final_match_status": "missing",
+          "gap_reason": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.",
+          "label": "면허/업종",
+          "match_status": "missing",
+          "matched_value": "",
+          "recommended_action": "information communication construction license 조건을 충족할 증빙(면허/등록/허가증)을 준비하거나 법인 프로필을 보완하세요.",
+          "related_profile_fields": [
+            "license_summary",
+            "business_type",
+            "business_item",
+            "procurement_registration_status"
+          ],
+          "required_evidence_types": [
+            "면허/등록/허가증"
+          ],
+          "required_value": "information communication construction license",
+          "requirement_candidate_id": 292,
+          "requirement_input_id": "notice_requirement:292",
+          "requirement_type": "license",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 5,
+              "basis_document_title": "제품 시연 기준문서 20260614102642",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29055,
+              "citation_candidate_id": "basis:5:chunk:29055",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 6,
+              "basis_document_title": "제품 시연 기준문서 20260614103052",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29056,
+              "citation_candidate_id": "basis:6:chunk:29056",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 7,
+              "basis_document_title": "제품 시연 기준문서 debug-corp-1",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29057,
+              "citation_candidate_id": "basis:7:chunk:29057",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.4,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            }
+          ],
+          "source_text": "공고 면허/업종 제한",
+          "status_label": "준비 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19921,
+              "citation_candidate_id": "basis:1:chunk:19921",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 463,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "에 필요한 기기 |",
+              "source_type": "basis_search",
+              "text_preview": "에 필요한 기기 |\n| 2 | 진공청소기(집수 및 집진용) | 사무실 등 청소 및 바닥물 흡입을 위해 쓰이는 기기 |\n| 3 | 안전벨트, 안전모 및 로프 | 위험작업 및 물품추락에 대비 작업자의 안전을 위한 물품 |\n| 4 | 먼지, 일산화탄소, 이산화 탄소 측정장비 | 용역시행에 따른 실내 공기질 측정을 위한 기기 |\n\n일반건물 및 사무실 청소업(건물청소서비스)의 직접생산은 공중이 이용하는 건축물. 시설물 등의 청 결유지와 미관을 유지하고 건축물 재료의 보호와 위생환경을 확보하기 위하여 시설 및 설비기준을 갖춘 후 관할시장, 군수, 구청장(자치구의 구청장)에 위생관리용역업 신고를 하여 영업신고증을 교부 받고, 청소 등을 대행하는 청소용역을 수행하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록 ② 영업신고(위생관리용역) ※ SOHO사무실 등 공동이용 사무실을 임차하여 사"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 28635,
+              "citation_candidate_id": "basis:1:chunk:28635",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 462,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "table row p462-t1741",
+              "source_type": "basis_search",
+              "text_preview": "[table_id: p462-t1741]\n[page: 462]\n항 목: 생산시설\n내 용: ① 25㎝이상 마루광택기 2대이상 ② 진공청소기(집수 및 집진용) 2대 이상 ③ 안전벨트, 안전모 및 로프 ④ 먼지, 일산화탄소, 이산화탄소 측정장비 - 「건축법」 제2조제②항에 따른 업무시설 용도의 건축물로서 연면적 3000㎡ 미만의 건축물 또는 같은조 같은 항에 따른 2 이상의 용도에 사용되는 건축물로서 연면적 2,000㎡ 미만 의 건축물을 청소하는 경우에는 미적용\n비 고: - 임차보유 인정하지 않음 - 사후관리시 적용"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29630,
+              "citation_candidate_id": "basis:14:chunk:29630",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 463,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "에 필요한 기기 |",
+              "source_type": "basis_search",
+              "text_preview": "에 필요한 기기 |\n| 2 | 진공청소기(집수 및 집진용) | 사무실 등 청소 및 바닥물 흡입을 위해 쓰이는 기기 |\n| 3 | 안전벨트, 안전모 및 로프 | 위험작업 및 물품추락에 대비 작업자의 안전을 위한 물품 |\n| 4 | 먼지, 일산화탄소, 이산화 탄소 측정장비 | 용역시행에 따른 실내 공기질 측정을 위한 기기 |\n\n일반건물 및 사무실 청소업(건물청소서비스)의 직접생산은 공중이 이용하는 건축물. 시설물 등의 청 결유지와 미관을 유지하고 건축물 재료의 보호와 위생환경을 확보하기 위하여 시설 및 설비기준을 갖춘 후 관할시장, 군수, 구청장(자치구의 구청장)에 위생관리용역업 신고를 하여 영업신고증을 교부 받고, 청소 등을 대행하는 청소용역을 수행하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록 ② 영업신고(위생관리용역) ※ SOHO사무실 등 공동이용 사무실을 임차하여 사"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "금액 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "추정가격: 25,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "추정가격: 25,000,000원",
+          "requirement_candidate_id": 293,
+          "requirement_input_id": "notice_requirement:293",
+          "requirement_type": "money",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19921,
+              "citation_candidate_id": "basis:1:chunk:19921",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 463,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "에 필요한 기기 |",
+              "source_type": "basis_search",
+              "text_preview": "에 필요한 기기 |\n| 2 | 진공청소기(집수 및 집진용) | 사무실 등 청소 및 바닥물 흡입을 위해 쓰이는 기기 |\n| 3 | 안전벨트, 안전모 및 로프 | 위험작업 및 물품추락에 대비 작업자의 안전을 위한 물품 |\n| 4 | 먼지, 일산화탄소, 이산화 탄소 측정장비 | 용역시행에 따른 실내 공기질 측정을 위한 기기 |\n\n일반건물 및 사무실 청소업(건물청소서비스)의 직접생산은 공중이 이용하는 건축물. 시설물 등의 청 결유지와 미관을 유지하고 건축물 재료의 보호와 위생환경을 확보하기 위하여 시설 및 설비기준을 갖춘 후 관할시장, 군수, 구청장(자치구의 구청장)에 위생관리용역업 신고를 하여 영업신고증을 교부 받고, 청소 등을 대행하는 청소용역을 수행하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록 ② 영업신고(위생관리용역) ※ SOHO사무실 등 공동이용 사무실을 임차하여 사"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 28635,
+              "citation_candidate_id": "basis:1:chunk:28635",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 462,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "table row p462-t1741",
+              "source_type": "basis_search",
+              "text_preview": "[table_id: p462-t1741]\n[page: 462]\n항 목: 생산시설\n내 용: ① 25㎝이상 마루광택기 2대이상 ② 진공청소기(집수 및 집진용) 2대 이상 ③ 안전벨트, 안전모 및 로프 ④ 먼지, 일산화탄소, 이산화탄소 측정장비 - 「건축법」 제2조제②항에 따른 업무시설 용도의 건축물로서 연면적 3000㎡ 미만의 건축물 또는 같은조 같은 항에 따른 2 이상의 용도에 사용되는 건축물로서 연면적 2,000㎡ 미만 의 건축물을 청소하는 경우에는 미적용\n비 고: - 임차보유 인정하지 않음 - 사후관리시 적용"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29630,
+              "citation_candidate_id": "basis:14:chunk:29630",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 463,
+              "page_start": 462,
+              "score": 0.2857,
+              "section_title": "에 필요한 기기 |",
+              "source_type": "basis_search",
+              "text_preview": "에 필요한 기기 |\n| 2 | 진공청소기(집수 및 집진용) | 사무실 등 청소 및 바닥물 흡입을 위해 쓰이는 기기 |\n| 3 | 안전벨트, 안전모 및 로프 | 위험작업 및 물품추락에 대비 작업자의 안전을 위한 물품 |\n| 4 | 먼지, 일산화탄소, 이산화 탄소 측정장비 | 용역시행에 따른 실내 공기질 측정을 위한 기기 |\n\n일반건물 및 사무실 청소업(건물청소서비스)의 직접생산은 공중이 이용하는 건축물. 시설물 등의 청 결유지와 미관을 유지하고 건축물 재료의 보호와 위생환경을 확보하기 위하여 시설 및 설비기준을 갖춘 후 관할시장, 군수, 구청장(자치구의 구청장)에 위생관리용역업 신고를 하여 영업신고증을 교부 받고, 청소 등을 대행하는 청소용역을 수행하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록 ② 영업신고(위생관리용역) ※ SOHO사무실 등 공동이용 사무실을 임차하여 사"
+            }
+          ],
+          "source_text": "공고 금액 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19355,
+              "citation_candidate_id": "basis:1:chunk:19355",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 2,
+              "page_start": 1,
+              "score": 0.1429,
+              "section_title": "제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+              "source_type": "basis_search",
+              "text_preview": "중소벤처기업부 고시 제2025-116호\n\n중소기업자간 경쟁제품 직접생산 확인기준\n\n중소기업청 고시 제2007- 2호(2007. 1. 3. 제정)\n\n중소기업청 고시 제2010-33호(2010. 10. 8. 일부개정)\n\n중소기업청 고시 제2012- 4호(2012. 1. 17. 일부개정)\n\n중소벤처기업부고시 제2017-5호(2017. 8. 29. 일부개정)\n\n중소벤처기업부고시 제2020-35호(2020. 4. 8. 일부개정)\n\n중소벤처기업부고시 제2021-31호(2021. 5.11. 일부개정)\n\n중소벤처기업부고시 제2022-23호(2022. 4. 1. 일부개정)\n\n중소벤처기업부고시 제2023-55호(2023. 5. 23. 폐지제정)\n\n중소벤처기업부고시 제2024-13호(2024. 3. 4. 폐지제정)\n\n중소벤처기업부고시 제2024-100호(2024. 11. 29. 일부개정)\n\n중소벤처기업부고시 제2025-116호(2025. 11. 19. 일부개정)\n\n- 1 -\n\n- 2 -\n\n# 제1장 총"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19362,
+              "citation_candidate_id": "basis:1:chunk:19362",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 10,
+              "page_start": 8,
+              "score": 0.1429,
+              "section_title": "제2조(경과조치) ① 이 고시 시행일 이전에 받은 직접생산 확인은 그 유효기간까지 이 고시에 의하여 확인 받은 것으로 본다.",
+              "source_type": "basis_search",
+              "text_preview": "021년 5월 11일부터 시행한다.\n\n제2조(경과조치) ① 이 고시 시행일 이전에 받은 직접생산 확인은 그 유효기간까지 이 고시에 의하여 확인 받은 것으로 본다.\n\n제3조(다른 규정의 폐지) 이 고시 시행 이전의 고시는 이 고시 시행 과 동시에 폐지한다.\n\n- 16 -\n\n부 칙 <제2022-23호, 2022.04.01.>\n\n부 칙 <제2023-55호, 2023.05.23.>\n\n제1조(시행일) 이 기준은 2023년 5월 23일부터 시행한다.\n\n제2조(경과조치) ① 이 고시 시행일 이전에 받은 직접생산 확인은 그 유효기간까지 이 고시에 의하여 확인 받은 것으로 본다.\n\n제3조(다른 규정의 폐지) 이 고시 시행 이전의 고시는 이 고시 시행 과 동시에 폐지한다.\n\n부 칙 <제2024-13호, 2024.3.4.>\n\n제1조(시행일) 이 기준은 2024년 3월 4일부터 시행한다.\n\n제2조(경과조치) ① 이 고시 시행일 이전에 받은 직접생산 확인은 그 유효기간까지 이 고시에 의하여 확인 받은 것으"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19367,
+              "citation_candidate_id": "basis:1:chunk:19367",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 12,
+              "page_start": 11,
+              "score": 0.1429,
+              "section_title": "취기, 배연탈황기 | 탈취기 | |",
+              "source_type": "basis_search",
+              "text_preview": "취기, 배연탈황기 | 탈취기 | |\n| 정화장치(2) | 공기살균기 | - | |\n| 컨베이어및액세서리 | 벨트컨베이어, 에어컨베이어, 체인컨베이어, 스크루컨베이어 | 하수처리장치 및 구성품 | |\n| 포장도구 | 재활용품압축기 | 재활용품 자동선별기 | |\n| 필터류(1) | 워터필터 | 통상여과기 | |\n\n- 22 -\n\n| 제품군 | 소분류제품명 | 세부품명 | 비 고 |\n| --- | --- | --- | --- |\n| 무대장치 | 상업및오락용건물 | 무대장치 | 무대장치 |\n| 송풍기 | 공기순환장치및액세서리 (1) | 송풍기 | 송풍기 |\n| 청정실환경조절장비 | 소음기 | 송풍기 | |\n| 소방 | 개인보호장비또는무기 | 화재 수신기 | 소방용 방재장치 |\n| 비상용조명 | 유도등 | - | |\n| 안전및소방차량(1) | 소방펌프차 | 소방자동차 | |\n| 안전및소방차량(2) | 소방물탱크차, 소방화학차, 구조공작차 | - | |\n| 정화기기및안전청결장비 | 방역용소독기 "
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "weak_candidate",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "금액 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "기초금액: 23,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "기초금액: 23,000,000원",
+          "requirement_candidate_id": 294,
+          "requirement_input_id": "notice_requirement:294",
+          "requirement_type": "money",
+          "review_evidence_ready": false,
+          "review_ready_citation_candidates": [],
+          "source_text": "공고 금액 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19361,
+              "citation_candidate_id": "basis:1:chunk:19361",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 9,
+              "page_start": 7,
+              "score": 0.2222,
+              "section_title": "13. 그 밖에 중소벤처기업부장관이 인정하는 인·허가 등",
+              "source_type": "basis_search",
+              "text_preview": "흥에 관한 법률」에 따른 비디오물제\n\n- 13 -\n\n작업신고증\n\n13. 그 밖에 중소벤처기업부장관이 인정하는 인·허가 등\n\n제21조(공공기관 등의 준수사항) 직접생산 여부확인(해당품목 기준 고시근거)은 해당 입찰 건별로 발주 공공기관이 확인하는 것을 원 칙으로 하되 공공구매종합정보망에 등록된 정보에 따라 확인할 수 있다.\n\n제22조(기타사항) 이 기준에서 정하지 아니한 사항 중 중소기업자간 경쟁제도의 운영에 필요한 사항은 ｢중소기업제품 공공구매제도 운 영요령｣에 따르고, 기술 또는 환경 등의 변화로 인하여 이 기준의 적용이 곤란한 경우에는 중소벤처기업부장관의 해석에 따른다.\n\n제23조(재검토 기한) ① 중소벤처기업부 장관은「훈령·예규 등의 발 령 및 관리에 관한 규정」에 따라 이 고시에 대하여 2022년 1월 1 일 기준으로 매 3년이 되는 시점(매 3년째의 12월 31일까지를 말한\n\n다)마다 그 타당성을 검토하여 개선 등의 조치를 하여야 한다.\n\n② ｢행정규제기본법｣에 따라 이 고"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19404,
+              "citation_candidate_id": "basis:1:chunk:19404",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 39,
+              "page_start": 38,
+              "score": 0.2222,
+              "section_title": "기계로서 300A이상 |",
+              "source_type": "basis_search",
+              "text_preview": "기계로서 300A이상 |\n\n음식물준비기(자동야채세척기,과일세정살균기)의 직접생산은 원재료(철판, 주물, 기타 강재 등)를 구입, 이를 보유 생산시설과 인력을 활용하여 자체 제작(가공)한 부분품과 외주가공으로 제작한 부분품을 조립‧용접하여 생산한 제품에 대해 검사를 거쳐 완제품을 생산하는 것을 말함.\n\n□ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록 ② 공장등록 - 한국표준산업분류번호 : 29210 - 제조시설면적 100㎡ 이상 | - 사업자등록증명 - 공장등록증명서 | |\n| 생산시설 | ① 용접기 ② 콤프레샤 ③ 범용밀링 ④ 범용선반 ⑤ 드릴링머신 또는 탁상드릴 ⑥ 절단기 ⑦ 절곡기 ⑧ 프레스 ⑨ 천정크레인 또는 지게차 ※ ①,②는 필수보유, ③~⑨ 중 3종이상 보유할 것 | - 임차보유 인정하지 않음 (단, 공장 및 생산시설 일괄 임차시 임차보유 인정) | |\n| 생산인력 | ① 상시근로자"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19505,
+              "citation_candidate_id": "basis:1:chunk:19505",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 124,
+              "page_start": 123,
+              "score": 0.2222,
+              "section_title": "이용하여 용접하는 시설 |",
+              "source_type": "basis_search",
+              "text_preview": "이용하여 용접하는 시설 |\n| 6 | MIG용접기 | 알루미늄 재질의 원자재 접합을 위해 MIG가스와 전기를 이용하여 용접하는 시설 |\n| 6 | 천공기 | 원자재에 구멍을 내는 시설 |\n| 7 | 연마기 | 용접 또는 절단된 표면을 매끄럽게 가공하는 시설 |\n| 8 | 작업대 | 조립작업을 하는 테이블형태의 작업대 |\n\n[ 별첨 45-14 ]\n\n생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 절단 | 원자재를 제작도면에 따라 절단하는 공정 |\n| 2 | 용접 | 원자재를 제작도면에 따라 접합하는 공정 |\n| 3 | 천공 | 원자재에 일정 크기의 구멍을 내는 공정 |\n| 4 | 연마 | 용접 또는 절단된 표면을 매끄럽게 가공하는 공정 |\n| 5 | 조립 | 충격보호구, 기둥을 결합하고 반사지 시트를 부착하는 공정 |\n| 6 | 검수 | 전체 제품 검사 |\n\n- 245 -\n\n□ 직접생산 정의\n\n도로 및 철도건설자재(직포매트"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "weak_candidate",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "일정 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "공고일시: 2026-06-14 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "공고일시: 2026-06-14 09:00",
+          "requirement_candidate_id": 295,
+          "requirement_input_id": "notice_requirement:295",
+          "requirement_type": "date",
+          "review_evidence_ready": false,
+          "review_ready_citation_candidates": [],
+          "source_text": "공고 일정 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19506,
+              "citation_candidate_id": "basis:1:chunk:19506",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.3333,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29215,
+              "citation_candidate_id": "basis:14:chunk:29215",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.3333,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19361,
+              "citation_candidate_id": "basis:1:chunk:19361",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 9,
+              "page_start": 7,
+              "score": 0.2222,
+              "section_title": "13. 그 밖에 중소벤처기업부장관이 인정하는 인·허가 등",
+              "source_type": "basis_search",
+              "text_preview": "흥에 관한 법률」에 따른 비디오물제\n\n- 13 -\n\n작업신고증\n\n13. 그 밖에 중소벤처기업부장관이 인정하는 인·허가 등\n\n제21조(공공기관 등의 준수사항) 직접생산 여부확인(해당품목 기준 고시근거)은 해당 입찰 건별로 발주 공공기관이 확인하는 것을 원 칙으로 하되 공공구매종합정보망에 등록된 정보에 따라 확인할 수 있다.\n\n제22조(기타사항) 이 기준에서 정하지 아니한 사항 중 중소기업자간 경쟁제도의 운영에 필요한 사항은 ｢중소기업제품 공공구매제도 운 영요령｣에 따르고, 기술 또는 환경 등의 변화로 인하여 이 기준의 적용이 곤란한 경우에는 중소벤처기업부장관의 해석에 따른다.\n\n제23조(재검토 기한) ① 중소벤처기업부 장관은「훈령·예규 등의 발 령 및 관리에 관한 규정」에 따라 이 고시에 대하여 2022년 1월 1 일 기준으로 매 3년이 되는 시점(매 3년째의 12월 31일까지를 말한\n\n다)마다 그 타당성을 검토하여 개선 등의 조치를 하여야 한다.\n\n② ｢행정규제기본법｣에 따라 이 고"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "일정 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "입찰개시: 2026-06-15 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "입찰개시: 2026-06-15 09:00",
+          "requirement_candidate_id": 296,
+          "requirement_input_id": "notice_requirement:296",
+          "requirement_type": "date",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19506,
+              "citation_candidate_id": "basis:1:chunk:19506",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.3333,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29215,
+              "citation_candidate_id": "basis:14:chunk:29215",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.3333,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            }
+          ],
+          "source_text": "공고 일정 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19506,
+              "citation_candidate_id": "basis:1:chunk:19506",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.4444,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29215,
+              "citation_candidate_id": "basis:14:chunk:29215",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.4444,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19507,
+              "citation_candidate_id": "basis:1:chunk:19507",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 126,
+              "page_start": 125,
+              "score": 0.3333,
+              "section_title": ") 제출해야 함(기관별 공고 확인)",
+              "source_type": "basis_search",
+              "text_preview": ") 제출해야 함(기관별 공고 확인)\n\n- 249 -\n\n# □ 직접생산 정의\n\n식생매트의 직접생산은 각종 섬유(코코아섬유/황마/PLA/볏짚 등)와 종자를 구입하고, 자체 보유한 생산시설과 인력을 활용하여 적층, 재봉, 감기 또는 압출, 절단 등 각각의 생산공정을 거쳐 완제품을 생산하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록증 ② 공장등록 - 표준산업분류 : 13219, 13229, 13992, 13994, 13999, 16300 - 제조시설면적 30㎡ 이상 | - 사업자등록증명 - 공장등록증명서 | |\n| 생산시설 | <생산설비> ① 재봉기 ② 롤러기 또는 매트용 압축기 ③ 절단설비 | - 임차보유 인정하지 않음 | |\n| 생산인력 | 상시근로자(대표자 제외) : 생산직 1인 이상 | - 4대보험 납부증명으로 확인 (1개 이상 보험가입 증빙자료 확보) | |\n| 생산 "
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "일정 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "입찰마감: 2026-06-30 17:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "입찰마감: 2026-06-30 17:00",
+          "requirement_candidate_id": 297,
+          "requirement_input_id": "notice_requirement:297",
+          "requirement_type": "date",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19506,
+              "citation_candidate_id": "basis:1:chunk:19506",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.4444,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 14,
+              "basis_document_title": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29215,
+              "citation_candidate_id": "basis:14:chunk:29215",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.4444,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19507,
+              "citation_candidate_id": "basis:1:chunk:19507",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 126,
+              "page_start": 125,
+              "score": 0.3333,
+              "section_title": ") 제출해야 함(기관별 공고 확인)",
+              "source_type": "basis_search",
+              "text_preview": ") 제출해야 함(기관별 공고 확인)\n\n- 249 -\n\n# □ 직접생산 정의\n\n식생매트의 직접생산은 각종 섬유(코코아섬유/황마/PLA/볏짚 등)와 종자를 구입하고, 자체 보유한 생산시설과 인력을 활용하여 적층, 재봉, 감기 또는 압출, 절단 등 각각의 생산공정을 거쳐 완제품을 생산하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록증 ② 공장등록 - 표준산업분류 : 13219, 13229, 13992, 13994, 13999, 16300 - 제조시설면적 30㎡ 이상 | - 사업자등록증명 - 공장등록증명서 | |\n| 생산시설 | <생산설비> ① 재봉기 ② 롤러기 또는 매트용 압축기 ③ 절단설비 | - 임차보유 인정하지 않음 | |\n| 생산인력 | 상시근로자(대표자 제외) : 생산직 1인 이상 | - 4대보험 납부증명으로 확인 (1개 이상 보험가입 증빙자료 확보) | |\n| 생산 "
+            }
+          ],
+          "source_text": "공고 일정 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19506,
+              "citation_candidate_id": "basis:1:chunk:19506",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 125,
+              "page_start": 123,
+              "score": 0.2222,
+              "section_title": "- 작업공정도 또는 작업표준 등 |",
+              "source_type": "basis_search",
+              "text_preview": "- 작업공정도 또는 작업표준 등 |\n| 필수 공정 | 제사 또는 정경 → 제직 → 검단 | | |\n| 기 타 | ① 최근 1년 이내 원부자재 구입실적 ② 최근 1년간 전기사용내역 | - 원부자재 매입세금계산서 - 월별 전기사용내역 | |\n\n- 246 -\n\n[ 별첨 45-15 ]\n\n[ 별첨 45-16 ] 생산공정 세부설명\n\n| 연번 | 생산공정명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 제사 | 압출된 필름을 활용하여 원사를 생산하는 공정 |\n| 2 | 정경 | 제직에서 사용하는 빔에 연사 또는 무연의 경사를 직기폭과 본수에 맞게 평행 배열시켜 감는 공정 |\n| 3 | 제직 | 제사를 통해 생산된 원사콘 또는 정경을 통해 만들어진 경사빔을 활용해 직물을 생산하는 공정 |\n| 4 | 검단 | 제직기에서 생산된 제품을 되감으면서 품질확인 및 결점발생여부를 확인하는 공정 |\n| 5 | 봉제 | 각각의 제직된 원단을 합폭하는 공정 |\n| 6 | 포장 | 완성된 제품"
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19507,
+              "citation_candidate_id": "basis:1:chunk:19507",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 126,
+              "page_start": 125,
+              "score": 0.2222,
+              "section_title": ") 제출해야 함(기관별 공고 확인)",
+              "source_type": "basis_search",
+              "text_preview": ") 제출해야 함(기관별 공고 확인)\n\n- 249 -\n\n# □ 직접생산 정의\n\n식생매트의 직접생산은 각종 섬유(코코아섬유/황마/PLA/볏짚 등)와 종자를 구입하고, 자체 보유한 생산시설과 인력을 활용하여 적층, 재봉, 감기 또는 압출, 절단 등 각각의 생산공정을 거쳐 완제품을 생산하는 것을 말함.\n\n# □ 직접생산 확인기준\n\n| 항 목 | 내 용 | 비 고 | |\n| --- | --- | --- | --- |\n| 생산공장 | ① 사업자등록증 ② 공장등록 - 표준산업분류 : 13219, 13229, 13992, 13994, 13999, 16300 - 제조시설면적 30㎡ 이상 | - 사업자등록증명 - 공장등록증명서 | |\n| 생산시설 | <생산설비> ① 재봉기 ② 롤러기 또는 매트용 압축기 ③ 절단설비 | - 임차보유 인정하지 않음 | |\n| 생산인력 | 상시근로자(대표자 제외) : 생산직 1인 이상 | - 4대보험 납부증명으로 확인 (1개 이상 보험가입 증빙자료 확보) | |\n| 생산 "
+            },
+            {
+              "basis_document_id": 1,
+              "basis_document_title": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+              "basis_document_version": "",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 19841,
+              "citation_candidate_id": "basis:1:chunk:19841",
+              "meets_min_score": false,
+              "min_score": 0.25,
+              "page_end": 388,
+              "page_start": 387,
+              "score": 0.2222,
+              "section_title": "치)→와인다 →합권사→정경작업 →도안설치 →직조작업→검사→건조 →풀칠→건조→뒷면가공 →포장출고 →설치 및 검사 | - 작업공정도 또는 작업표준 ",
+              "source_type": "basis_search",
+              "text_preview": "치)→와인다 →합권사→정경작업 →도안설치 →직조작업→검사→건조 →풀칠→건조→뒷면가공 →포장출고 →설치 및 검사 | - 작업공정도 또는 작업표준 등 |\n| 필수 공정 | | | | | |\n| 기 타 | ① 고장 장비는 제외 | | | | |\n\n[ 별첨 153-1 ]\n\n생산시설 세부설명\n\n□ 커튼(천커튼)\n\n□ 커튼(무대막)\n\n| 연번 | 생산시설명 | 세 부 설 명 |\n| --- | --- | --- |\n| 1 | 재단대 (폭 2M, 길이 3M이상) | 각 원단을 펼쳐놓고 재단 할 수 있는 장치로서 주문사이즈에 맞게 원단을 재단하는 작업대 |\n| 2 | 쌍침미싱 1대 | 바늘이 2개로 되어 있어 봉제선을 더욱더 견고하게 하고자 할 때 동시에 2줄의 스테치를 일정한 간격으로 봉제되는 미싱 |\n| 3 | 로라미싱 또는 원폭기 1대 | 로라(감속기)가 부착되어 원단을 당겨주는 기능이 있는 미싱 |\n| 4 | 사절미싱 2대 | 윗실과 아랫실이 한 땀씩 엮어지며 바느질되는 미싱으로 봉제 후 실"
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "weak_candidate",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "일정 조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "개찰일시: 2026-07-01 10:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "개찰일시: 2026-07-01 10:00",
+          "requirement_candidate_id": 298,
+          "requirement_input_id": "notice_requirement:298",
+          "requirement_type": "date",
+          "review_evidence_ready": false,
+          "review_ready_citation_candidates": [],
+          "source_text": "공고 일정 조건",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        },
+        {
+          "ai_confidence": 0,
+          "ai_match_status": "",
+          "ai_reason": "",
+          "ai_recommended_action": "",
+          "approved_rule_candidate_ids": [],
+          "basis_index_error": "",
+          "basis_search_fallback_used": true,
+          "citation_candidates": [
+            {
+              "basis_document_id": 5,
+              "basis_document_title": "제품 시연 기준문서 20260614102642",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29055,
+              "citation_candidate_id": "basis:5:chunk:29055",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 6,
+              "basis_document_title": "제품 시연 기준문서 20260614103052",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29056,
+              "citation_candidate_id": "basis:6:chunk:29056",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 7,
+              "basis_document_title": "제품 시연 기준문서 debug-corp-1",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29057,
+              "citation_candidate_id": "basis:7:chunk:29057",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            }
+          ],
+          "citation_min_score": 0.25,
+          "citation_status": "candidate_found",
+          "deterministic_match_status": "needs_review",
+          "final_match_status": "needs_review",
+          "gap_reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+          "label": "원문 요구조건",
+          "match_status": "needs_review",
+          "matched_value": "",
+          "recommended_action": "면허/업종 제한: information communication construction license 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "related_profile_fields": [
+            "manual_review"
+          ],
+          "required_evidence_types": [],
+          "required_value": "면허/업종 제한: information communication construction license",
+          "requirement_candidate_id": 299,
+          "requirement_input_id": "notice_requirement:299",
+          "requirement_type": "requirement_line",
+          "review_evidence_ready": true,
+          "review_ready_citation_candidates": [
+            {
+              "basis_document_id": 5,
+              "basis_document_title": "제품 시연 기준문서 20260614102642",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29055,
+              "citation_candidate_id": "basis:5:chunk:29055",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 6,
+              "basis_document_title": "제품 시연 기준문서 20260614103052",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29056,
+              "citation_candidate_id": "basis:6:chunk:29056",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            },
+            {
+              "basis_document_id": 7,
+              "basis_document_title": "제품 시연 기준문서 debug-corp-1",
+              "basis_document_version": "2026.06-demo",
+              "basis_rule_candidate_id": null,
+              "basis_rule_candidate_rule_type": "",
+              "basis_rule_candidate_status": "",
+              "chunk_id": 29057,
+              "citation_candidate_id": "basis:7:chunk:29057",
+              "meets_min_score": true,
+              "min_score": 0.25,
+              "page_end": 1,
+              "page_start": 1,
+              "score": 0.5714,
+              "section_title": "SMART Procurement Demo Basis Document Information communication construction lic",
+              "source_type": "basis_search",
+              "text_preview": "SMART Procurement Demo Basis Document Information communication construction license is a citation candidate for bidder qualification review. Small business certificate is a required document candidate for company type review. Business registration certificate must be submitted before contract review. Contract officers should verify missing documents before deciding readiness. If a requirement is not supported by corporation evidence, mark it as needs review."
+            }
+          ],
+          "source_text": "면허/업종 제한: information communication construction license",
+          "status_label": "사람 확인 필요",
+          "status_source": "fallback"
+        }
+      ],
+      "preparation_guide": {
+        "actions": [
+          "information communication construction license 조건을 충족할 증빙(면허/등록/허가증)을 준비하거나 법인 프로필을 보완하세요.",
+          "추정가격: 25,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "기초금액: 23,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "공고일시: 2026-06-14 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "입찰개시: 2026-06-15 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "입찰마감: 2026-06-30 17:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "개찰일시: 2026-07-01 10:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+          "면허/업종 제한: information communication construction license 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요."
+        ],
+        "required_documents": [
+          "면허/등록/허가증"
+        ],
+        "uncertainty_notes": [
+          "금액 조건 / 기초금액: 23,000,000원: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다.",
+          "일정 조건 / 공고일시: 2026-06-14 09:00: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다.",
+          "일정 조건 / 개찰일시: 2026-07-01 10:00: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다."
+        ]
+      },
+      "user_summary": {
+        "evidence_links": [
+          {
+            "description": "경기도",
+            "label": "지역 제한",
+            "ref_id": "290",
+            "requirement_candidate_id": 290,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19355,
+            "description": "1쪽 / 제6조(임차공장) 사업장을 임차한 경우 다음 각 호의 사항을 모두 확인한다.",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19355",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19417,
+            "description": "47쪽 / 능) - 사업을 개시한 날로부터 3년 이내 창업초기기업(창업초기 기업의 기준은 「중소기업창업 지원법령」 준용)은 제외 | - 월별전기사용내역 (",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19417",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19418,
+            "description": "48쪽 / | - 임차보유 인정하지 않음 ※ 강선의 내륙건조 후 해수면 진수·납품하는 경우 - (심사시 확인) 생산공장 또는 사업자등록상의 사업장 밖에 위",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19418",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "경기",
+            "label": "지역 제한",
+            "ref_id": "291",
+            "requirement_candidate_id": 291,
+            "type": "notice_requirement"
+          },
+          {
+            "description": "information communication construction license",
+            "label": "면허/업종",
+            "ref_id": "292",
+            "requirement_candidate_id": 292,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 5,
+            "chunk_id": 29055,
+            "description": "1쪽 / SMART Procurement Demo Basis Document Information communication construction lic",
+            "label": "제품 시연 기준문서 20260614102642",
+            "ref_id": "5:29055",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 6,
+            "chunk_id": 29056,
+            "description": "1쪽 / SMART Procurement Demo Basis Document Information communication construction lic",
+            "label": "제품 시연 기준문서 20260614103052",
+            "ref_id": "6:29056",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 7,
+            "chunk_id": 29057,
+            "description": "1쪽 / SMART Procurement Demo Basis Document Information communication construction lic",
+            "label": "제품 시연 기준문서 debug-corp-1",
+            "ref_id": "7:29057",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "추정가격: 25,000,000원",
+            "label": "금액 조건",
+            "ref_id": "293",
+            "requirement_candidate_id": 293,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19921,
+            "description": "462쪽 / 에 필요한 기기 |",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19921",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 28635,
+            "description": "462쪽 / table row p462-t1741",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:28635",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 14,
+            "chunk_id": 29630,
+            "description": "462쪽 / 에 필요한 기기 |",
+            "label": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "14:29630",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "기초금액: 23,000,000원",
+            "label": "금액 조건",
+            "ref_id": "294",
+            "requirement_candidate_id": 294,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19362,
+            "description": "8쪽 / 제2조(경과조치) ① 이 고시 시행일 이전에 받은 직접생산 확인은 그 유효기간까지 이 고시에 의하여 확인 받은 것으로 본다.",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19362",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19367,
+            "description": "11쪽 / 취기, 배연탈황기 | 탈취기 | |",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19367",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "공고일시: 2026-06-14 09:00",
+            "label": "일정 조건",
+            "ref_id": "295",
+            "requirement_candidate_id": 295,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19361,
+            "description": "7쪽 / 13. 그 밖에 중소벤처기업부장관이 인정하는 인·허가 등",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19361",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19404,
+            "description": "38쪽 / 기계로서 300A이상 |",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19404",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19505,
+            "description": "123쪽 / 이용하여 용접하는 시설 |",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19505",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "입찰개시: 2026-06-15 09:00",
+            "label": "일정 조건",
+            "ref_id": "296",
+            "requirement_candidate_id": 296,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19506,
+            "description": "123쪽 / - 작업공정도 또는 작업표준 등 |",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19506",
+            "type": "basis_chunk"
+          },
+          {
+            "basis_document_id": 14,
+            "chunk_id": 29215,
+            "description": "123쪽 / - 작업공정도 또는 작업표준 등 |",
+            "label": "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "14:29215",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "입찰마감: 2026-06-30 17:00",
+            "label": "일정 조건",
+            "ref_id": "297",
+            "requirement_candidate_id": 297,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19507,
+            "description": "125쪽 / ) 제출해야 함(기관별 공고 확인)",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19507",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "개찰일시: 2026-07-01 10:00",
+            "label": "일정 조건",
+            "ref_id": "298",
+            "requirement_candidate_id": 298,
+            "type": "notice_requirement"
+          },
+          {
+            "basis_document_id": 1,
+            "chunk_id": 19841,
+            "description": "387쪽 / 치)→와인다 →합권사→정경작업 →도안설치 →직조작업→검사→건조 →풀칠→건조→뒷면가공 →포장출고 →설치 및 검사 | - 작업공정도 또는 작업표준",
+            "label": "전체합본_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.)",
+            "ref_id": "1:19841",
+            "type": "basis_chunk"
+          },
+          {
+            "description": "면허/업종 제한: information communication construction license",
+            "label": "원문 요구조건",
+            "ref_id": "299",
+            "requirement_candidate_id": 299,
+            "type": "notice_requirement"
+          }
+        ],
+        "generated_by": "fallback",
+        "generation_error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. ",
+        "headline_status": "준비 필요",
+        "item_explanations": {
+          "notice_requirement:290": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "사업장 소재지 증빙",
+            "next_action": "보유 정보와 일치하는 후보가 있습니다. 기준문서 근거와 원문을 검토해 확인하세요.",
+            "user_gap_summary": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다."
+          },
+          "notice_requirement:291": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "사업장 소재지 증빙",
+            "next_action": "보유 정보와 일치하는 후보가 있습니다. 기준문서 근거와 원문을 검토해 확인하세요.",
+            "user_gap_summary": "법인 프로필 또는 승인 증빙에서 '경기도' 값을 찾았습니다."
+          },
+          "notice_requirement:292": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "면허/등록/허가증",
+            "next_action": "information communication construction license 조건을 충족할 증빙(면허/등록/허가증)을 준비하거나 법인 프로필을 보완하세요.",
+            "user_gap_summary": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다."
+          },
+          "notice_requirement:293": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "추정가격: 25,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:294": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "기초금액: 23,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:295": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "공고일시: 2026-06-14 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:296": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "입찰개시: 2026-06-15 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:297": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "입찰마감: 2026-06-30 17:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:298": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "개찰일시: 2026-07-01 10:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          },
+          "notice_requirement:299": {
+            "basis_summary": "기준문서 근거는 상세 모달에서 확인하세요.",
+            "evidence_hint": "",
+            "next_action": "면허/업종 제한: information communication construction license 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "user_gap_summary": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다."
+          }
+        },
+        "missing_groups": [
+          {
+            "count": 2,
+            "group": "면허/등록/허가",
+            "summary": "면허/등록/허가 관련 조건 2개는 추가 확인 또는 준비가 필요합니다."
+          },
+          {
+            "count": 6,
+            "group": "기타 확인 항목",
+            "summary": "기타 확인 항목 관련 조건 6개는 추가 확인 또는 준비가 필요합니다."
+          }
+        ],
+        "plain_summary": "현재 결과는 준비 필요 상태입니다. 준비 확인 2개, 준비 필요 1개, 사람 확인 필요 7개가 있습니다. 먼저 준비 필요 항목의 증빙서류를 확인하고, 사람 확인 필요 항목은 공고 원문과 기준문서 근거를 함께 검토하세요.",
+        "risk_notes": [
+          "사람 확인 필요 항목은 자동 비교만으로 결론을 내리지 말고 원문과 증빙을 다시 확인하세요.",
+          "기준문서 근거가 부족한 항목은 검토 완료 전 근거 원문 확인이 필요합니다."
+        ],
+        "top_priority_actions": [
+          {
+            "documents": [
+              "면허/등록/허가증"
+            ],
+            "next_step": "information communication construction license 조건을 충족할 증빙(면허/등록/허가증)을 준비하거나 법인 프로필을 보완하세요.",
+            "reason": "법인 정보에서 'information communication construction license'와 직접 일치하는 준비 항목을 찾지 못했습니다.",
+            "related_requirement_ids": [
+              "notice_requirement:292",
+              "notice_requirement:299"
+            ],
+            "title": "면허/등록/허가 확인"
+          },
+          {
+            "documents": [],
+            "next_step": "추정가격: 25,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "reason": "자동 비교만으로 판단하기 어려운 항목입니다. 원문과 법인 보유 자료를 함께 확인해야 합니다.",
+            "related_requirement_ids": [
+              "notice_requirement:293",
+              "notice_requirement:294",
+              "notice_requirement:295",
+              "notice_requirement:296",
+              "notice_requirement:297",
+              "notice_requirement:298"
+            ],
+            "title": "기타 확인 항목 확인"
+          }
+        ]
+      }
+    },
+    "review_status": "pending",
+    "reviewer_note": "",
+    "rule_version": "phase3_gap_judgment_rule_v1",
+    "status": "completed",
+    "summary": {
+      "citation_coverage": 0.7,
+      "contract_version": "phase3_gap_judgment_contract_v1",
+      "matched_count": 2,
+      "missing_count": 1,
+      "needs_review_count": 7,
+      "not_applicable_count": 0,
+      "note": "부족조건 중심 검토 결과입니다. 준비 상태를 확정하지 않습니다.",
+      "requirement_count": 10,
+      "status": "review_ready",
+      "uncertain_count": 0
+    },
+    "uncertain_count": 0,
+    "updated_at": "2026-06-14T20:13:34.024825+00:00"
+  },
+  "contract_preview": {
+    "valid": true,
+    "warnings": [
+      "계약상대자 법인등록번호 값이 비어 있습니다.",
+      "계약상대자 전화번호 값이 비어 있습니다."
+    ],
+    "errors": []
+  },
+  "contract": {
+    "contract_type": "standard_service_contract",
+    "corporation": {
+      "id": 45,
+      "name": "시연 법인 20260614201249"
+    },
+    "corporation_id": 45,
+    "created_at": "2026-06-15T05:13:34+09:00",
+    "download_url": "/api/contracts/21/download",
+    "error_message": "",
+    "file_name": "contract-21-제품-시연-계약서-초안-20260614201249.docx",
+    "file_size_bytes": 37976,
+    "generated_fields": {
+      "attachment_notes": "",
+      "buyer_address": "",
+      "buyer_name": "시연 발주기관",
+      "buyer_representative_name": "",
+      "contract_amount": "25,000,000원",
+      "contract_deposit": "",
+      "contract_number": "DEMO-20260614201249",
+      "contract_period": "2026.07.01 ~ 2026.12.31",
+      "corporate_registration_number": "",
+      "corporation_address": "경기도 성남시 분당구 데모로 10",
+      "corporation_name": "시연 법인 20260614201249",
+      "corporation_phone": "",
+      "corporation_representative_name": "김시연",
+      "delay_penalty_rate": "",
+      "delivery_location": "",
+      "notice_number": "DEMO20260614201249",
+      "other_terms": "",
+      "service_name": "제품 시연용 정보통신 용역 공고 20260614201249",
+      "total_service_amount": ""
+    },
+    "id": 21,
+    "input_snapshot": {
+      "contract_type": "standard_service_contract",
+      "corporation": {
+        "business_address": "경기도 성남시 분당구 데모로 10",
+        "business_category": "정보통신 서비스",
+        "business_item": "공공기관 업무 포털 구축, 영상정보 처리장치 유지관리",
+        "business_registration_number": "142-81-01249",
+        "business_type": "소프트웨어 개발 및 정보통신 공사업",
+        "company_size_classification": "소기업",
+        "corporate_registration_number": "",
+        "evidence_verification_status": "evidence_reviewed",
+        "headquarters_address": "경기도 성남시 분당구 데모로 10",
+        "id": 45,
+        "license_summary": "정보통신공사업 등록 준비 필요",
+        "management_group_name": "제품 시연 그룹 20260614201249",
+        "name": "시연 법인 20260614201249",
+        "procurement_registration_status": "조달업체 등록 완료",
+        "region": "경기도",
+        "representative_name": "김시연"
+      },
+      "created_at": "2026-06-15T05:13:34+09:00",
+      "custom_fields": {
+        "attachment_notes": "",
+        "buyer_address": "",
+        "buyer_name": "",
+        "buyer_representative_name": "",
+        "contract_amount": "25,000,000원",
+        "contract_deposit": "",
+        "contract_number": "DEMO-20260614201249",
+        "contract_period": "2026.07.01 ~ 2026.12.31",
+        "corporation_phone": "",
+        "delay_penalty_rate": "",
+        "delivery_location": "",
+        "other_terms": "",
+        "total_service_amount": ""
+      },
+      "generated_fields": {
+        "attachment_notes": "",
+        "buyer_address": "",
+        "buyer_name": "시연 발주기관",
+        "buyer_representative_name": "",
+        "contract_amount": "25,000,000원",
+        "contract_deposit": "",
+        "contract_number": "DEMO-20260614201249",
+        "contract_period": "2026.07.01 ~ 2026.12.31",
+        "corporate_registration_number": "",
+        "corporation_address": "경기도 성남시 분당구 데모로 10",
+        "corporation_name": "시연 법인 20260614201249",
+        "corporation_phone": "",
+        "corporation_representative_name": "김시연",
+        "delay_penalty_rate": "",
+        "delivery_location": "",
+        "notice_number": "DEMO20260614201249",
+        "other_terms": "",
+        "service_name": "제품 시연용 정보통신 용역 공고 20260614201249",
+        "total_service_amount": ""
+      },
+      "judgment_run": {
+        "id": 23,
+        "preparation_guide": {
+          "actions": [
+            "information communication construction license 조건을 충족할 증빙(면허/등록/허가증)을 준비하거나 법인 프로필을 보완하세요.",
+            "추정가격: 25,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "기초금액: 23,000,000원 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "공고일시: 2026-06-14 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "입찰개시: 2026-06-15 09:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "입찰마감: 2026-06-30 17:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "개찰일시: 2026-07-01 10:00 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요.",
+            "면허/업종 제한: information communication construction license 항목은 자동 비교만으로 결론을 내리기 어렵습니다. 공고 원문과 기준문서 후보를 함께 검토하세요."
+          ],
+          "required_documents": [
+            "면허/등록/허가증"
+          ],
+          "uncertainty_notes": [
+            "금액 조건 / 기초금액: 23,000,000원: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다.",
+            "일정 조건 / 공고일시: 2026-06-14 09:00: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다.",
+            "일정 조건 / 개찰일시: 2026-07-01 10:00: 기준문서 근거 후보 점수가 낮아 원문 검토가 필요합니다."
+          ]
+        },
+        "review_status": "pending",
+        "status": "completed",
+        "summary": {
+          "citation_coverage": 0.7,
+          "contract_version": "phase3_gap_judgment_contract_v1",
+          "matched_count": 2,
+          "missing_count": 1,
+          "needs_review_count": 7,
+          "not_applicable_count": 0,
+          "note": "부족조건 중심 검토 결과입니다. 준비 상태를 확정하지 않습니다.",
+          "requirement_count": 10,
+          "status": "review_ready",
+          "uncertain_count": 0
+        }
+      },
+      "notice": {
+        "analysis_status": "completed",
+        "bdgt_amt": "",
+        "bid_begin_dt": "2026-06-15 09:00",
+        "bid_clse_dt": "2026-06-30 17:00",
+        "bid_ntce_dt": "2026-06-14 09:00",
+        "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+        "bid_ntce_no": "DEMO20260614201249",
+        "bid_ntce_ord": "000",
+        "bssamt": "23000000",
+        "dminstt_nm": "시연 수요기관",
+        "download_status": "no_supported_attachments",
+        "id": 41,
+        "license_text": "information communication construction license",
+        "ntce_instt_nm": "시연 발주기관",
+        "openg_dt": "2026-07-01 10:00",
+        "presmpt_prce": "25000000",
+        "region_text": "경기도",
+        "save_status": "saved",
+        "source_url": "https://example.go.kr/demo-notice"
+      },
+      "snapshot_version": "contract_input_snapshot_v1",
+      "source_ids": {
+        "corporation_id": 45,
+        "judgment_run_id": 23,
+        "nara_notice_id": 41
+      },
+      "template_version": "contract_docx_template_v1",
+      "validation": {
+        "errors": [],
+        "valid": true,
+        "warnings": [
+          "계약상대자 법인등록번호 값이 비어 있습니다.",
+          "계약상대자 전화번호 값이 비어 있습니다."
+        ]
+      },
+      "warnings": []
+    },
+    "judgment_run_id": 23,
+    "nara_notice_id": 41,
+    "notice": {
+      "bid_ntce_nm": "제품 시연용 정보통신 용역 공고 20260614201249",
+      "bid_ntce_no": "DEMO20260614201249",
+      "bid_ntce_ord": "000",
+      "id": 41
+    },
+    "review_note": "",
+    "review_status": "draft",
+    "status": "generated",
+    "stored_file_path": "contracts/21/contract-21-제품-시연-계약서-초안-20260614201249.docx",
+    "template_version": "contract_docx_template_v1",
+    "title": "제품 시연 계약서 초안 20260614201249",
+    "updated_at": "2026-06-15T05:13:34+09:00",
+    "validation": {
+      "errors": [],
+      "valid": true,
+      "warnings": [
+        "계약상대자 법인등록번호 값이 비어 있습니다.",
+        "계약상대자 전화번호 값이 비어 있습니다."
+      ]
+    }
+  },
+  "operation_summary": {
+    "count": 69,
+    "types": [
+      "contract_create",
+      "judgment_run",
+      "basis_document_processing",
+      "basis_rule_candidate_extraction",
+      "backup_create"
+    ]
+  },
+  "routes": {
+    "dashboard": "/",
+    "corporations": "/corporations",
+    "nara_board": "/nara-board",
+    "saved_notice": "/nara-saved-notices/41",
+    "basis_documents": "/basis-documents",
+    "notice_comparison": "/notice-comparison",
+    "judgment_runs": "/judgment-runs",
+    "contracts": "/contracts?notice_id=41&corporation_id=45&judgment_run_id=23",
+    "operations": "/operations",
+    "operation_runs": "/operation-runs"
+  }
+}

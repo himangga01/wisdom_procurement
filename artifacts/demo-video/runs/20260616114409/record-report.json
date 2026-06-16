@@ -1,0 +1,58 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260616114409",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\raw-video\\service-demo-20260616114409.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\demo-data.json",
+  "scenes": [
+    {
+      "id": "intro",
+      "title": "SMART 조달청 계산기",
+      "route": "/",
+      "url": "http://127.0.0.1:5199/",
+      "status": "passed",
+      "started_at": "2026-06-16T11:45:38.564Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\screenshots\\01-intro.png",
+      "finished_at": "2026-06-16T11:45:54.738Z"
+    },
+    {
+      "id": "corporations",
+      "title": "1. 법인 등록과 증빙 업로드",
+      "route": "/corporations",
+      "url": "http://127.0.0.1:5199/corporations",
+      "status": "passed",
+      "started_at": "2026-06-16T11:45:54.739Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\screenshots\\02-corporations.png",
+      "finished_at": "2026-06-16T11:47:57.084Z"
+    },
+    {
+      "id": "nara-board",
+      "title": "2. 나라장터 공고 검색과 선택",
+      "route": "/nara-board",
+      "url": "http://127.0.0.1:5199/nara-board",
+      "status": "passed",
+      "started_at": "2026-06-16T11:47:57.085Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\screenshots\\03-nara-board.png",
+      "finished_at": "2026-06-16T11:48:56.373Z"
+    },
+    {
+      "id": "saved-notice",
+      "title": "3. 저장 공고 요구조건 확인",
+      "route": "/nara-saved-notices/42",
+      "url": "http://127.0.0.1:5199/nara-saved-notices/42",
+      "status": "passed",
+      "started_at": "2026-06-16T11:48:56.373Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260616114409\\screenshots\\04-saved-notice.png",
+      "finished_at": "2026-06-16T11:49:22.735Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-16T11:45:38.564Z",
+  "finished_at": "2026-06-16T11:49:24.129Z"
+}

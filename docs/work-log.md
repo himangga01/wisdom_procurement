@@ -8405,3 +8405,195 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Changed the judgment result status panel to prefer canonical `JudgmentRun.summary` counts over the Gemini-generated headline.
 - Replaced the notice comparison summary headline badge with a count-derived status panel.
 - Updated the frontend `UserSummary.item_explanations` type to support canonical `basis_summary` plus optional legacy `citation_summary`.
+## 추가 업데이트 (2026-06-15) - 서비스 데모 영상 전체 업무 흐름 보강
+
+### 한국어 기록
+- `scripts/create-service-demo-video.mjs`를 최신 메뉴 구조 기준으로 전면 보강했습니다. 현재 메뉴 순서인 `업무 현황 -> 내부 관리 -> 공고 업무 -> 기준문서 / RAG -> 문서 분석 -> 설정` 흐름을 반영했습니다.
+- `full-workflow-demo` 모드를 추가하고, 법인 등록/증빙 업로드, 나라장터 공고 검색, 기준문서 업로드, 부족조건 미리보기, 판단 검토, 계약서 생성, 운영 상태 확인까지 한 번에 촬영할 수 있도록 장면을 확장했습니다.
+- 영상 이동 속도가 너무 빠르지 않도록 클릭, 입력, 파일 선택, 메뉴 이동, 장면 전환, 설명 오버레이 유지 시간을 모두 늘렸습니다.
+- 영상 오버레이 설명에서 특정 회사명과 금지 표현이 노출되지 않도록 `SCENES` 문구를 일반적인 `샘플 사업자등록증`, `등록 법인` 표현으로 정리했습니다.
+- 실제 테스트 자료는 `source/test_doc`의 사업자등록증과 추가 증빙 PDF, `source/rag_doc`의 RAG 기준문서 PDF를 사용하도록 유지했습니다.
+- 기존 `real-pdf-demo` 계약이 깨지지 않도록 `runRealPdfEvidenceScene()` 호환 alias를 남겼습니다.
+- `docs/service-demo-interactive-video-implementation-plan.md`를 한국어 우선 문서로 전면 재작성하고, 시나리오, selector, 입력 파일, 실패 대응, 리뷰 체크리스트, 영어 엔지니어링 버전을 추가했습니다.
+- `backend/tests/test_frontend_contracts.py`에 데모 영상 스크립트와 계획서가 최신 전체 업무 흐름을 포함하는지 검증하는 계약 테스트를 추가했습니다.
+
+검증:
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 26개 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 통과. CRLF 변환 경고만 표시됨
+
+### AI / Engineering Version (English)
+- Reworked `scripts/create-service-demo-video.mjs` around the latest sidebar navigation order and added the `full-workflow-demo` mode.
+- Added real interaction scenes for corporation onboarding, evidence upload, live Nara search, basis document upload, comparison, judgment review, contract generation, operations, and operation history.
+- Slowed down interaction timing defaults for readable recording.
+- Removed company-name exposure from `SCENES` overlay copy while keeping real VECT fixture filenames for automation.
+- Preserved the legacy `runRealPdfEvidenceScene()` contract through a compatibility alias.
+- Rewrote `docs/service-demo-interactive-video-implementation-plan.md` with detailed Korean scenario guidance and an English engineering section.
+- Added a frontend contract test that locks the script and plan to the full workflow expectations.
+
+## 추가 업데이트 (2026-06-15) - 데모 영상 계획서와 스크립트 정합성 보강
+
+### 한국어 기록
+- `docs/service-demo-interactive-video-implementation-plan.md`와 `scripts/create-service-demo-video.mjs`를 직접 대조해 문서에는 있지만 스크립트가 확인하지 않던 화면 루트, 모달, 이력 상세 selector를 보강했습니다.
+- 계획서에 남아 있던 오래된 selector인 `demo-comparison-page`, `demo-comparison-run`, `demo-comparison-summary`, `demo-comparison-requirements-open`, `demo-judgment-page`, `demo-judgment-summary`, `demo-saved-notice-detail`을 현재 코드 기준 selector로 교체했습니다.
+- 스크립트에 `waitForDemoId()`와 `clickFirstVisibleLocator()`를 추가해 각 장면이 실제 화면/모달이 열린 뒤 다음 동작으로 넘어가도록 했습니다.
+- 저장 공고 장면은 저장 공고 목록, 상세 링크, 상세 페이지까지 확인하도록 `runSavedNoticeScene()`으로 분리했습니다.
+- 부족조건 미리보기 장면은 요구조건 후보 모달, 비교 이력 모달, 비교 상세 모달, 이력으로 돌아가기까지 실제 클릭 흐름을 추가했습니다.
+- 판단 검토 장면은 판단 이력, 판단 상세, 근거 링크가 있을 때 `demo-judgment-evidence-modal`까지 열고 닫는 흐름을 추가했습니다.
+- 운영 대시보드와 작업 이력 장면은 `runOperationsScene()`, `runOperationRunsScene()`으로 분리해 요약 카드와 실패 상세/작업 행을 확인하도록 했습니다.
+- 문서의 `data-demo-id` 60개가 모두 스크립트에 존재하는지 Node 기반 대조로 확인했습니다.
+- 같은 누락이 재발하지 않도록 `backend/tests/test_frontend_contracts.py`에 `test_demo_video_plan_and_script_use_current_selectors_for_all_scenes` 계약 테스트를 추가했습니다.
+
+검증:
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 27개 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: `ENCODING_CHECK_OK`
+- `git diff --check`: 통과. CRLF 변환 경고만 표시됨
+
+### AI / Engineering Version (English)
+- Compared the interactive demo plan and the recording script, then synchronized stale selectors with the current frontend contract.
+- Replaced outdated comparison/judgment/saved-notice selector names in the plan with current names.
+- Added script-level page/modal wait helpers so scene automation waits for real UI surfaces before continuing.
+- Split saved notice, operations, and operation-runs scenes into dedicated functions.
+- Expanded comparison and judgment scenes to open requirement/history/detail/evidence modals when available.
+- Added a frontend contract test to prevent future plan/script selector drift.
+
+## 추가 업데이트 (2026-06-15) - 데모 영상 생성 실행 래퍼와 운영 화면 경고 정리
+
+### 한국어 기록
+- `scripts/create-demo-video.ps1`의 기본 녹화 모드를 `full-workflow-demo`로 맞추고, `전자칠판`, `goods`, `evidence-file-limit=4` 기본 인자를 `npm run demo:record`에 전달하도록 수정했습니다.
+- `scripts/demo-video.config.json`의 기본값을 최신 전체 업무 흐름 기준으로 변경했습니다. 예전 `stable-demo`와 `dashboard` 장면명을 제거하고, 현재 장면명인 `intro`, `corporations`, `nara-board`, `saved-notice`, `basis-documents`, `notice-comparison`, `judgment-runs`, `contracts`, `operations`, `operation-runs`만 사용하도록 정리했습니다.
+- `scripts/create-service-demo-video.mjs`에 `tryClickOptionalDemoId()`를 추가했습니다. 운영 대시보드와 작업 이력에서 실패 상세 버튼이 없을 수 있는 정상 상태를 경고로 처리하지 않도록 했습니다.
+- `docs/service-demo-interactive-video-implementation-plan.md`에 권장 실행 래퍼와 config 기본값을 추가했습니다.
+- `backend/tests/test_frontend_contracts.py`에 실행 래퍼, config, 선택형 운영 액션 경고 처리를 검증하는 계약 테스트를 추가했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts.FrontendContractTests.test_demo_video_runner_config_and_optional_operation_actions_match_full_workflow -v`: 통과
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 28개 통과
+- `npm run build`: 통과
+- `npm run demo:record -- --mode full-workflow-demo --dry-run --skip-preflight --scene operations,operation-runs`: `status=completed`, `warnings=0`
+
+### AI / Engineering Version (English)
+- Updated `scripts/create-demo-video.ps1` so the default wrapper invocation records `full-workflow-demo` with keyword `전자칠판`, business type `goods`, and evidence file limit `4`.
+- Updated `scripts/demo-video.config.json` to remove stale `stable-demo` and `dashboard` defaults.
+- Added `tryClickOptionalDemoId()` so optional operation failure-detail buttons do not create noisy warnings when no failures exist.
+- Documented wrapper/config defaults in the interactive video implementation plan.
+- Added a frontend contract test covering wrapper defaults, config scene names, and optional operation action handling.
+
+## 추가 업데이트 (2026-06-15) - 데모 영상 생성 문제 수정 및 최종 MP4 생성
+
+### 한국어 기록
+- 데모 영상 생성 중 멈추거나 경고 상태가 되는 원인을 재현하고 수정했습니다.
+- 확인된 원인은 네 가지였습니다.
+  1. 489페이지 기준문서 PDF를 실제 업로드/파싱하면 영상 생성 시간이 과도하게 길어졌습니다.
+  2. 나라장터 검색 장면이 외부 공공데이터 API 실시간 결과에 의존해 검색 결과가 0건이면 행 선택을 하지 못했습니다.
+  3. 법인 증빙 업로드 장면에서 자동 후보 승인 클릭이 409 응답을 만들 수 있었습니다.
+  4. 계약서 다운로드 성공을 warning으로 기록해 성공한 녹화도 `completed_with_warnings`가 될 수 있었습니다.
+- `scripts/create-service-demo-video.mjs`에 영상 전용 안정화 route를 추가했습니다.
+  - `installFastBasisUploadRoute`: 기준문서 업로드 장면은 실제 파일 선택 화면을 보여주되, API 응답은 준비된 기준문서 데이터로 빠르게 처리합니다.
+  - `installFastNaraSearchRoute`: 나라장터 검색/저장 장면은 검색어 입력과 버튼 클릭은 실제로 보여주되, 응답은 준비된 데모 공고로 고정합니다.
+  - `installFastJudgmentRunRoute`: 판단 검토 실행 장면은 버튼 클릭은 실제로 보여주되, 응답은 준비된 판단 결과로 고정합니다.
+  - 실제 백엔드 실행이 필요할 때는 `--basis-real-upload`, `--nara-real-search`, `--judgment-real-run`, `--evidence-real-approval` 옵션으로 우회할 수 있게 했습니다.
+- 나라장터 페이지는 진입 즉시 자동 검색을 실행하므로, 해당 장면은 페이지 이동 전에 fast route를 미리 설치하도록 수정했습니다.
+- 법인 증빙 자동 승인 클릭은 기본 영상 경로에서 끄고, 필요 시 `--evidence-real-approval`로만 실행하도록 바꿨습니다.
+- 계약서 다운로드 성공은 warning이 아니라 trace 로그로만 남기도록 변경했습니다.
+- `scripts/create-demo-video.ps1 -Segments`의 ffmpeg concat-list 생성을 BOM 없는 UTF-8로 보강했습니다.
+- 최종 영상은 세 구간으로 나누어 녹화한 뒤 하나의 MP4로 합쳤습니다.
+  - 1구간: 인트로, 법인 등록/증빙 업로드, 나라장터 공고 검색/선택, 저장 공고 확인
+  - 2구간: 기준문서 업로드, 부족조건 미리보기, 판단 검토
+  - 3구간: 계약서 생성, 운영 대시보드, 작업 이력
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts.FrontendContractTests.test_demo_video_runner_config_and_optional_operation_actions_match_full_workflow -v`: 통과
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `powershell -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw 'scripts/create-demo-video.ps1')) | Out-Null; 'ps1 syntax ok'"`: 통과
+- `npm run demo:record -- --mode full-workflow-demo --scene intro,corporations,nara-board,saved-notice --nara-keyword "전자칠판" --nara-business-type goods --evidence-file-limit 4 --skip-preflight`: `status=completed`, `warnings=0`
+- `npm run demo:record -- --mode full-workflow-demo --scene basis-documents,notice-comparison,judgment-runs --nara-keyword "전자칠판" --nara-business-type goods --evidence-file-limit 4 --skip-preflight`: `status=completed`, `warnings=0`
+- `npm run demo:record -- --mode full-workflow-demo --scene contracts,operations,operation-runs --nara-keyword "전자칠판" --nara-business-type goods --evidence-file-limit 4 --skip-preflight`: `status=completed`, `warnings=0`
+- `npm run demo:inspect -- --input ..\artifacts\demo-video\service-demo-full-workflow.mp4 --seed full-workflow`: `status=passed`, 222초, 1440x900, h264
+
+결과 파일:
+- `artifacts/demo-video/service-demo-full-workflow.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-01.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-02.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-03.mp4`
+
+### AI / Engineering Version (English)
+- Reproduced and fixed demo-video generation blockers around long basis PDF processing, unstable live Nara search results, evidence approval 409 responses, and successful contract downloads being recorded as warnings.
+- Added video-only fast routes in `scripts/create-service-demo-video.mjs`: `installFastBasisUploadRoute`, `installFastNaraSearchRoute`, and `installFastJudgmentRunRoute`.
+- Kept escape hatches for real backend execution: `--basis-real-upload`, `--nara-real-search`, `--judgment-real-run`, and `--evidence-real-approval`.
+- Preinstalled the Nara fast route before navigating to the Nara board so the page-load auto search is deterministic.
+- Changed successful contract download capture from warning output to trace output.
+- Updated `scripts/create-demo-video.ps1 -Segments` to write the ffmpeg concat list as UTF-8 without BOM.
+- Generated the final stitched MP4 at `artifacts/demo-video/service-demo-full-workflow.mp4`.
+
+## 추가 업데이트 (2026-06-16) - FE/BE 서버 및 ngrok 실행
+
+### 한국어 기록
+- 사용자 요청에 따라 로컬 백엔드, 프론트엔드, ngrok 터널을 실행했습니다.
+- 실행은 `scripts/manage-ngrok.ps1 start`를 사용했습니다. 이 스크립트는 백엔드를 먼저 실행하고, 백엔드 ngrok URL을 확보한 뒤 프론트엔드 `VITE_API_BASE_URL`에 해당 백엔드 public URL을 주입해서 프론트엔드를 실행합니다.
+- 실행 주소:
+  - 백엔드 로컬: `http://127.0.0.1:18111`
+  - 프론트엔드 로컬: `http://127.0.0.1:5199`
+  - 백엔드 ngrok: `https://7bc4-118-216-124-59.ngrok-free.app`
+  - 프론트엔드 ngrok: `https://4034-118-216-124-59.ngrok-free.app`
+- 실행 PID:
+  - 백엔드 관리 PID: `23180`
+  - 프론트엔드 관리 PID: `23220`
+  - 백엔드 ngrok PID: `1416`
+  - 프론트엔드 ngrok PID: `21560`
+
+검증:
+- `http://127.0.0.1:18111/health`: HTTP 200
+- `http://127.0.0.1:5199/`: HTTP 200
+- `https://7bc4-118-216-124-59.ngrok-free.app/health`: HTTP 200
+- `https://4034-118-216-124-59.ngrok-free.app/`: HTTP 200
+- 외부 프론트 origin `https://4034-118-216-124-59.ngrok-free.app`에서 백엔드 `https://7bc4-118-216-124-59.ngrok-free.app/api/external-access/status` 호출 시 `Access-Control-Allow-Origin`이 프론트 ngrok origin으로 정상 반환됨을 확인했습니다.
+
+### AI / Engineering Version (English)
+- Started local backend, local frontend, and ngrok tunnels with `scripts/manage-ngrok.ps1 start`.
+- Verified local backend/frontend and public ngrok backend/frontend return HTTP 200.
+- Verified backend CORS allows the current frontend ngrok origin.
+
+## 추가 업데이트 (2026-06-16) - 데모 영상 속도 보강 및 재녹화
+
+### 한국어 기록
+- 기존 `artifacts/demo-video/service-demo-full-workflow.mp4` 확인 후, 메뉴 이동/버튼 클릭/액션 결과 확인/페이지 노출 시간이 빠르게 지나간다는 피드백을 반영했습니다.
+- `scripts/create-service-demo-video.mjs`에 전역 시각 버퍼를 추가했습니다.
+  - `DEFAULT_DEMO_VISUAL_BUFFER_MS = 3000`: 클릭, 입력, 파일 선택, 드롭다운 선택, 메뉴 이동, 장면 전환, 오버레이 유지 시간에 기본 3초 여유를 추가합니다.
+  - `DEFAULT_ACTION_RESULT_HOLD_MS = 3000`: 업로드 결과, 나라장터 검색 결과, 저장 결과, 부족조건 비교 결과, 판단 결과, 근거 모달, 계약서 생성 목록, 운영 요약, 작업 이력 상세처럼 사용자가 결과를 확인해야 하는 지점에 별도 3초 대기를 추가합니다.
+- 계약서 생성 장면은 기본 영상 흐름에서 다운로드 버튼을 실제 클릭하지 않도록 수정했습니다.
+  - 백엔드 ngrok 다운로드 URL로 이동해 ngrok 안내 페이지가 보이는 문제를 막기 위한 조치입니다.
+  - 필요 시 `--contract-real-download` 옵션으로 실제 다운로드 클릭을 다시 켤 수 있습니다.
+- 계약서 생성 후에는 생성 이력 목록으로 스크롤해 실제 생성된 계약서 행이 화면에 보이도록 수정했습니다.
+- Playwright 브라우저 컨텍스트에 `ngrok-skip-browser-warning` 헤더를 추가해 외부 터널 안내 페이지 노출 가능성을 낮췄습니다.
+- 최종 영상은 세 구간으로 재녹화한 뒤 하나의 MP4로 다시 병합했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts.FrontendContractTests.test_demo_video_runner_config_and_optional_operation_actions_match_full_workflow -v`: 실패 확인 후 수정, 이후 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 통과
+- `node --check scripts\create-service-demo-video.mjs`: 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: 통과
+- `git diff --check`: 공백 오류 없음
+- 1구간 녹화: `status=completed`, `warnings=0`, seed `20260616114409`
+- 2구간 녹화: `status=completed`, `warnings=0`, seed `20260616114952`
+- 3구간 녹화: 첫 시도에서 계약서 다운로드 ngrok 안내 페이지 노출 문제 확인 후 수정, 최종 재녹화 `status=completed`, `warnings=0`, seed `20260616120450`
+- `npm run demo:inspect -- --input ..\artifacts\demo-video\service-demo-full-workflow.mp4 --seed full-workflow`: `status=passed`, 513.64초, 1440x900, h264
+
+결과 파일:
+- `artifacts/demo-video/service-demo-full-workflow.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-01.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-02.mp4`
+- `artifacts/demo-video/segments/service-demo-segment-03.mp4`
+
+### AI / Engineering Version (English)
+- Added a global `DEFAULT_DEMO_VISUAL_BUFFER_MS = 3000` to slow down user-visible menu navigation, clicks, file selection, select changes, scene gaps, and scene holds.
+- Added `DEFAULT_ACTION_RESULT_HOLD_MS = 3000` and `holdActionResult()` so result states remain visible after major actions.
+- Skipped contract download clicks by default to avoid navigating away from the portal to an ngrok browser-warning page; added `--contract-real-download` as an explicit opt-in.
+- Scrolled the contract creation scene to the generated contract list before holding/capturing the result.
+- Added a Playwright context `ngrok-skip-browser-warning` header as a defensive safeguard.
+- Re-recorded all demo segments and stitched the final MP4. Final inspection passed at 513.64 seconds, 1440x900, h264.

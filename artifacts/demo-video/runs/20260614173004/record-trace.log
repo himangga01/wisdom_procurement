@@ -1,0 +1,21 @@
+[2026-06-14T17:30:55.599Z] data-ready seed=20260614173004
+[2026-06-14T17:30:56.083Z] scene operations: open http://127.0.0.1:5199/operations mode=full-workflow-demo
+[2026-06-14T17:30:59.818Z] sidebar-click sidebar-operations
+[2026-06-14T17:31:00.767Z] scene operations: interactive navigation done
+[2026-06-14T17:31:02.033Z] scene operations: overlay start
+[2026-06-14T17:31:02.037Z] scene operations: overlay done
+[2026-06-14T17:31:02.037Z] scene operations: text checks done
+[2026-06-14T17:31:06.261Z] scene operations: screenshot start
+[2026-06-14T17:31:06.320Z] scene operations: screenshot done
+[2026-06-14T17:31:06.320Z] scene operations: captured
+[2026-06-14T17:31:06.321Z] scene operation-runs: open http://127.0.0.1:5199/operation-runs mode=full-workflow-demo
+[2026-06-14T17:31:08.494Z] sidebar-click sidebar-operation-runs
+[2026-06-14T17:31:11.126Z] scene operation-runs: interactive navigation done
+[2026-06-14T17:31:12.379Z] scene operation-runs: overlay start
+[2026-06-14T17:31:12.384Z] scene operation-runs: overlay done
+[2026-06-14T17:31:12.390Z] scene operation-runs: text checks done
+[2026-06-14T17:31:16.991Z] scene operation-runs: screenshot start
+[2026-06-14T17:31:17.056Z] scene operation-runs: screenshot done
+[2026-06-14T17:31:17.057Z] scene operation-runs: captured
+[2026-06-14T17:31:17.057Z] browser close start
+[2026-06-14T17:31:17.167Z] browser close done

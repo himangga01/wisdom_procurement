@@ -1,0 +1,43 @@
+[2026-06-16T11:45:37.420Z] data-ready seed=20260616114409
+[2026-06-16T11:45:38.563Z] scene intro: open http://127.0.0.1:5199/ mode=full-workflow-demo
+[2026-06-16T11:45:43.141Z] scene intro: interactive navigation done
+[2026-06-16T11:45:47.394Z] scene intro: overlay start
+[2026-06-16T11:45:47.402Z] scene intro: overlay done
+[2026-06-16T11:45:47.403Z] scene intro: text checks done
+[2026-06-16T11:45:54.610Z] scene intro: screenshot start
+[2026-06-16T11:45:54.737Z] scene intro: screenshot done
+[2026-06-16T11:45:54.738Z] scene intro: captured
+[2026-06-16T11:45:54.738Z] scene corporations: open http://127.0.0.1:5199/corporations mode=full-workflow-demo
+[2026-06-16T11:46:00.012Z] sidebar-click sidebar-corporations
+[2026-06-16T11:46:26.483Z] action-result-hold business-registration-result 3000ms
+[2026-06-16T11:47:35.511Z] action-result-hold supporting-evidence-result 3000ms
+[2026-06-16T11:47:43.531Z] scene corporations: interactive navigation done
+[2026-06-16T11:47:47.796Z] scene corporations: overlay start
+[2026-06-16T11:47:47.799Z] scene corporations: overlay done
+[2026-06-16T11:47:47.803Z] scene corporations: text checks done
+[2026-06-16T11:47:57.019Z] scene corporations: screenshot start
+[2026-06-16T11:47:57.084Z] scene corporations: screenshot done
+[2026-06-16T11:47:57.084Z] scene corporations: captured
+[2026-06-16T11:47:57.085Z] scene nara-board: open http://127.0.0.1:5199/nara-board mode=full-workflow-demo
+[2026-06-16T11:48:02.312Z] sidebar-click sidebar-nara-board
+[2026-06-16T11:48:26.203Z] action-result-hold nara-search-result 3000ms
+[2026-06-16T11:48:39.814Z] action-result-hold nara-save-result 3000ms
+[2026-06-16T11:48:42.826Z] scene nara-board: interactive navigation done
+[2026-06-16T11:48:47.086Z] scene nara-board: overlay start
+[2026-06-16T11:48:47.090Z] scene nara-board: overlay done
+[2026-06-16T11:48:47.090Z] scene nara-board: text checks done
+[2026-06-16T11:48:56.303Z] scene nara-board: screenshot start
+[2026-06-16T11:48:56.372Z] scene nara-board: screenshot done
+[2026-06-16T11:48:56.373Z] scene nara-board: captured
+[2026-06-16T11:48:56.373Z] scene saved-notice: open http://127.0.0.1:5199/nara-saved-notices/42 mode=full-workflow-demo
+[2026-06-16T11:49:01.538Z] sidebar-click sidebar-nara-saved-notices
+[2026-06-16T11:49:07.192Z] action-result-hold saved-notice-detail 3000ms
+[2026-06-16T11:49:10.194Z] scene saved-notice: interactive navigation done
+[2026-06-16T11:49:14.462Z] scene saved-notice: overlay start
+[2026-06-16T11:49:14.468Z] scene saved-notice: overlay done
+[2026-06-16T11:49:14.470Z] scene saved-notice: text checks done
+[2026-06-16T11:49:22.675Z] scene saved-notice: screenshot start
+[2026-06-16T11:49:22.735Z] scene saved-notice: screenshot done
+[2026-06-16T11:49:22.735Z] scene saved-notice: captured
+[2026-06-16T11:49:22.736Z] browser close start
+[2026-06-16T11:49:24.127Z] browser close done

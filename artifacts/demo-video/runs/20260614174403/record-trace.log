@@ -1,0 +1,91 @@
+[2026-06-14T17:44:43.092Z] data-ready seed=20260614174403
+[2026-06-14T17:44:43.526Z] scene intro: open http://127.0.0.1:5199/ mode=full-workflow-demo
+[2026-06-14T17:44:45.072Z] scene intro: interactive navigation done
+[2026-06-14T17:44:46.326Z] scene intro: overlay start
+[2026-06-14T17:44:46.331Z] scene intro: overlay done
+[2026-06-14T17:44:46.331Z] scene intro: text checks done
+[2026-06-14T17:44:50.539Z] scene intro: screenshot start
+[2026-06-14T17:44:50.636Z] scene intro: screenshot done
+[2026-06-14T17:44:50.636Z] scene intro: captured
+[2026-06-14T17:44:50.637Z] scene corporations: open http://127.0.0.1:5199/corporations mode=full-workflow-demo
+[2026-06-14T17:44:52.838Z] sidebar-click sidebar-corporations
+[2026-06-14T17:44:57.070Z] scene corporations: interactive navigation done
+[2026-06-14T17:44:58.322Z] scene corporations: overlay start
+[2026-06-14T17:44:58.326Z] scene corporations: overlay done
+[2026-06-14T17:44:58.329Z] scene corporations: text checks done
+[2026-06-14T17:45:04.538Z] scene corporations: screenshot start
+[2026-06-14T17:45:04.612Z] scene corporations: screenshot done
+[2026-06-14T17:45:04.612Z] scene corporations: captured
+[2026-06-14T17:45:04.613Z] scene nara-board: open http://127.0.0.1:5199/nara-board mode=full-workflow-demo
+[2026-06-14T17:45:06.791Z] sidebar-click sidebar-nara-board
+[2026-06-14T17:45:13.343Z] scene nara-board: interactive navigation done
+[2026-06-14T17:45:14.605Z] scene nara-board: overlay start
+[2026-06-14T17:45:14.609Z] scene nara-board: overlay done
+[2026-06-14T17:45:14.609Z] scene nara-board: text checks done
+[2026-06-14T17:45:20.817Z] scene nara-board: screenshot start
+[2026-06-14T17:45:20.897Z] scene nara-board: screenshot done
+[2026-06-14T17:45:20.897Z] scene nara-board: captured
+[2026-06-14T17:45:20.898Z] scene saved-notice: open http://127.0.0.1:5199/nara-saved-notices/29 mode=full-workflow-demo
+[2026-06-14T17:45:23.062Z] sidebar-click sidebar-nara-saved-notices
+[2026-06-14T17:45:26.824Z] scene saved-notice: interactive navigation done
+[2026-06-14T17:45:28.088Z] scene saved-notice: overlay start
+[2026-06-14T17:45:28.091Z] scene saved-notice: overlay done
+[2026-06-14T17:45:28.094Z] scene saved-notice: text checks done
+[2026-06-14T17:45:33.305Z] scene saved-notice: screenshot start
+[2026-06-14T17:45:33.355Z] scene saved-notice: screenshot done
+[2026-06-14T17:45:33.356Z] scene saved-notice: captured
+[2026-06-14T17:45:33.356Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=full-workflow-demo
+[2026-06-14T17:45:35.527Z] sidebar-click sidebar-basis-documents
+[2026-06-14T17:45:38.322Z] scene basis-documents: interactive navigation done
+[2026-06-14T17:45:39.574Z] scene basis-documents: overlay start
+[2026-06-14T17:45:39.578Z] scene basis-documents: overlay done
+[2026-06-14T17:45:39.580Z] scene basis-documents: text checks done
+[2026-06-14T17:45:46.087Z] scene basis-documents: screenshot start
+[2026-06-14T17:45:46.148Z] scene basis-documents: screenshot done
+[2026-06-14T17:45:46.149Z] scene basis-documents: captured
+[2026-06-14T17:45:46.149Z] scene notice-comparison: open http://127.0.0.1:5199/notice-comparison mode=full-workflow-demo
+[2026-06-14T17:45:48.309Z] sidebar-click sidebar-notice-comparison
+[2026-06-14T17:45:52.360Z] scene notice-comparison: interactive navigation done
+[2026-06-14T17:45:53.613Z] scene notice-comparison: overlay start
+[2026-06-14T17:45:53.616Z] scene notice-comparison: overlay done
+[2026-06-14T17:45:53.619Z] scene notice-comparison: text checks done
+[2026-06-14T17:45:59.229Z] scene notice-comparison: screenshot start
+[2026-06-14T17:45:59.286Z] scene notice-comparison: screenshot done
+[2026-06-14T17:45:59.287Z] scene notice-comparison: captured
+[2026-06-14T17:45:59.287Z] scene judgment-runs: open http://127.0.0.1:5199/judgment-runs mode=full-workflow-demo
+[2026-06-14T17:46:01.441Z] sidebar-click sidebar-judgment-runs
+[2026-06-14T17:46:05.463Z] scene judgment-runs: interactive navigation done
+[2026-06-14T17:46:06.715Z] scene judgment-runs: overlay start
+[2026-06-14T17:46:06.718Z] scene judgment-runs: overlay done
+[2026-06-14T17:46:06.721Z] scene judgment-runs: text checks done
+[2026-06-14T17:46:12.932Z] scene judgment-runs: screenshot start
+[2026-06-14T17:46:12.985Z] scene judgment-runs: screenshot done
+[2026-06-14T17:46:12.985Z] scene judgment-runs: captured
+[2026-06-14T17:46:12.985Z] scene contracts: open http://127.0.0.1:5199/contracts?notice_id=29&corporation_id=32&judgment_run_id=11 mode=full-workflow-demo
+[2026-06-14T17:46:20.212Z] scene contracts: interactive navigation done
+[2026-06-14T17:46:21.477Z] scene contracts: overlay start
+[2026-06-14T17:46:21.481Z] scene contracts: overlay done
+[2026-06-14T17:46:21.484Z] scene contracts: text checks done
+[2026-06-14T17:46:27.699Z] scene contracts: screenshot start
+[2026-06-14T17:46:27.774Z] scene contracts: screenshot done
+[2026-06-14T17:46:27.774Z] scene contracts: captured
+[2026-06-14T17:46:27.774Z] scene operations: open http://127.0.0.1:5199/operations mode=full-workflow-demo
+[2026-06-14T17:46:29.926Z] sidebar-click sidebar-operations
+[2026-06-14T17:46:30.852Z] scene operations: interactive navigation done
+[2026-06-14T17:46:32.117Z] scene operations: overlay start
+[2026-06-14T17:46:32.121Z] scene operations: overlay done
+[2026-06-14T17:46:32.121Z] scene operations: text checks done
+[2026-06-14T17:46:36.332Z] scene operations: screenshot start
+[2026-06-14T17:46:36.385Z] scene operations: screenshot done
+[2026-06-14T17:46:36.385Z] scene operations: captured
+[2026-06-14T17:46:36.386Z] scene operation-runs: open http://127.0.0.1:5199/operation-runs mode=full-workflow-demo
+[2026-06-14T17:46:38.556Z] sidebar-click sidebar-operation-runs
+[2026-06-14T17:46:41.181Z] scene operation-runs: interactive navigation done
+[2026-06-14T17:46:42.443Z] scene operation-runs: overlay start
+[2026-06-14T17:46:42.446Z] scene operation-runs: overlay done
+[2026-06-14T17:46:42.449Z] scene operation-runs: text checks done
+[2026-06-14T17:46:47.059Z] scene operation-runs: screenshot start
+[2026-06-14T17:46:47.135Z] scene operation-runs: screenshot done
+[2026-06-14T17:46:47.135Z] scene operation-runs: captured
+[2026-06-14T17:46:47.136Z] browser close start
+[2026-06-14T17:46:47.252Z] browser close done

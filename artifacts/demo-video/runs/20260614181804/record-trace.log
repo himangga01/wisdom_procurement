@@ -1,0 +1,38 @@
+[2026-06-14T18:18:56.769Z] data-ready seed=20260614181804
+[2026-06-14T18:18:57.373Z] scene intro: open http://127.0.0.1:5199/ mode=full-workflow-demo
+[2026-06-14T18:18:58.926Z] scene intro: interactive navigation done
+[2026-06-14T18:19:00.181Z] scene intro: overlay start
+[2026-06-14T18:19:00.185Z] scene intro: overlay done
+[2026-06-14T18:19:00.185Z] scene intro: text checks done
+[2026-06-14T18:19:04.392Z] scene intro: screenshot start
+[2026-06-14T18:19:04.481Z] scene intro: screenshot done
+[2026-06-14T18:19:04.482Z] scene intro: captured
+[2026-06-14T18:19:04.482Z] scene corporations: open http://127.0.0.1:5199/corporations mode=full-workflow-demo
+[2026-06-14T18:19:06.695Z] sidebar-click sidebar-corporations
+[2026-06-14T18:20:06.918Z] scene corporations: interactive navigation done
+[2026-06-14T18:20:08.171Z] scene corporations: overlay start
+[2026-06-14T18:20:08.176Z] scene corporations: overlay done
+[2026-06-14T18:20:08.179Z] scene corporations: text checks done
+[2026-06-14T18:20:14.386Z] scene corporations: screenshot start
+[2026-06-14T18:20:14.448Z] scene corporations: screenshot done
+[2026-06-14T18:20:14.448Z] scene corporations: captured
+[2026-06-14T18:20:14.449Z] scene nara-board: open http://127.0.0.1:5199/nara-board mode=full-workflow-demo
+[2026-06-14T18:20:16.636Z] sidebar-click sidebar-nara-board
+[2026-06-14T18:21:25.602Z] scene nara-board: interactive navigation done
+[2026-06-14T18:21:26.866Z] scene nara-board: overlay start
+[2026-06-14T18:21:26.870Z] scene nara-board: overlay done
+[2026-06-14T18:21:26.871Z] scene nara-board: text checks done
+[2026-06-14T18:21:33.076Z] scene nara-board: screenshot start
+[2026-06-14T18:21:33.158Z] scene nara-board: screenshot done
+[2026-06-14T18:21:33.158Z] scene nara-board: captured
+[2026-06-14T18:21:33.159Z] scene saved-notice: open http://127.0.0.1:5199/nara-saved-notices/30 mode=full-workflow-demo
+[2026-06-14T18:21:35.315Z] sidebar-click sidebar-nara-saved-notices
+[2026-06-14T18:21:39.018Z] scene saved-notice: interactive navigation done
+[2026-06-14T18:21:40.273Z] scene saved-notice: overlay start
+[2026-06-14T18:21:40.277Z] scene saved-notice: overlay done
+[2026-06-14T18:21:40.279Z] scene saved-notice: text checks done
+[2026-06-14T18:21:45.486Z] scene saved-notice: screenshot start
+[2026-06-14T18:21:45.552Z] scene saved-notice: screenshot done
+[2026-06-14T18:21:45.552Z] scene saved-notice: captured
+[2026-06-14T18:21:45.553Z] scene basis-documents: open http://127.0.0.1:5199/basis-documents mode=full-workflow-demo
+[2026-06-14T18:21:47.718Z] sidebar-click sidebar-basis-documents

@@ -1,3 +1,4 @@
+import json
 import re
 import unittest
 from pathlib import Path
@@ -26,6 +27,9 @@ TYPES_TS = REPO_ROOT / "frontend" / "src" / "app" / "types.ts"
 STYLES_CSS = REPO_ROOT / "frontend" / "src" / "styles.css"
 VITE_CONFIG_TS = REPO_ROOT / "frontend" / "vite.config.ts"
 DEMO_VIDEO_SCRIPT = REPO_ROOT / "scripts" / "create-service-demo-video.mjs"
+DEMO_INTERACTIVE_VIDEO_PLAN = REPO_ROOT / "docs" / "service-demo-interactive-video-implementation-plan.md"
+DEMO_VIDEO_CONFIG_JSON = REPO_ROOT / "scripts" / "demo-video.config.json"
+CREATE_DEMO_VIDEO_PS1 = REPO_ROOT / "scripts" / "create-demo-video.ps1"
 
 
 def app_source() -> str:
@@ -114,6 +118,18 @@ def vite_config_source() -> str:
 
 def demo_video_script_source() -> str:
     return DEMO_VIDEO_SCRIPT.read_text(encoding="utf-8")
+
+
+def demo_interactive_video_plan_source() -> str:
+    return DEMO_INTERACTIVE_VIDEO_PLAN.read_text(encoding="utf-8")
+
+
+def demo_video_config() -> dict:
+    return json.loads(DEMO_VIDEO_CONFIG_JSON.read_text(encoding="utf-8"))
+
+
+def create_demo_video_ps1_source() -> str:
+    return CREATE_DEMO_VIDEO_PS1.read_text(encoding="utf-8")
 
 
 def nav_routes(source: str) -> set[str]:
@@ -565,6 +581,189 @@ class FrontendContractTests(unittest.TestCase):
             "test_doc",
         ]:
             self.assertIn(token, script)
+
+    def test_demo_video_script_and_plan_cover_latest_full_workflow(self) -> None:
+        script = demo_video_script_source()
+        plan = demo_interactive_video_plan_source()
+
+        required_script_tokens = [
+            "full-workflow-demo",
+            "DEFAULT_STEP_DELAY_MS",
+            "DEFAULT_INTERACTIVE_SLOW_MO_MS",
+            "runVectorCorporationRegistrationScene",
+            "runBasisDocumentUploadScene",
+            "runNoticeComparisonScene",
+            "runJudgmentReviewScene",
+            "runContractCreationScene",
+            "selectByDemoId",
+            "clickFirstVisibleDemoId",
+            "1.벡트_사업자등록증.pdf",
+            "2.중소기업확인서_중기업_20260331.pdf",
+            "20250226_(주)벡트_직생(동영상제작).pdf",
+            "소프트웨어사업자확인서(2023결산)_벡트.pdf",
+            "RAG_기준문서_(제2025-116호)중소기업자간_경쟁제품_직접생산_확인기준(2025.11.19.).pdf",
+            "전자칠판",
+            "goods",
+            "demo-nara-business-type",
+            "demo-comparison-notice-select",
+            "demo-judgment-notice-select",
+            "demo-contract-download",
+        ]
+        for token in required_script_tokens:
+            self.assertIn(token, script)
+
+        required_plan_tokens = [
+            "법인 등록과 증빙 업로드",
+            "벡트 사업자등록증",
+            "나라장터 공고 검색",
+            "전자칠판",
+            "부족조건 미리보기",
+            "판단 검토",
+            "계약서 생성",
+            "기준문서 관리",
+            "RAG_기준문서",
+            "화면 전환 속도",
+            "data-demo-id",
+            "Questions for Product Owner",
+            "AI / Engineering Version (English)",
+        ]
+        for token in required_plan_tokens:
+            self.assertIn(token, plan)
+
+        self.assertNotIn("시연", script)
+        self.assertNotIn(chr(0xFFFD), plan)
+        self.assertNotRegex(script, r"holdMs:\s*(?:1[0-9]{3}|2[0-4][0-9]{2})")
+
+    def test_demo_video_plan_and_script_use_current_selectors_for_all_scenes(self) -> None:
+        script = demo_video_script_source()
+        plan = demo_interactive_video_plan_source()
+
+        current_selectors = [
+            "demo-corporations-page",
+            "demo-nara-board-page",
+            "demo-saved-notices-page",
+            "demo-saved-notice-detail-page",
+            "demo-basis-documents-page",
+            "demo-basis-document-list",
+            "demo-notice-comparison-page",
+            "demo-notice-comparison-run",
+            "demo-comparison-requirements-modal",
+            "demo-comparison-history-modal",
+            "demo-comparison-detail-modal",
+            "demo-judgment-runs-page",
+            "demo-judgment-history-modal",
+            "demo-judgment-detail-modal",
+            "demo-judgment-evidence-modal",
+            "demo-contracts-page",
+            "demo-operations-page",
+            "demo-operations-summary",
+            "demo-operation-runs-page",
+            "demo-operation-error-detail",
+        ]
+        for selector in current_selectors:
+            self.assertIn(selector, script)
+            self.assertIn(selector, plan)
+
+        for token in [
+            "waitForDemoId",
+            "runSavedNoticeScene",
+            "runOperationsScene",
+            "runOperationRunsScene",
+            "runNoticeComparisonScene",
+            "demo-comparison-requirements-modal",
+            ".result-summary-panel",
+            ".history-item",
+            ".modal-action-row--leading button",
+        ]:
+            self.assertIn(token, script)
+
+        outdated_plan_selectors = [
+            'data-demo-id="demo-comparison-page"',
+            'data-demo-id="demo-comparison-run"',
+            'data-demo-id="demo-comparison-summary"',
+            'data-demo-id="demo-comparison-requirements-open"',
+            'data-demo-id="demo-judgment-page"',
+            'data-demo-id="demo-judgment-summary"',
+            'data-demo-id="demo-saved-notice-detail"',
+        ]
+        for selector in outdated_plan_selectors:
+            self.assertNotIn(selector, plan)
+
+    def test_demo_video_runner_config_and_optional_operation_actions_match_full_workflow(self) -> None:
+        script = demo_video_script_source()
+        runner = create_demo_video_ps1_source()
+        config = demo_video_config()
+
+        expected_scenes = [
+            "intro",
+            "corporations",
+            "nara-board",
+            "saved-notice",
+            "basis-documents",
+            "notice-comparison",
+            "judgment-runs",
+            "contracts",
+            "operations",
+            "operation-runs",
+        ]
+
+        self.assertEqual(config["mode"], "full-workflow-demo")
+        self.assertEqual(config["scenes"], expected_scenes)
+        self.assertNotIn("dashboard", config["scenes"])
+
+        for token in [
+            '[string]$Mode = "full-workflow-demo"',
+            '[string]$NaraKeyword = "전자칠판"',
+            '[string]$NaraBusinessType = "goods"',
+            '[int]$EvidenceFileLimit = 4',
+            '"--mode", $Mode',
+            '"--nara-keyword", $NaraKeyword',
+            '"--nara-business-type", $NaraBusinessType',
+            '"--evidence-file-limit", [string]$EvidenceFileLimit',
+        ]:
+            self.assertIn(token, runner)
+
+        self.assertIn("tryClickOptionalDemoId", script)
+        self.assertIn('tryClickOptionalDemoId(page, "demo-operation-error-detail"', script)
+        self.assertNotIn('safeClickDemoId(page, "demo-operation-error-detail"', script)
+        self.assertIn("basis-demo-max-ms", script)
+        self.assertIn("basis_processing_wait_capped", script)
+        self.assertIn("installFastNaraSearchRoute", script)
+        self.assertIn("nara-real-search", script)
+        self.assertIn("nara-route-installed", script)
+        self.assertIn("installFastJudgmentRunRoute", script)
+        self.assertIn("judgment-demo-max-ms", script)
+        self.assertIn("comparison-history-modal-final-close", script)
+        self.assertIn("evidence-real-approval", script)
+        self.assertIn("DEFAULT_DEMO_VISUAL_BUFFER_MS = 3000", script)
+        self.assertIn("DEFAULT_ACTION_RESULT_HOLD_MS = 3000", script)
+        self.assertIn('"visual-buffer-ms"', script)
+        self.assertIn('"action-result-hold-ms"', script)
+        self.assertIn("bufferedDelay(Number(options.afterMs || DEFAULT_CLICK_DELAY_MS), options)", script)
+        self.assertIn('holdActionResult(options, "comparison-summary")', script)
+        self.assertIn('holdActionResult(options, "judgment-summary")', script)
+        self.assertIn('holdActionResult(options, "contract-list")', script)
+        self.assertIn('bufferedDelay(numberOption(options, "scene-gap", DEFAULT_SCENE_GAP_MS), options)', script)
+        self.assertIn("bufferedDelay(Number(scene.holdMs || DEFAULT_OVERLAY_HOLD_MS), options)", script)
+        self.assertIn("demo:segments", runner)
+        self.assertIn("--segments", runner)
+        self.assertIn("UTF8Encoding]::new($false)", runner)
+        self.assertNotIn("timeout: 240000", script)
+        self.assertNotIn("contract_download_captured", script)
+        self.assertIn('"contract-real-download"', script)
+        self.assertIn("contract download skipped for stable video", script)
+        self.assertIn("const contractList", script)
+        self.assertIn("contractList.scrollIntoViewIfNeeded", script)
+
+        plan = demo_interactive_video_plan_source()
+        for token in [
+            "scripts/create-demo-video.ps1",
+            "scripts/demo-video.config.json",
+            "full-workflow-demo",
+            "전자칠판",
+            "goods",
+        ]:
+            self.assertIn(token, plan)
 
     def test_comparison_and_judgment_pages_use_modal_summary_ux(self) -> None:
         comparison = notice_comparison_page_source()

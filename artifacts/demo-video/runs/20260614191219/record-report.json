@@ -1,0 +1,28 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260614191219",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614191219",
+  "raw_video_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614191219\\raw-video\\service-demo-20260614191219.webm",
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614191219\\demo-data.json",
+  "scenes": [
+    {
+      "id": "judgment-runs",
+      "title": "6. 판단 검토",
+      "route": "/judgment-runs",
+      "url": "http://127.0.0.1:5199/judgment-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T19:13:04.705Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614191219\\screenshots\\01-judgment-runs.png",
+      "finished_at": "2026-06-14T19:13:33.711Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T19:13:04.705Z",
+  "finished_at": "2026-06-14T19:13:34.677Z"
+}

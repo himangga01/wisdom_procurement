@@ -1,0 +1,38 @@
+[2026-06-14T20:02:46.630Z] data-ready seed=20260614200159
+[2026-06-14T20:02:47.090Z] scene intro: open http://127.0.0.1:5199/ mode=full-workflow-demo
+[2026-06-14T20:02:48.675Z] scene intro: interactive navigation done
+[2026-06-14T20:02:49.926Z] scene intro: overlay start
+[2026-06-14T20:02:49.931Z] scene intro: overlay done
+[2026-06-14T20:02:49.932Z] scene intro: text checks done
+[2026-06-14T20:02:54.133Z] scene intro: screenshot start
+[2026-06-14T20:02:54.226Z] scene intro: screenshot done
+[2026-06-14T20:02:54.226Z] scene intro: captured
+[2026-06-14T20:02:54.227Z] scene corporations: open http://127.0.0.1:5199/corporations mode=full-workflow-demo
+[2026-06-14T20:02:56.440Z] sidebar-click sidebar-corporations
+[2026-06-14T20:03:48.701Z] scene corporations: interactive navigation done
+[2026-06-14T20:03:49.962Z] scene corporations: overlay start
+[2026-06-14T20:03:49.966Z] scene corporations: overlay done
+[2026-06-14T20:03:49.970Z] scene corporations: text checks done
+[2026-06-14T20:03:56.176Z] scene corporations: screenshot start
+[2026-06-14T20:03:56.241Z] scene corporations: screenshot done
+[2026-06-14T20:03:56.241Z] scene corporations: captured
+[2026-06-14T20:03:56.242Z] scene nara-board: open http://127.0.0.1:5199/nara-board mode=full-workflow-demo
+[2026-06-14T20:03:58.409Z] sidebar-click sidebar-nara-board
+[2026-06-14T20:04:11.996Z] scene nara-board: interactive navigation done
+[2026-06-14T20:04:13.253Z] scene nara-board: overlay start
+[2026-06-14T20:04:13.257Z] scene nara-board: overlay done
+[2026-06-14T20:04:13.257Z] scene nara-board: text checks done
+[2026-06-14T20:04:19.462Z] scene nara-board: screenshot start
+[2026-06-14T20:04:19.527Z] scene nara-board: screenshot done
+[2026-06-14T20:04:19.527Z] scene nara-board: captured
+[2026-06-14T20:04:19.528Z] scene saved-notice: open http://127.0.0.1:5199/nara-saved-notices/38 mode=full-workflow-demo
+[2026-06-14T20:04:21.693Z] sidebar-click sidebar-nara-saved-notices
+[2026-06-14T20:04:25.413Z] scene saved-notice: interactive navigation done
+[2026-06-14T20:04:26.677Z] scene saved-notice: overlay start
+[2026-06-14T20:04:26.681Z] scene saved-notice: overlay done
+[2026-06-14T20:04:26.683Z] scene saved-notice: text checks done
+[2026-06-14T20:04:31.891Z] scene saved-notice: screenshot start
+[2026-06-14T20:04:31.948Z] scene saved-notice: screenshot done
+[2026-06-14T20:04:31.948Z] scene saved-notice: captured
+[2026-06-14T20:04:31.949Z] browser close start
+[2026-06-14T20:04:32.925Z] browser close done

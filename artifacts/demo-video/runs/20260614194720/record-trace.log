@@ -1,0 +1,21 @@
+[2026-06-14T19:48:04.773Z] data-ready seed=20260614194720
+[2026-06-14T19:48:05.269Z] scene notice-comparison: open http://127.0.0.1:5199/notice-comparison mode=full-workflow-demo
+[2026-06-14T19:48:09.012Z] sidebar-click sidebar-notice-comparison
+[2026-06-14T19:48:27.981Z] scene notice-comparison: interactive navigation done
+[2026-06-14T19:48:29.244Z] scene notice-comparison: overlay start
+[2026-06-14T19:48:29.248Z] scene notice-comparison: overlay done
+[2026-06-14T19:48:29.252Z] scene notice-comparison: text checks done
+[2026-06-14T19:48:34.862Z] scene notice-comparison: screenshot start
+[2026-06-14T19:48:34.933Z] scene notice-comparison: screenshot done
+[2026-06-14T19:48:34.933Z] scene notice-comparison: captured
+[2026-06-14T19:48:34.934Z] scene judgment-runs: open http://127.0.0.1:5199/judgment-runs mode=full-workflow-demo
+[2026-06-14T19:48:37.107Z] sidebar-click sidebar-judgment-runs
+[2026-06-14T19:48:54.704Z] scene judgment-runs: interactive navigation done
+[2026-06-14T19:48:55.957Z] scene judgment-runs: overlay start
+[2026-06-14T19:48:55.962Z] scene judgment-runs: overlay done
+[2026-06-14T19:48:55.967Z] scene judgment-runs: text checks done
+[2026-06-14T19:49:02.173Z] scene judgment-runs: screenshot start
+[2026-06-14T19:49:02.282Z] scene judgment-runs: screenshot done
+[2026-06-14T19:49:02.283Z] scene judgment-runs: captured
+[2026-06-14T19:49:02.283Z] browser close start
+[2026-06-14T19:49:03.236Z] browser close done

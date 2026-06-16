@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "mode": "full-workflow-demo",
+  "seed": "20260614173004",
+  "frontend_url": "http://127.0.0.1:5199",
+  "backend_url": "http://127.0.0.1:18111",
+  "run_dir": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614173004",
+  "raw_video_path": null,
+  "data_path": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614173004\\demo-data.json",
+  "scenes": [
+    {
+      "id": "operations",
+      "title": "8. 운영 상태 확인",
+      "route": "/operations",
+      "url": "http://127.0.0.1:5199/operations",
+      "status": "passed",
+      "started_at": "2026-06-14T17:30:56.084Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614173004\\screenshots\\01-operations.png",
+      "finished_at": "2026-06-14T17:31:06.320Z"
+    },
+    {
+      "id": "operation-runs",
+      "title": "9. 작업 이력 확인",
+      "route": "/operation-runs",
+      "url": "http://127.0.0.1:5199/operation-runs",
+      "status": "passed",
+      "started_at": "2026-06-14T17:31:06.321Z",
+      "screenshot": "D:\\project\\wisdom_procurement\\artifacts\\demo-video\\runs\\20260614173004\\screenshots\\02-operation-runs.png",
+      "finished_at": "2026-06-14T17:31:17.057Z"
+    }
+  ],
+  "warnings": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "request_failures": [],
+  "started_at": "2026-06-14T17:30:56.084Z",
+  "finished_at": "2026-06-14T17:31:17.167Z"
+}
