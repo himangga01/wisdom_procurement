@@ -3,8 +3,7 @@ param(
   [string]$Action = "status",
   [int]$BackendPort = 18111,
   [int]$FrontendPort = 5199,
-  [int]$BackendNgrokApiPort = 4040,
-  [int]$FrontendNgrokApiPort = 4041
+  [string]$PublicDomain = "smart.kang.ngrok.pro"
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,10 +22,13 @@ $BackendDir = Join-Path $Root "backend"
 $FrontendDir = Join-Path $Root "frontend"
 $TempDir = Join-Path $Root "temp"
 $StatusPath = Join-Path $TempDir "ngrok.status.json"
-$BackendNgrokLogPath = Join-Path $TempDir "ngrok.backend.log"
-$FrontendNgrokLogPath = Join-Path $TempDir "ngrok.frontend.log"
+$PublicNgrokLogPath = Join-Path $TempDir "ngrok.public.log"
+$LegacyBackendNgrokLogPath = Join-Path $TempDir "ngrok.backend.log"
+$LegacyFrontendNgrokLogPath = Join-Path $TempDir "ngrok.frontend.log"
 $BackendLocalUrl = "http://127.0.0.1:$BackendPort"
 $FrontendLocalUrl = "http://127.0.0.1:$FrontendPort"
+$PublicDomain = $PublicDomain.Trim() -replace "^https?://", "" -replace "/+$", ""
+$PublicUrl = "https://$PublicDomain"
 
 function Ensure-TempDir {
   New-Item -ItemType Directory -Force $TempDir | Out-Null
@@ -59,17 +61,6 @@ function Remove-NgrokStatus {
   }
 }
 
-function Stop-ProcessIfManaged($ProcessId) {
-  if (!$ProcessId) { return }
-  $processIds = Get-ManagedProcessIds $ProcessId
-  [array]::Reverse($processIds)
-  foreach ($managedProcessId in $processIds) {
-    try {
-      Stop-Process -Id ([int]$managedProcessId) -Force -ErrorAction SilentlyContinue
-    } catch {}
-  }
-}
-
 function Get-ManagedProcessIds($ProcessId) {
   if (!$ProcessId) { return @() }
   $rootPid = [int]$ProcessId
@@ -93,16 +84,28 @@ function Get-ManagedProcessIds($ProcessId) {
   return $ids.ToArray()
 }
 
+function Stop-ProcessIfManaged($ProcessId) {
+  if (!$ProcessId) { return }
+  $processIds = Get-ManagedProcessIds $ProcessId
+  [array]::Reverse($processIds)
+  foreach ($managedProcessId in $processIds) {
+    try {
+      Stop-Process -Id ([int]$managedProcessId) -Force -ErrorAction SilentlyContinue
+    } catch {}
+  }
+}
+
 function Stop-NgrokManaged {
   $status = Read-NgrokStatus
   if ($status) {
+    Stop-ProcessIfManaged $status.public_ngrok_pid
     Stop-ProcessIfManaged $status.backend_ngrok_pid
     Stop-ProcessIfManaged $status.frontend_ngrok_pid
     Stop-ProcessIfManaged $status.backend_pid
     Stop-ProcessIfManaged $status.frontend_pid
   }
   Remove-NgrokStatus
-  Remove-Item $BackendNgrokLogPath,$FrontendNgrokLogPath -Force -ErrorAction SilentlyContinue
+  Remove-Item $PublicNgrokLogPath,$LegacyBackendNgrokLogPath,$LegacyFrontendNgrokLogPath -Force -ErrorAction SilentlyContinue
 }
 
 function Assert-NgrokCli {
@@ -178,11 +181,12 @@ function Get-NgrokPublicUrl($LogPath, $LocalPort) {
   throw "Could not read ngrok public URL for local port $LocalPort."
 }
 
-function Start-NgrokProcess($LocalPort, $LogPath) {
+function Start-NgrokProcess($LocalPort, $LogPath, $Domain) {
   Remove-Item $LogPath -Force -ErrorAction SilentlyContinue
   $args = @(
     "http",
     "http://127.0.0.1:$LocalPort",
+    "--url=$Domain",
     "--log",
     $LogPath,
     "--log-format",
@@ -196,8 +200,9 @@ function Start-Backend {
   return Start-Process -FilePath "py" -ArgumentList @("-3.13", "-m", "app.main") -WorkingDirectory $BackendDir -WindowStyle Hidden -PassThru
 }
 
-function Start-Frontend($BackendPublicUrl) {
-  $env:VITE_API_BASE_URL = $BackendPublicUrl
+function Start-Frontend {
+  $env:VITE_API_BASE_URL = ""
+  $env:VITE_BACKEND_PROXY_TARGET = $BackendLocalUrl
   $env:VITE_ALLOW_NGROK_HOSTS = "1"
   return Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "npm run dev -- --host 127.0.0.1 --port $FrontendPort") -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru
 }
@@ -230,6 +235,9 @@ Assert-NgrokCli
 if (!(Test-NgrokAuthConfigured)) {
   throw "ngrok auth token was not found. Run 'ngrok config add-authtoken <token>' or set NGROK_AUTHTOKEN."
 }
+if (!$PublicDomain) {
+  throw "PublicDomain is required for single-domain ngrok mode."
+}
 
 $previous = Read-NgrokStatus
 Assert-PortAvailableOrManaged $BackendPort ($previous.backend_pid)
@@ -244,39 +252,35 @@ if (!(Wait-HttpOk "$BackendLocalUrl/health")) {
   throw "Backend did not become ready at $BackendLocalUrl."
 }
 
-$backendNgrok = Start-NgrokProcess $BackendPort $BackendNgrokLogPath
-$backendPublicUrl = Get-NgrokPublicUrl $BackendNgrokLogPath $BackendPort
-
-$frontend = Start-Frontend $backendPublicUrl
+$frontend = Start-Frontend
 if (!(Wait-HttpOk $FrontendLocalUrl)) {
-  Stop-ProcessIfManaged $backendNgrok.Id
   Stop-ProcessIfManaged $backend.Id
   Stop-ProcessIfManaged $frontend.Id
   throw "Frontend did not become ready at $FrontendLocalUrl."
 }
 
-$frontendNgrok = Start-NgrokProcess $FrontendPort $FrontendNgrokLogPath
-$frontendPublicUrl = Get-NgrokPublicUrl $FrontendNgrokLogPath $FrontendPort
+$publicNgrok = Start-NgrokProcess $FrontendPort $PublicNgrokLogPath $PublicDomain
+$publicUrl = Get-NgrokPublicUrl $PublicNgrokLogPath $FrontendPort
 
 $payload = [ordered]@{
   enabled = $true
   provider = "ngrok"
-  backend_public_url = $backendPublicUrl
-  frontend_public_url = $frontendPublicUrl
+  mode = "single_domain_proxy"
+  public_domain = $PublicDomain
+  public_url = $publicUrl
+  api_public_url = "$publicUrl/api"
+  frontend_public_url = $publicUrl
+  backend_public_url = "$publicUrl/api"
   backend_local_url = $BackendLocalUrl
   frontend_local_url = $FrontendLocalUrl
   backend_port = $BackendPort
   frontend_port = $FrontendPort
-  backend_ngrok_api_port = $BackendNgrokApiPort
-  frontend_ngrok_api_port = $FrontendNgrokApiPort
-  backend_ngrok_log_path = $BackendNgrokLogPath
-  frontend_ngrok_log_path = $FrontendNgrokLogPath
+  public_ngrok_log_path = $PublicNgrokLogPath
   backend_pid = $backend.Id
   frontend_pid = $frontend.Id
-  backend_ngrok_pid = $backendNgrok.Id
-  frontend_ngrok_pid = $frontendNgrok.Id
+  public_ngrok_pid = $publicNgrok.Id
   updated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss zzz")
-  warnings = @("External URLs expose this local app while tunnels are running.", "Secrets and raw env values are not stored in this file.")
+  warnings = @("External URL exposes this local app while the tunnel is running.", "Frontend and API share one public ngrok domain through the Vite /api proxy.", "Secrets and raw env values are not stored in this file.")
 }
 Write-NgrokStatus $payload
 Show-Status

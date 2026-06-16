@@ -171,9 +171,9 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     title: "외부 접속 메뉴",
     summary: "ngrok을 통해 로컬 서비스를 외부에서 접속할 수 있는 공개 URL 상태를 확인합니다.",
     details: [
-      "프론트엔드와 백엔드 공개 URL을 확인하고 복사할 수 있습니다.",
+      "서비스 공개 URL과 API 경로를 확인하고 복사할 수 있습니다.",
       "다른 PC나 외부 사용자에게 테스트 URL을 전달할 때 사용합니다.",
-      "로컬 단일 PC 운영을 유지하면서 임시 외부 접속만 제공하는 기능입니다.",
+      "고정 ngrok 도메인 하나로 프론트엔드와 API를 함께 제공합니다.",
     ],
   },
 };
@@ -342,7 +342,7 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       summary: "표시된 URL이나 값을 클립보드에 복사합니다.",
       details: [
         "ngrok 공개 URL처럼 외부 사용자에게 전달할 값을 빠르게 복사할 수 있습니다.",
-        "복사한 URL은 ngrok 세션이 바뀌면 더 이상 유효하지 않을 수 있습니다.",
+        "고정 ngrok 도메인을 사용하는 경우 재시작 후에도 같은 공개 URL을 사용할 수 있습니다.",
         "API 키 전체 값 같은 민감정보는 화면에 노출하거나 복사하지 않는 것을 원칙으로 합니다.",
       ],
     },

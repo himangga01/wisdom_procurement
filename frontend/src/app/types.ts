@@ -159,6 +159,10 @@ export type PdfReaderStatus = {
 export type ExternalAccessStatus = {
   enabled: boolean;
   provider: string;
+  public_url?: string;
+  api_public_url?: string;
+  mode?: string;
+  public_domain?: string;
   frontend_public_url: string;
   backend_public_url: string;
   frontend_local_url: string;

@@ -5469,6 +5469,10 @@ def external_access_status_payload() -> dict[str, Any]:
     base_payload: dict[str, Any] = {
         "enabled": False,
         "provider": "ngrok",
+        "mode": "",
+        "public_domain": "",
+        "public_url": "",
+        "api_public_url": "",
         "frontend_public_url": "",
         "backend_public_url": "",
         "frontend_local_url": "",
@@ -5487,6 +5491,10 @@ def external_access_status_payload() -> dict[str, Any]:
     allowed_keys = {
         "enabled",
         "provider",
+        "mode",
+        "public_domain",
+        "public_url",
+        "api_public_url",
         "frontend_public_url",
         "backend_public_url",
         "frontend_local_url",

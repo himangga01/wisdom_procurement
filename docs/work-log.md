@@ -8597,3 +8597,47 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Scrolled the contract creation scene to the generated contract list before holding/capturing the result.
 - Added a Playwright context `ngrok-skip-browser-warning` header as a defensive safeguard.
 - Re-recorded all demo segments and stitched the final MP4. Final inspection passed at 513.64 seconds, 1440x900, h264.
+
+## 추가 업데이트 (2026-06-16) - 고정 ngrok 도메인 단일 주소 전환
+
+### 한국어 기록
+- 사용자가 유료 ngrok 도메인 `smart.kang.ngrok.pro`를 추가했고, 프론트엔드와 백엔드를 주소 1개로 합치도록 요청했습니다.
+- `scripts/manage-ngrok.ps1`를 단일 도메인 모드로 전환했습니다.
+  - 공개 서비스 URL: `https://smart.kang.ngrok.pro`
+  - 공개 API 경로: `https://smart.kang.ngrok.pro/api`
+  - ngrok 터널은 프론트엔드 dev server `5199` 하나만 외부에 노출합니다.
+  - Vite dev server가 `/api/*` 요청을 로컬 백엔드 `http://127.0.0.1:18111`로 프록시합니다.
+  - 기존 status 파일이 없어도 이전 방식의 backend/frontend ngrok PID가 남아 있으면 stop에서 정리할 수 있도록 호환 처리를 유지했습니다.
+- `frontend/vite.config.ts`에 `/api` 프록시와 `*.ngrok.pro` 허용 호스트를 추가했습니다.
+- `frontend/src/app/api.ts`는 `VITE_API_BASE_URL`이 없으면 same-origin `/api`를 사용하도록 변경했습니다.
+- `frontend/src/pages/ExternalAccessPage.tsx`는 프론트/백엔드 공개 URL 두 개 대신 `서비스 공개 URL`과 `API 경로`를 보여주도록 수정했습니다.
+- `frontend/src/app/helpGuides.tsx`의 외부 접속 도움말도 고정 도메인 기준으로 정리했습니다.
+- `backend/app/main.py`의 외부 접속 상태 API는 `public_url`, `api_public_url`, `public_domain`, `mode`를 반환할 수 있도록 허용 필드를 확장했습니다.
+- 기존에 status 파일 없이 살아 있던 `python -m app.main`, Vite, ngrok 프로세스를 확인 후 종료하고 새 단일 도메인 구성으로 재시작했습니다.
+
+검증:
+- `py -3.13 -m unittest tests.test_frontend_contracts.FrontendContractTests.test_ngrok_api_requests_skip_browser_warning tests.test_frontend_contracts.FrontendContractTests.test_vite_dev_server_allows_ngrok_free_hosts tests.test_frontend_contracts.FrontendContractTests.test_manage_ngrok_uses_single_paid_domain_with_frontend_api_proxy -v`: 실패 확인 후 수정, 이후 통과
+- `py -3.13 -m unittest tests.test_frontend_contracts -v`: 통과
+- `py -3.13 -m unittest tests.test_api_flows.ApiFlowTests.test_phase4e_external_access_status_is_secret_safe -v`: 통과
+- `npm run build`: 통과
+- `py -3.13 scripts\check-encoding.py`: 통과
+- `[scriptblock]::Create((Get-Content -Raw 'scripts/manage-ngrok.ps1'))`: PowerShell 문법 확인 통과
+- `http://127.0.0.1:18111/health`: HTTP 200
+- `http://127.0.0.1:5199/`: HTTP 200
+- `https://smart.kang.ngrok.pro/`: HTTP 200, ngrok warning 문구 없음
+- `https://smart.kang.ngrok.pro/api/external-access/status`: HTTP 200, `mode=single_domain_proxy`, `public_url=https://smart.kang.ngrok.pro`
+- 브라우저 확인: `https://smart.kang.ngrok.pro/`에서 `SMART 조달청 계산기` 타이틀 확인, ngrok warning 문구 없음
+
+실행 상태:
+- 백엔드 로컬: `http://127.0.0.1:18111`
+- 프론트엔드 로컬: `http://127.0.0.1:5199`
+- 공개 서비스: `https://smart.kang.ngrok.pro`
+- 공개 API 경로: `https://smart.kang.ngrok.pro/api`
+
+### AI / Engineering Version (English)
+- Converted `scripts/manage-ngrok.ps1` from two random ngrok tunnels to one paid fixed-domain tunnel at `smart.kang.ngrok.pro`.
+- The public endpoint now exposes the Vite frontend only; Vite proxies `/api/*` to the local backend at `http://127.0.0.1:18111`.
+- Frontend API calls now default to same-origin when `VITE_API_BASE_URL` is unset.
+- External access status now supports `public_url`, `api_public_url`, `public_domain`, and `mode`.
+- External access UI and help copy now present a single service URL plus an API path.
+- Verified local backend/frontend, public frontend, public API, browser page title, and absence of the ngrok warning interstitial.

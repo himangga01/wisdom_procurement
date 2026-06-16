@@ -23,6 +23,7 @@ JUDGMENT_RUNS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "JudgmentRun
 CONTRACTS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "ContractsPage.tsx"
 OPERATIONS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "OperationsPage.tsx"
 OPERATION_RUNS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "OperationRunsPage.tsx"
+EXTERNAL_ACCESS_PAGE_TSX = REPO_ROOT / "frontend" / "src" / "pages" / "ExternalAccessPage.tsx"
 TYPES_TS = REPO_ROOT / "frontend" / "src" / "app" / "types.ts"
 STYLES_CSS = REPO_ROOT / "frontend" / "src" / "styles.css"
 VITE_CONFIG_TS = REPO_ROOT / "frontend" / "vite.config.ts"
@@ -30,6 +31,7 @@ DEMO_VIDEO_SCRIPT = REPO_ROOT / "scripts" / "create-service-demo-video.mjs"
 DEMO_INTERACTIVE_VIDEO_PLAN = REPO_ROOT / "docs" / "service-demo-interactive-video-implementation-plan.md"
 DEMO_VIDEO_CONFIG_JSON = REPO_ROOT / "scripts" / "demo-video.config.json"
 CREATE_DEMO_VIDEO_PS1 = REPO_ROOT / "scripts" / "create-demo-video.ps1"
+MANAGE_NGROK_PS1 = REPO_ROOT / "scripts" / "manage-ngrok.ps1"
 
 
 def app_source() -> str:
@@ -104,6 +106,10 @@ def operation_runs_page_source() -> str:
     return OPERATION_RUNS_PAGE_TSX.read_text(encoding="utf-8")
 
 
+def external_access_page_source() -> str:
+    return EXTERNAL_ACCESS_PAGE_TSX.read_text(encoding="utf-8")
+
+
 def types_source() -> str:
     return TYPES_TS.read_text(encoding="utf-8")
 
@@ -130,6 +136,10 @@ def demo_video_config() -> dict:
 
 def create_demo_video_ps1_source() -> str:
     return CREATE_DEMO_VIDEO_PS1.read_text(encoding="utf-8")
+
+
+def manage_ngrok_ps1_source() -> str:
+    return MANAGE_NGROK_PS1.read_text(encoding="utf-8")
 
 
 def nav_routes(source: str) -> set[str]:
@@ -288,17 +298,46 @@ class FrontendContractTests(unittest.TestCase):
 
         self.assertIn("NEEDS_NGROK_SKIP_HEADER", api)
         self.assertIn(".ngrok-free.app", api)
+        self.assertIn(".ngrok.pro", api)
+        self.assertIn("window.location.hostname", api)
         self.assertIn("ngrok-skip-browser-warning", api)
         self.assertIn("withRuntimeHeaders(init)", api)
+        self.assertIn('const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL);', api)
 
     def test_vite_dev_server_allows_ngrok_free_hosts(self) -> None:
         config = vite_config_source()
 
         self.assertIn("allowedHosts", config)
         self.assertIn(".ngrok-free.app", config)
+        self.assertIn(".ngrok.pro", config)
         self.assertIn("localhost", config)
         self.assertIn("127.0.0.1", config)
         self.assertIn("VITE_ALLOW_NGROK_HOSTS", config)
+        self.assertIn("VITE_BACKEND_PROXY_TARGET", config)
+        self.assertIn('proxy: {', config)
+        self.assertIn('"/api"', config)
+        self.assertIn("changeOrigin: true", config)
+
+    def test_manage_ngrok_uses_single_paid_domain_with_frontend_api_proxy(self) -> None:
+        script = manage_ngrok_ps1_source()
+        page = external_access_page_source()
+        types = types_source()
+
+        self.assertIn('[string]$PublicDomain = "smart.kang.ngrok.pro"', script)
+        self.assertIn("$PublicUrl = \"https://$PublicDomain\"", script)
+        self.assertIn("Start-NgrokProcess $FrontendPort $PublicNgrokLogPath $PublicDomain", script)
+        self.assertIn('$env:VITE_API_BASE_URL = ""', script)
+        self.assertIn("$env:VITE_BACKEND_PROXY_TARGET = $BackendLocalUrl", script)
+        self.assertIn("public_ngrok_pid", script)
+        self.assertIn("public_url = $publicUrl", script)
+        self.assertNotIn("frontend_ngrok_pid = $frontendNgrok.Id", script)
+        self.assertNotIn("backend_ngrok_pid = $backendNgrok.Id", script)
+
+        self.assertIn("public_url?: string", types)
+        self.assertIn("api_public_url?: string", types)
+        self.assertIn("serviceUrl", page)
+        self.assertIn("서비스 공개 URL", page)
+        self.assertIn("API 경로", page)
 
     def test_navigation_and_dashboard_copy_do_not_use_stale_phase_badges(self) -> None:
         app = app_source()

@@ -40,10 +40,23 @@ import type {
   NaraCollectionRun,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:18000";
+function normalizeApiBase(value: string | undefined) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function isNgrokHostname(hostname: string) {
+  return [".ngrok-free.app", ".ngrok-free.dev", ".ngrok.app", ".ngrok.pro"].some((suffix) => hostname.endsWith(suffix));
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL);
 const NEEDS_NGROK_SKIP_HEADER = (() => {
   try {
-    return new URL(API_BASE).hostname.endsWith(".ngrok-free.app");
+    const hostname = API_BASE
+      ? new URL(API_BASE).hostname
+      : typeof window !== "undefined"
+        ? window.location.hostname
+        : "";
+    return isNgrokHostname(hostname);
   } catch {
     return false;
   }

@@ -51,8 +51,8 @@ export function ExternalAccessPage() {
     );
   };
 
-  const frontendUrl = status?.frontend_public_url || "";
-  const backendUrl = status?.backend_public_url || "";
+  const serviceUrl = status?.public_url || status?.frontend_public_url || "";
+  const apiUrl = status?.api_public_url || (serviceUrl ? `${serviceUrl.replace(/\/+$/, "")}/api` : status?.backend_public_url || "");
 
   return (
     <section className="content-stack">
@@ -108,19 +108,19 @@ export function ExternalAccessPage() {
             <table>
               <tbody>
                 <tr>
-                  <th>프론트엔드 공개 URL</th>
-                  <td>{frontendUrl || "-"}</td>
+                  <th>서비스 공개 URL</th>
+                  <td>{serviceUrl || "-"}</td>
                   <td>
-                    <button type="button" className="button-secondary" onClick={() => copyText(frontendUrl)} disabled={!frontendUrl}>
+                    <button type="button" className="button-secondary" onClick={() => copyText(serviceUrl)} disabled={!serviceUrl}>
                       복사
                     </button>
                   </td>
                 </tr>
                 <tr>
-                  <th>백엔드 공개 URL</th>
-                  <td>{backendUrl || "-"}</td>
+                  <th>API 경로</th>
+                  <td>{apiUrl || "-"}</td>
                   <td>
-                    <button type="button" className="button-secondary" onClick={() => copyText(backendUrl)} disabled={!backendUrl}>
+                    <button type="button" className="button-secondary" onClick={() => copyText(apiUrl)} disabled={!apiUrl}>
                       복사
                     </button>
                   </td>
