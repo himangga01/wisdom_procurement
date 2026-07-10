@@ -8641,3 +8641,54 @@ Per user request, it must be updated whenever new work is performed in this thre
 - External access status now supports `public_url`, `api_public_url`, `public_domain`, and `mode`.
 - External access UI and help copy now present a single service URL plus an API path.
 - Verified local backend/frontend, public frontend, public API, browser page title, and absence of the ngrok warning interstitial.
+
+## 추가 업데이트 (2026-06-16) - 고정 ngrok 도메인 나라장터 API 실패 수정
+
+### 한국어 버전
+- 사용자가 고정 ngrok 도메인 전환 이후 모바일 화면에서 나라장터 API 설정이 `Failed to fetch`, `미설정`으로 표시된다고 제보했습니다.
+- 실제 원인을 계층별로 확인했습니다.
+  - `backend/.env`에는 `NARA_API_SERVICE_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`가 모두 존재했습니다.
+  - 로컬 백엔드 `http://127.0.0.1:18111/api/settings/integrations/nara/status`는 `configured=true`로 정상 응답했습니다.
+  - 공개 API `https://smart.kang.ngrok.pro/api/settings/integrations/nara/status`와 연결 테스트 API도 HTTP 200, `result_code=00`, `result_msg=정상`으로 응답했습니다.
+  - 하지만 공개 도메인에서 서빙되는 Vite dev 번들에 `VITE_API_BASE_URL=http://127.0.0.1:18111`이 주입되어 있었습니다.
+- 원인:
+  - `frontend/.env`의 로컬 개발용 `VITE_API_BASE_URL=http://127.0.0.1:18111` 값이 고정 도메인 실행 시에도 번들에 남았습니다.
+  - 외부/모바일 브라우저는 자기 기기의 `127.0.0.1:18111`로 API를 호출하게 되어 `Failed to fetch`가 발생했습니다.
+- 수정:
+  - `scripts/manage-ngrok.ps1`의 프론트 실행 환경값을 `VITE_API_BASE_URL=__SAME_ORIGIN__`으로 변경했습니다.
+  - `frontend/src/app/api.ts`에서 `__SAME_ORIGIN__`은 빈 API base로 처리해 같은 도메인의 `/api` 프록시를 사용하도록 했습니다.
+  - 추가 방어 로직으로, 외부 도메인에서 열린 페이지가 로컬 loopback API base를 받으면 자동으로 same-origin `/api`로 전환하도록 했습니다.
+  - `backend/tests/test_frontend_contracts.py`에 해당 계약을 추가했습니다.
+- 실행 상태:
+  - 공개 서비스: `https://smart.kang.ngrok.pro`
+  - 공개 API 경로: `https://smart.kang.ngrok.pro/api`
+  - 백엔드 PID: `28488`
+  - 프론트엔드 PID: `24108`
+  - ngrok PID: `27800`
+- 검증:
+  - 변경 전 계약 테스트 실패 확인
+  - 수정 후 대상 계약 테스트 통과
+  - `npm run build` 통과
+  - `scripts/manage-ngrok.ps1` 문법 확인 통과
+  - `https://smart.kang.ngrok.pro/src/app/api.ts`에서 `VITE_API_BASE_URL=__SAME_ORIGIN__` 확인
+  - `https://smart.kang.ngrok.pro/api/settings/integrations/nara/status`: HTTP 200, `configured=true`
+  - `https://smart.kang.ngrok.pro/api/settings/integrations/nara/test`: HTTP 200, `result_code=00`, `result_msg=정상`
+  - 브라우저 UI 확인: `Failed to fetch` 없음, 나라장터 키 `설정됨`, Gemini/OpenAI 키 `설정됨`, 최근 테스트 `ok`
+
+### AI / Engineering Version (English)
+- Fixed a regression introduced by the fixed ngrok single-domain mode.
+- Root cause:
+  - `frontend/.env` still contained local development `VITE_API_BASE_URL=http://127.0.0.1:18111`.
+  - Vite injected that value into the public dev bundle, so remote/mobile browsers attempted to call their own loopback address instead of `https://smart.kang.ngrok.pro/api`.
+- Changes:
+  - `scripts/manage-ngrok.ps1` now starts Vite with `VITE_API_BASE_URL=__SAME_ORIGIN__`.
+  - `frontend/src/app/api.ts` treats `__SAME_ORIGIN__` as an empty API base and uses same-origin `/api`.
+  - Added a defensive runtime guard: when the page is opened on a non-loopback hostname and the configured API base points to loopback, API calls fall back to same-origin.
+  - Added frontend contract assertions for the sentinel and loopback guard.
+- Verification:
+  - Reproduced the failing contract before implementation.
+  - Passed targeted frontend contract tests after implementation.
+  - Passed `npm run build`.
+  - Confirmed public bundle no longer injects `http://127.0.0.1:18111` as `VITE_API_BASE_URL`.
+  - Confirmed public Nara status/test endpoints return HTTP 200 and `result_code=00`.
+  - Confirmed the browser UI shows configured Nara/Gemini/OpenAI status and no `Failed to fetch`.

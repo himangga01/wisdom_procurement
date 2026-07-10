@@ -303,6 +303,9 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("ngrok-skip-browser-warning", api)
         self.assertIn("withRuntimeHeaders(init)", api)
         self.assertIn('const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL);', api)
+        self.assertIn('__SAME_ORIGIN__', api)
+        self.assertIn("isLoopbackHostname", api)
+        self.assertIn("!isLoopbackHostname(pageHostname) && isLoopbackHostname(configuredHostname)", api)
 
     def test_vite_dev_server_allows_ngrok_free_hosts(self) -> None:
         config = vite_config_source()
@@ -326,7 +329,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('[string]$PublicDomain = "smart.kang.ngrok.pro"', script)
         self.assertIn("$PublicUrl = \"https://$PublicDomain\"", script)
         self.assertIn("Start-NgrokProcess $FrontendPort $PublicNgrokLogPath $PublicDomain", script)
-        self.assertIn('$env:VITE_API_BASE_URL = ""', script)
+        self.assertIn('$env:VITE_API_BASE_URL = "__SAME_ORIGIN__"', script)
         self.assertIn("$env:VITE_BACKEND_PROXY_TARGET = $BackendLocalUrl", script)
         self.assertIn("public_ngrok_pid", script)
         self.assertIn("public_url = $publicUrl", script)

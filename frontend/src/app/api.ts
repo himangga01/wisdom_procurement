@@ -40,8 +40,30 @@ import type {
   NaraCollectionRun,
 } from "./types";
 
+function isLoopbackHostname(hostname: string) {
+  const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
+}
+
+function currentPageHostname() {
+  return typeof window !== "undefined" ? window.location.hostname : "";
+}
+
 function normalizeApiBase(value: string | undefined) {
-  return String(value || "").replace(/\/+$/, "");
+  const normalized = String(value || "").trim().replace(/\/+$/, "");
+  if (!normalized || normalized === "__SAME_ORIGIN__") {
+    return "";
+  }
+  try {
+    const configuredHostname = new URL(normalized).hostname;
+    const pageHostname = currentPageHostname();
+    if (pageHostname && !isLoopbackHostname(pageHostname) && isLoopbackHostname(configuredHostname)) {
+      return "";
+    }
+  } catch {
+    return normalized;
+  }
+  return normalized;
 }
 
 function isNgrokHostname(hostname: string) {

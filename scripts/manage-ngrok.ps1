@@ -201,7 +201,7 @@ function Start-Backend {
 }
 
 function Start-Frontend {
-  $env:VITE_API_BASE_URL = ""
+  $env:VITE_API_BASE_URL = "__SAME_ORIGIN__"
   $env:VITE_BACKEND_PROXY_TARGET = $BackendLocalUrl
   $env:VITE_ALLOW_NGROK_HOSTS = "1"
   return Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "npm run dev -- --host 127.0.0.1 --port $FrontendPort") -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru
