@@ -4,17 +4,38 @@
 `SMART 조달청 계산기`는 단일 관리자 사용자(행정사)가 법인 정보를 관리하고, 프로젝트를 생성하고, 조달 관련 PDF/DOCX 문서를 프로젝트 단위로 업로드하여 AI 기반 요약과 구조화 결과를 확인하는 로컬 실행형 웹 어드민 포탈입니다.
 
 ## 현재 코드 기준 요약
-최종 문서 갱신일: 2026-06-07
+최종 문서 갱신일: 2026-08-21
 
 - 현재 PDF 리더 기본값은 `OpenDataLoader PDF` 우선 `auto` 모드이며, Java/패키지/timeout/변환 실패 시 `PyMuPDF`로 fallback합니다.
 - 일반 업로드 문서, 나라장터 공고 첨부 PDF, 기준문서 PDF는 같은 `extract_document()` 진입점을 사용하므로 현재 기본 PDF 리더 정책을 공유합니다.
 - DOCX 추출은 `python-docx` 기반이며, 문단뿐 아니라 표 cell 텍스트도 분석 입력에 포함합니다.
 - 기준문서 RAG 검색 source는 운영 산출물인 `storage/basis-index/basis-index.json`입니다. JSON 인덱스가 없거나 DB와 불일치하면 검색/승인/판단 citation 사용을 막고 rebuild를 요구합니다.
 - 기준문서 재처리 중 원본 파일이 사라진 경우에도 기존 completed/indexed RAG 산출물이 있으면 기존 검색 지식을 보존합니다.
-- 판단 엔진은 확정 합격 판정이 아니라 `부족 조건`, `필요 서류`, `준비 가이드`, `citation 상태` 중심으로 결과를 저장합니다.
+- 나라장터 검색은 `전체·공사·용역·물품·기타` 업무유형을 지원하며, 전체 검색은 업무유형별 결과를 병합하고 일부 조회 실패를 별도로 표시합니다.
+- 법인 등록과 증빙자료 관리는 다중 파일 업로드, 자동 분류/추출, 검토 후보 승인, 확장 증빙 문서유형을 지원합니다.
+- 판단 엔진은 규칙 기반 결과와 Gemini 판단을 결합합니다. Gemini 판단은 약 70% 가중치로 반영하되, 근거 없는 `준비 완료` 승격을 막는 보수적 병합 정책과 fallback을 유지합니다.
+- 부족조건 미리보기와 판단 검토 화면은 요약 중심 메인 화면, 이력/상세/근거 모달, 사용자 친화적 상태와 금액 표시를 제공합니다.
 - 운영 화면에는 운영 대시보드, 작업 실행/실패 이력, 백업/검증/복원계획, 나라장터 자동 수집, 판단 이력이 포함됩니다.
 - `계약서 생성` 화면은 저장 공고와 법인 기본정보를 기준으로 검토용 `용역표준계약서` DOCX 초안을 생성합니다.
-- `외부 접속` 화면은 `scripts/manage-ngrok.ps1`가 만든 ngrok public URL 상태를 표시합니다. 프론트 화면에서 ngrok start/stop은 직접 실행하지 않습니다.
+- `scripts/manage-ngrok.ps1`는 고정 주소 `https://smart.kang.ngrok.pro` 하나로 프론트엔드와 `/api` 프록시를 공개합니다. 외부 브라우저에서는 same-origin API를 사용합니다.
+- Playwright 기반 전체 업무 흐름 시연 영상 생성 스크립트와 최종 MP4 산출물이 준비되어 있습니다.
+
+## 현재 완료 범위
+- Phase 1~1.7: 법인/프로젝트/문서 관리, 문서 분석, 나라장터 공고 저장·분석, 법인 증빙 추출·검토, 부족조건 미리보기
+- Phase 2~2.5: 기준문서 업로드·OCR·청킹·JSON 인덱싱·검색·규칙 후보 관리·검색/citation 평가
+- Phase 3: 요구조건 비교, 기준문서 근거 연결, Gemini 가중 판단 보조, 준비 항목/필요 서류/검토 UX
+- Phase 4: 운영 대시보드, 작업/실패/재시도 이력, 백업 생성·검증·복원계획 dry-run, 자동 수집 관리
+- Phase 4E/5A: 고정 ngrok 외부 접속, 표준계약서 DOCX 초안 생성
+- 시연 자동화: 법인 등록부터 공고 검색, 기준문서, 비교·판단, 계약서, 운영 화면까지 Playwright 녹화
+
+## 남은 작업
+1. 첨부 URL 다운로드의 DNS rebinding/TOCTOU 완화는 기록된 보안 backlog로 유지합니다.
+2. 실제 증빙 PDF·실시간 나라장터 API·489페이지 기준문서·Gemini 판단·계약서 생성을 모두 실백엔드로 연결한 장시간 통합 QA 기준을 확정해야 합니다.
+3. 전체 회귀 테스트에서 OpenDataLoader `auto`를 기본으로 사용할지, 빠른 PyMuPDF 회귀 테스트와 OpenDataLoader 전용 QA를 분리 유지할지 결정해야 합니다.
+4. 백업 복원은 현재 검증과 dry-run 계획까지만 제공하므로, 실제 복원 실행은 명시 승인·서비스 중지·롤백 절차와 함께 별도 구현해야 합니다.
+5. 고정 ngrok 주소를 운영 접속으로 계속 사용할 경우 인증·권한·접속 통제·감사 로그·민감 문서 보호 정책이 필요합니다.
+6. 생성된 영상, 스크린샷, 테스트 DB, 업로드 파일, 인덱스 등 대용량 산출물의 Git 보관/외부 보관 정책을 정리해야 합니다.
+7. HWP/HWPX 직접 처리와 분석 결과 PDF/Excel 내보내기는 장기 backlog입니다.
 
 이 프로젝트는 단계적으로 확장됩니다.
 - Phase 1: 업로드, 관리, 요약 MVP
@@ -485,7 +506,7 @@ npm run dev -- --host 127.0.0.1 --port 5199
 ```
 
 ### 12. ngrok 외부 접속
-ngrok 외부 접속은 개발/시연용입니다. 먼저 [ngrok](https://ngrok.com/)을 설치하고, ngrok 대시보드에서 발급받은 token을 로컬 CLI에 등록합니다.
+ngrok 외부 접속은 개발/시연용입니다. 현재 기본 고정 도메인은 `smart.kang.ngrok.pro`이며, 프론트엔드와 API를 하나의 주소로 제공합니다. 먼저 [ngrok](https://ngrok.com/)을 설치하고, ngrok 대시보드에서 발급받은 token을 로컬 CLI에 등록합니다.
 
 ```powershell
 ngrok config add-authtoken <your-ngrok-token>
@@ -495,6 +516,12 @@ ngrok config add-authtoken <your-ngrok-token>
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start
+```
+
+다른 예약 도메인을 사용할 때:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start -PublicDomain your-domain.ngrok.pro
 ```
 
 상태 확인:
@@ -509,7 +536,7 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 status
 powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 ```
 
-화면에서는 `설정 > 외부 접속`에서 public URL을 확인합니다. public URL이 켜져 있는 동안 로컬 서비스가 외부에 노출되므로 민감 문서 업로드와 URL 공유 범위를 주의합니다.
+기본 공개 주소는 `https://smart.kang.ngrok.pro`, API 경로는 `https://smart.kang.ngrok.pro/api`입니다. Vite가 `/api` 요청을 로컬 백엔드로 프록시하며, 외부 브라우저가 자기 기기의 `127.0.0.1`로 연결하지 않도록 same-origin 모드를 사용합니다. 화면에서는 `설정 > 외부 접속`에서 상태를 확인합니다. 공개 주소가 켜져 있는 동안 로컬 서비스가 외부에 노출되므로 민감 문서 업로드와 URL 공유 범위를 주의합니다.
 
 ### 13. 계약서 DOCX 초안 생성
 1. 나라장터 공고를 검색하고 `공고 상세 저장`을 실행합니다.
@@ -555,6 +582,9 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 - [PDF/RAG 코드리뷰 수정계획](docs/pdf-rag-code-review-remediation-plan.md)
 - [현재 코드/문서 감사 리포트](docs/current-code-documentation-audit.md)
 - [ngrok 외부 접속 및 계약서 DOCX 자동 생성 설계/구현계획](docs/ngrok-external-access-and-contract-docx-plan.md)
+- [판단 검토/부족조건 미리보기 UX 개선 제안서](docs/judgment-review-ux-improvement-proposal.md)
+- [서비스 시연 영상 전체 흐름 구현계획](docs/service-demo-interactive-video-implementation-plan.md)
+- [서비스 시연 영상 생성계획](docs/service-demo-video-generation-plan.md)
 - [작업 로그](docs/work-log.md)
 - [에이전트 가이드](AGENTS.md)
 
@@ -565,21 +595,12 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 - 기준문서는 PDF만 허용
 - 프로젝트는 우선 1개 법인에 연결
 
-## 미해결 질문
-- 법인 프로필에 사업자등록번호를 MVP 필수로 넣을지
-- OCR 오류 보정 UI가 필요한지
-- 분석 결과 내보내기(PDF/Excel)가 필요한지
-- 기준문서 카테고리 체계를 누가 운영할지
-
-## 로드맵
-1. 문서 설계 확정
-2. 저장소 스캐폴딩 생성
-3. Phase 1 MVP 구현
-4. Phase 1.5 나라장터 게시판과 공고 자동 분석 추가
-5. Phase 1.6 법인 증빙자료 자동 추출과 법인 프로필 보강
-6. 기준문서 파이프라인과 로컬 RAG 추가
-7. 부족 조건/준비 가이드 중심 판단 엔진 확장
-8. 조달 공고 자동 수집 확장
+## 미해결 결정
+- 실제 복원 실행을 제품 기능으로 허용할 시점과 승인 절차
+- 고정 외부 주소 운영 시 인증·권한·접속 통제 범위
+- 전체 회귀 테스트의 OpenDataLoader 실행 정책
+- 대용량 테스트/시연 산출물의 Git 보관 여부와 별도 저장소 정책
+- 분석 결과 PDF/Excel 내보내기와 HWP/HWPX 지원 우선순위
 
 ---
 
@@ -589,16 +610,29 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 `SMART Procurement Calculator` is a local-first admin portal for a single administrator who manages corporations, creates projects, uploads procurement-related PDF/DOCX documents, and reviews AI-generated summaries and structured outputs.
 
 ## Current Code Snapshot
-Last documentation update: 2026-06-07
+Last documentation update: 2026-08-21
 
 - Default PDF extraction is `PDF_READER_ENGINE=auto`: OpenDataLoader first, PyMuPDF fallback.
 - Target documents, Nara notice attachments, and basis PDFs share the same `extract_document()` entrypoint.
 - DOCX extraction includes both paragraphs and table cell text.
 - Basis retrieval uses the operational JSON index artifact at `storage/basis-index/basis-index.json`; invalid or inconsistent index state blocks search/citation usage and requires rebuild.
-- The gap-first judgment engine stores missing conditions, required documents, preparation guidance, and citation status rather than optimistic final eligibility.
+- Nara search supports all/construction/service/goods/etc business types, merged pagination, and partial-failure reporting.
+- Corporation onboarding and evidence management support multi-file upload, classification, extraction, review candidates, and expanded evidence types.
+- The judgment engine combines deterministic comparison with Gemini at an approximately 70% weight under a conservative evidence gate and deterministic fallback.
+- Gap preview and judgment review use summary-first pages with history/detail/evidence modals and user-facing status labels.
 - Phase 4 operations pages cover dashboard, operation runs, failures/retries, backups, validation, and restore dry-runs.
 - The contract draft page generates review-only `용역표준계약서` DOCX drafts from saved notices and corporation profile data.
-- The external access page displays ngrok public URLs created by `scripts/manage-ngrok.ps1`; the frontend does not start or stop ngrok directly.
+- `scripts/manage-ngrok.ps1` exposes the frontend and `/api` proxy through the fixed single domain `https://smart.kang.ngrok.pro`.
+- Playwright-based full-workflow recording scripts and a stitched demo MP4 are available.
+
+## Remaining Work
+- harden attachment downloads against DNS rebinding/TOCTOU
+- define a real-backend, long-running end-to-end QA baseline for evidence OCR, live Nara API, the 489-page basis PDF, Gemini judgment, and contract generation
+- decide whether full regression uses OpenDataLoader `auto` or keeps fast PyMuPDF regression plus dedicated OpenDataLoader QA
+- implement actual backup restore only with explicit approval, service-stop, and rollback procedures
+- add authentication, authorization, access control, and audit policy before treating the fixed ngrok endpoint as an operational deployment
+- define Git/external-storage policy for generated videos, screenshots, databases, uploads, and index artifacts
+- keep HWP/HWPX parsing and PDF/Excel export as long-term backlog
 
 ## Phase Plan
 - Phase 1: upload/manage/summarize MVP
@@ -675,6 +709,8 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 start
 powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 status
 powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 ```
+
+The default public service URL is `https://smart.kang.ngrok.pro`, and the public API prefix is `https://smart.kang.ngrok.pro/api`. Pass `-PublicDomain your-domain.ngrok.pro` to use another reserved domain.
 
 Generate a contract draft:
 - save a Nara notice

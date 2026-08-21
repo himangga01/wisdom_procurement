@@ -8692,3 +8692,35 @@ Per user request, it must be updated whenever new work is performed in this thre
   - Confirmed public bundle no longer injects `http://127.0.0.1:18111` as `VITE_API_BASE_URL`.
   - Confirmed public Nara status/test endpoints return HTTP 200 and `result_code=00`.
   - Confirmed the browser UI shows configured Nara/Gemini/OpenAI status and no `Failed to fetch`.
+
+## 추가 업데이트 (2026-08-21) - 전체 작업 내역 및 남은 작업 문서 정리
+
+### 한국어 기록
+- 현재 `main` 브랜치와 `origin/main`이 동일하고 작업 트리가 깨끗한 상태임을 확인했습니다.
+- 2026-06-15부터 2026-07-10까지 반영된 코드와 작업 로그를 기준으로 완료 범위를 다시 정리했습니다.
+- `README.md`를 현재 코드 기준으로 업데이트했습니다.
+  - 나라장터 `전체·공사·용역·물품·기타` 검색과 부분 실패 정책
+  - 법인 증빙 다중 업로드와 확장 문서유형
+  - 기준문서 OpenDataLoader/JSON RAG 운영 정책
+  - Gemini 70% 가중 판단 보조와 보수적 근거 게이트
+  - 부족조건/판단 모달 UX, 계약서 DOCX, 운영 기능
+  - Playwright 전체 흐름 시연 영상 자동화
+  - 고정 ngrok 단일 주소 `https://smart.kang.ngrok.pro`와 same-origin `/api` 구성
+- `docs/remaining-development-roadmap.md`의 과거 Phase 계획과 현재 backlog를 분리했습니다.
+- 현재 남은 작업을 다음과 같이 기록했습니다.
+  1. 고정 외부 주소 운영 전 인증·권한·접속 통제·감사 정책
+  2. 실데이터/실백엔드 전체 흐름 장시간 QA
+  3. OpenDataLoader/PyMuPDF 공식 회귀 테스트 매트릭스
+  4. 명시 승인과 롤백을 포함한 실제 백업 복원
+  5. 대용량 영상·스크린샷·DB·업로드·인덱스 산출물 저장 정책
+  6. 첨부 URL DNS rebinding/TOCTOU 후속 보안 작업
+  7. 운영 로그 보존 정책과 HWP/HWPX·결과 내보내기 backlog
+- 이번 요청은 문서 기록, README 업데이트, Git 커밋/푸시 범위이므로 별도 테스트는 실행하지 않았습니다.
+
+### AI / Engineering Version (English)
+- Confirmed that `main` initially matched `origin/main` and the worktree was clean.
+- Consolidated the implemented scope from the recent code and work-log history into `README.md`.
+- Updated the current snapshot for multi-business-type Nara search, expanded evidence handling, OpenDataLoader/JSON RAG, Gemini 70% weighted judgment assistance, modal-based review UX, contract DOCX generation, operations tooling, demo-video automation, and fixed-domain same-origin ngrok access.
+- Reframed `docs/remaining-development-roadmap.md` so the Phase 2.5/3 details remain historical while the active backlog is clearly listed.
+- Recorded remaining work for public-access security, real-backend end-to-end QA, parser regression policy, actual restore, generated-artifact storage policy, DNS rebinding/TOCTOU hardening, operational retention, and long-term format/export support.
+- No tests were run because this request was limited to documentation, README, commit, and push work.

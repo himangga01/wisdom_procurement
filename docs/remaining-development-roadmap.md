@@ -1,7 +1,11 @@
 # 한국어 버전
 
 ## 문서 목적
-이 문서는 2026-05-22 기준 `SMART 조달청 계산기`의 남은 개발 단계를 다시 정리합니다.
+이 문서는 `SMART 조달청 계산기`의 단계별 개발 기록과 현재 남은 작업을 함께 정리합니다.
+
+2026-08-21 해석 기준:
+- 아래 Phase 2.5/Phase 3 상세 단계는 이미 구현된 과거 실행계획으로 보존합니다.
+- 현재 남은 작업의 우선순위는 문서 하단의 `현재 코드 기준 남은 개발 단계`를 기준으로 합니다.
 
 현재 기준선은 다음과 같습니다.
 
@@ -11,12 +15,14 @@
 - Phase 1.7: 공고 요구조건 대 법인 부족조건 미리보기 완료 및 실제 공고 PDF QA 완료
 - Phase 2A-H: 기준문서 업로드/파싱/OCR degrade/정규화/청킹/로컬 인덱싱/검색/관리 UX MVP 완료
 - Phase 2 운영 보강: 기준문서 규칙 후보 승인/반려/수정 API와 관리 UX, 나라장터 자동 수집 실행/이력 UX, 운영 조회 인덱스, MuPDF known issue 동적 로딩 완료
+- Phase 2.5/Phase 3: 기준 규칙 구조화, 검색/citation 평가, 부족조건 판단, 근거 연결, 준비 가이드, 검토 UX 완료
+- Phase 4/4E/5A: 운영 관리, 백업 dry-run, 고정 ngrok 외부 접속, 계약서 DOCX 초안 생성 완료
 - 공고문 PDF 테스트 공용 캐시: 나라장터 랜덤 PDF 30개 확보, opt-in 테스트 재사용 구조 완료
 - Gemini 2.5 기반 PDF 텍스트 비교 QA: 대표 공고문류 PDF에서 서비스 파싱과 Gemini 추출 텍스트의 높은 본문 일치도 확인
 
-따라서 이후 작업은 `Phase 2 기능 추가`가 아니라 `Phase 2.5 검증/구조화`와 `Phase 3 판단 엔진`으로 넘어가는 흐름입니다.
+아래 표와 세부 단계는 실제 개발 당시 사용한 실행 순서를 보존한 것입니다. 현재 우선순위는 문서 하단의 backlog 표를 따릅니다.
 
-## 남은 단계 요약
+## 과거 실행 단계 요약
 
 | 우선순위 | 단계 | 목적 | 산출물 |
 | --- | --- | --- | --- |
@@ -28,7 +34,7 @@
 | 6 | Phase 3A-G | 부족조건 중심 판단 엔진과 근거 출력 | 판단 결과 API/UX, citation, 준비 가이드 |
 | 7 | Phase 4 | 운영 제품화 | 인증, 백업, 배포, 다중 사용자/클라우드 선택지 |
 
-## 바로 해야 할 일: Phase 2 종료 보강
+## 과거 실행계획: Phase 2 종료 보강
 Phase 2A-H는 MVP로 완료되었지만, Phase 3로 넘어가기 전에 아래를 먼저 정리합니다.
 
 2026-05-24 기준으로 운영 화면/API/인덱스/known issue 동적 로딩은 구현 완료되었습니다. 남은 일은 실제 기준문서 PDF 샘플 선정과 citation 품질 기준 고정입니다.
@@ -226,49 +232,52 @@ Phase 4는 판단 엔진이 동작한 뒤의 운영 안정화 단계입니다.
 이 순서가 좋은 이유는 판단 엔진을 먼저 만들면 citation 품질이 낮은 상태에서 결과를 과신할 위험이 있기 때문입니다. 지금은 먼저 기준문서와 요구조건을 `검증 가능한 입력`으로 만드는 것이 더 중요합니다.
 
 ## 현재 코드 기준 남은 개발 단계
-최종 갱신일: 2026-06-07
+최종 갱신일: 2026-08-21
 
-현재 Phase 2.5/Phase 3/Phase 4의 핵심 MVP는 구현되어 있습니다. 따라서 “다음 개발 단계”는 새 판단 로직을 더 만드는 것보다 운영 안정성과 보안/검증 강화를 우선합니다.
+현재 Phase 2.5/Phase 3/Phase 4/Phase 4E/Phase 5A의 핵심 MVP는 구현되어 있습니다. 나라장터 전체 업무유형 검색, 확장 법인 증빙, 기준문서 JSON RAG, Gemini 70% 가중 판단 보조, 계약서 DOCX, 고정 ngrok 단일 주소, Playwright 시연 영상 자동화도 코드에 반영되어 있습니다.
 
-남은 우선순위:
-1. 첨부 URL DNS rebinding/shared address 보안 보강
-2. OpenDataLoader `auto` 경로를 포함한 full regression 운영 방식 결정
-3. 실제 기준문서 PDF fixture/manifest 정책 유지와 기준선 갱신
-4. 백업 복원 실제 실행 기능은 dry-run 이후 명시 승인 기반으로 별도 구현
-5. 운영 감사 로그와 review history 상세화
-6. 인증/권한/다중 사용자/배포 전략은 Phase 4.5 또는 Phase 5로 분리
-7. HWP/HWPX 지원 여부는 장기 backlog로 유지
+| 우선순위 | 남은 작업 | 현재 상태 | 완료 기준 |
+| --- | --- | --- | --- |
+| P1 | 고정 외부 주소 운영 보안 | 단일 관리자·무인증·고정 ngrok 공개 구조 | 인증, 권한, 접속 통제, 감사 로그, 민감 문서 보호 정책 확정 및 구현 |
+| P1 | 실백엔드 전체 흐름 장시간 QA | 시연 영상은 안정화 route를 기본 사용하고 실제 실행 옵션을 별도 제공 | 증빙 OCR, 실시간 나라장터, 489페이지 기준문서, Gemini 판단, 계약서 생성의 실데이터 통합 QA 통과 |
+| P2 | OpenDataLoader 회귀 운영 기준 | 빠른 테스트는 PyMuPDF, 실제 품질은 OpenDataLoader targeted QA로 분리 | CI/로컬 실행 시간과 품질 기준을 반영한 공식 테스트 매트릭스 확정 |
+| P2 | 실제 백업 복원 | 백업 생성·검증·복원계획 dry-run 구현 | 명시 승인, 서비스 중지, 사전 백업, 복원, 검증, 실패 롤백 절차 구현 |
+| P2 | 대용량 산출물 저장 정책 | 영상·스크린샷·DB·업로드·인덱스 산출물이 Git 이력에 포함될 수 있음 | Git 추적 대상과 외부/릴리스 저장 대상을 분리하고 보존 정책 문서화 |
+| P2 | 첨부 URL DNS rebinding/TOCTOU | non-global/shared address 사전 차단까지 구현, 후속 이슈는 기록-only | 검증한 IP와 실제 연결 대상을 묶는 정책 및 redirect 통합 테스트 확정 |
+| P3 | 운영 이력/로그 보존 정책 | 작업 이력과 파일 로그 기반 기능 구현 | 보존 기간, 최대 용량, 검색/내보내기, 개인정보 마스킹 운영 기준 확정 |
+| Backlog | HWP/HWPX 및 결과 내보내기 | 현재 범위 제외 | 우선순위 승인 후 별도 Phase 계획 작성 |
 
 ## Questions for Product Owner
-- `open`: 실제 기준문서 PDF 샘플은 어떤 문서부터 넣을까요?
+- `decided`: 실제 기준문서는 제2025-116호 중소기업자간 경쟁제품 직접생산 확인기준 PDF를 우선 사용한다.
 - `decided`: 기준문서 규칙 후보는 관리자 승인/반려/수정 UX를 제공한다.
-- `open`: 판단 결과를 처음 공개할 때 확정형 자격 판정 표현을 완전히 숨기고 `준비 상태` 중심으로만 보여줘도 될까요?
+- `decided`: 판단 결과는 확정 합격 표현보다 `준비 완료/준비 필요/사람 확인 필요` 상태를 중심으로 제공한다.
 - `decided`: 나라장터 자동 수집은 API 기반 모니터링부터 시작하고, HTML 크롤링은 승인 전까지 도입하지 않는다.
 - `open`: 승인된 기준 규칙 후보가 여러 개 매칭될 때 최고 신뢰도 1개만 쓸지, 여러 citation 후보를 병렬 표시할지 결정이 필요하다.
-- `deferred`: 리뷰 이력 전체 history 테이블은 Phase 4 운영 감사 로그 단계에서 다시 검토한다.
+- `open`: 고정 ngrok 공개 주소에 인증·권한을 언제 적용할지 결정이 필요하다.
+- `open`: 생성된 영상/스크린샷/테스트 DB를 Git에서 계속 보관할지 별도 저장소로 옮길지 결정이 필요하다.
 
 ---
 
 # AI / Engineering Version (English)
 
 ## Purpose
-This document restates the remaining roadmap as of 2026-05-22.
+This document preserves the staged implementation history and records the current remaining work. The Phase 2.5/3 sections below are historical execution plans; use `Current Remaining Work` as the active backlog.
 
 ## Current Remaining Work
-Last updated: 2026-06-07
+Last updated: 2026-08-21
 
-The core Phase 2.5, Phase 3, and Phase 4 MVP scope is implemented. The next work should focus less on adding new judgment logic and more on operational hardening.
+Core Phase 2.5, Phase 3, Phase 4, Phase 4E, and Phase 5A MVP scope is implemented. The code also includes all-business-type Nara search, expanded corporation evidence, JSON basis RAG, Gemini 70% weighted judgment assistance, DOCX contract drafts, fixed-domain ngrok access, and Playwright demo-video automation.
 
 Remaining priorities:
-1. attachment URL DNS rebinding/shared-address hardening
-2. decide whether full regression should default to OpenDataLoader `auto` or stay fast with targeted ODL QA
-3. keep real basis PDF fixture/manifest policy and refresh baselines
-4. implement actual restore only after dry-run and explicit confirmation
-5. expand operational audit logs and review history
-6. split auth/permissions/multi-user/deployment into Phase 4.5 or Phase 5
-7. keep HWP/HWPX as long-term backlog
+1. add authentication, authorization, access control, and audit policy before operational use of the fixed public endpoint
+2. establish a real-backend long-running QA baseline across evidence OCR, live Nara, the 489-page basis PDF, Gemini judgment, and contract generation
+3. decide the official OpenDataLoader/PyMuPDF regression matrix
+4. implement actual restore only with explicit approval, service-stop, verification, and rollback
+5. separate generated video/screenshot/database/upload/index artifacts between Git and external storage
+6. harden attachment downloads against DNS rebinding/TOCTOU
+7. define log/history retention and keep HWP/HWPX/export work in backlog
 
-The current baseline is:
+Historical implementation baseline:
 
 - Phase 1 MVP is complete.
 - Phase 1.5 Nara API board and attachment analysis are complete.
@@ -276,12 +285,14 @@ The current baseline is:
 - Phase 1.7 gap preview is complete and has real notice PDF QA.
 - Phase 2A-H basis-document upload, parse/OCR-degrade, normalize, chunk, local index, search, and admin UX MVP are complete.
 - Phase 2 operations hardening is complete: basis rule candidate approve/reject/edit APIs and UX, Nara collection run execution/history UX, operational indexes, and dynamic MuPDF known-issue loading.
+- Phase 2.5 and Phase 3 rule structuring, retrieval/citation evaluation, gap-first judgment, evidence links, preparation guidance, and review UX are complete.
+- Phase 4, Phase 4E, and Phase 5A operations, backup dry-run, fixed-domain access, and contract draft scope are complete.
 - A shared local cache of 30 Nara notice PDFs exists for opt-in PDF tests.
 - Gemini 2.5 PDF comparison QA shows high text overlap for representative notice PDFs.
 
-The remaining work is not more Phase 2 feature work. It is Phase 2.5 validation/structuring followed by Phase 3 judgment.
+The following table preserves the implementation sequence used at the time. It is not the active backlog.
 
-## Remaining Roadmap
+## Historical Implementation Roadmap
 
 | Priority | Stage | Goal | Output |
 | --- | --- | --- | --- |
@@ -293,8 +304,8 @@ The remaining work is not more Phase 2 feature work. It is Phase 2.5 validation/
 | 6 | Phase 3A-G | Implement gap-first judgment with evidence citations | Judgment API/UX, citations, preparation guide |
 | 7 | Phase 4 | Product operations | Auth, backup, deployment, multi-user/cloud options |
 
-## Recommended Next Step
-Start with Phase 2 closeout hardening, then select real official basis PDFs and begin Phase 2.5A and Phase 2.5C.
+## Historical Recommended Sequence
+The completed implementation sequence started with Phase 2 closeout hardening, then selected a real official basis PDF and proceeded through Phase 2.5 and Phase 3.
 
 This order avoids building a judgment engine before retrieval and citation quality are measurable.
 
@@ -313,16 +324,17 @@ This order avoids building a judgment engine before retrieval and citation quali
 - Extend Nara API collection into operational monitoring.
 
 ## Non-Negotiable Guards
-- Do not expose final eligibility as a confident verdict before Phase 3.
+- Continue to avoid presenting AI-assisted results as legally final eligibility decisions.
 - Do not use uncited requirements as final decision evidence.
 - Keep AI/LLM outputs as review candidates unless the user confirms them.
 - Keep basis documents separate from project documents.
 - Keep Nara notice PDFs separate from official basis-document samples.
 
 ## Questions for Product Owner
-- `open`: Which official basis PDFs should be selected first?
+- `decided`: Use the 2025-116 direct-production confirmation criteria PDF as the primary real basis document.
 - `decided`: Basis rule candidates have admin approve/reject/edit UX.
-- `open`: Should the first judgment UI avoid final-verdict language and show readiness/gaps only?
+- `decided`: Judgment UX emphasizes ready/needs preparation/human review rather than a final eligibility verdict.
 - `decided`: Nara automation starts with API monitoring; HTML crawling is not introduced before explicit approval.
 - `open`: When multiple approved rule candidates match, should the engine use only the top-confidence one or show multiple citation candidates?
-- `deferred`: A full review-history table is deferred to the Phase 4 audit-log scope.
+- `open`: When should authentication and authorization be added to the fixed public ngrok endpoint?
+- `open`: Should generated videos, screenshots, and test databases remain in Git or move to external artifact storage?
