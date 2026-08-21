@@ -8724,3 +8724,35 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Reframed `docs/remaining-development-roadmap.md` so the Phase 2.5/3 details remain historical while the active backlog is clearly listed.
 - Recorded remaining work for public-access security, real-backend end-to-end QA, parser regression policy, actual restore, generated-artifact storage policy, DNS rebinding/TOCTOU hardening, operational retention, and long-term format/export support.
 - No tests were run because this request was limited to documentation, README, commit, and push work.
+
+## 추가 업데이트 (2026-08-21) - 다른 PC 작업 인수인계 문서 재검토 및 보강
+
+### 한국어 기록
+- 다른 Windows PC에서 현재 작업을 이어갈 수 있도록 저장소 문서와 실제 실행 구성을 다시 대조했습니다.
+- 새 문서 `docs/other-pc-handoff-guide.md`를 작성했습니다.
+  - `main` 직접 작업과 `origin/main` 동기화 절차
+  - Python 3.13.13, Node.js, Java, PaddleOCR, ngrok 설치 기준
+  - 백엔드/프론트엔드 의존성 설치와 `.env` 설정
+  - 로컬 서버와 고정 ngrok 도메인 실행/중지
+  - 소스 코드만 이전하는 경우와 기존 DB/스토리지까지 이전하는 경우 구분
+  - Git에 포함되는 샘플/산출물과 포함되지 않는 `.env`, `backend/app.db`, 로그/캐시 구분
+  - 작업 재개 순서와 현재 남은 우선순위
+- README의 로컬 세팅 영역과 문서 링크에 인수인계 가이드를 연결했습니다.
+- `docs/current-code-documentation-audit.md`를 2026-08-21 기준으로 업데이트했습니다.
+- 재검토 중 확인한 이식성/보안 리스크를 기록했습니다.
+  - `gpt api.txt`가 Git에 추적되어 있고 credential 패턴과 일치함
+  - 고정 ngrok 주소가 현재 무인증 포탈을 외부에 공개함
+  - `scripts/manage-servers.ps1` 보조 프로세스 검색에 기존 `D:\project\wisdom_procurement` 절대경로가 남아 있음
+  - 일부 과거 QA 기본 경로가 기존 사용자 폴더를 참조함
+  - `.env`와 `backend/app.db`는 Git에 포함되지 않지만 일부 storage/데모 산출물은 추적됨
+  - Git pack 크기가 약 326 MiB라 clone에 시간이 걸릴 수 있음
+- credential 값은 출력하거나 문서에 기록하지 않았고, 관련 파일 삭제/키 회전/이력 정리는 승인 전까지 실행하지 않았습니다.
+- 사용자 지침에 따라 별도 테스트와 빌드는 실행하지 않았습니다.
+
+### AI / Engineering Version (English)
+- Re-audited repository documentation and runtime configuration for continuation on another Windows PC.
+- Added `docs/other-pc-handoff-guide.md` with main-branch workflow, prerequisites, environment setup, dependency installation, local/fixed-ngrok startup, source-only versus runtime-state transfer, and resume checklist.
+- Linked the handoff guide from README and updated `docs/current-code-documentation-audit.md` to the 2026-08-21 baseline.
+- Recorded portability and security findings: a tracked credential-pattern file, unauthenticated fixed-domain exposure, one hardcoded project path in auxiliary process discovery, historical absolute QA paths, incomplete runtime-state transfer through Git, and an approximately 326 MiB Git pack.
+- Did not reveal credential values and did not delete files, rotate keys, or rewrite history without explicit approval.
+- No tests or builds were run per the project instruction limiting this task to documentation and Git operations.

@@ -224,6 +224,15 @@ wisdom_procurement/
 
 이 절은 다른 PC에서 처음 받는 사람이 가장 짧은 경로로 서비스를 실행하고 테스트해 보기 위한 순서입니다. Windows PowerShell 기준으로 작성했습니다.
 
+기존 PC의 개발 상태와 운영 데이터까지 이어받는 경우에는 먼저 [다른 PC 작업 인수인계 가이드](docs/other-pc-handoff-guide.md)를 확인합니다.
+
+중요:
+- `git clone`은 소스 코드와 Git에 추적된 샘플/산출물만 전달합니다.
+- `backend/.env`, `frontend/.env`, `backend/app.db`, 일부 업로드·로그·캐시는 별도로 안전하게 옮기거나 새로 구성해야 합니다.
+- 고정 ngrok 도메인을 새 PC에서 사용하려면 해당 도메인을 소유한 계정의 인증 토큰이 필요하며, 기존 PC endpoint를 먼저 중지해야 합니다.
+- 저장소의 `gpt api.txt`는 credential 패턴과 일치하므로 값을 사용하거나 공유하지 말고 키 회전과 Git 제거를 별도 보안 작업으로 처리해야 합니다.
+- 저장소 Git pack은 현재 약 326 MiB이며 대용량 시연/스토리지 산출물이 포함되어 초기 clone에 시간이 걸릴 수 있습니다.
+
 ### 1. 사전 설치
 - Python `3.13.13`
   - 확인: `py -3.13 --version`
@@ -581,6 +590,7 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 - [OpenDataLoader PDF 리더 교체 및 테스트 계획](docs/opendataloader-pdf-replacement-test-plan.md)
 - [PDF/RAG 코드리뷰 수정계획](docs/pdf-rag-code-review-remediation-plan.md)
 - [현재 코드/문서 감사 리포트](docs/current-code-documentation-audit.md)
+- [다른 PC 작업 인수인계 가이드](docs/other-pc-handoff-guide.md)
 - [ngrok 외부 접속 및 계약서 DOCX 자동 생성 설계/구현계획](docs/ngrok-external-access-and-contract-docx-plan.md)
 - [판단 검토/부족조건 미리보기 UX 개선 제안서](docs/judgment-review-ux-improvement-proposal.md)
 - [서비스 시연 영상 전체 흐름 구현계획](docs/service-demo-interactive-video-implementation-plan.md)
@@ -659,6 +669,8 @@ Last documentation update: 2026-08-21
 
 ## Quick Setup And Verification
 This project is optimized for local Windows PowerShell operation.
+
+For a full handoff, read [docs/other-pc-handoff-guide.md](docs/other-pc-handoff-guide.md) first. Git does not transfer `.env` files, `backend/app.db`, ignored uploads/logs/caches, ngrok authentication, or OCR model caches. The tracked `gpt api.txt` matches a credential pattern; do not reuse its value, rotate/revoke the credential, and handle repository cleanup as a separate approved security task.
 
 Required tools:
 - Python `3.13.13`
