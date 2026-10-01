@@ -570,6 +570,8 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
   - 기본 테스트에는 치명적이지 않습니다. OCR을 실제로 검증할 때만 `backend/requirements-ocr.txt`를 설치합니다.
 
 ## 문서 링크
+- [로컬 기준 서비스 분석 (English)](docs/service-analysis.md)
+- [로컬 기준 코드 수정 계획 (English, 최신 코드 재검증 필요)](docs/superpowers/plans/2026-10-02-code-remediation.md)
 - [기술 설계서](docs/technical-design.md)
 - [UX 설계서](docs/ux-design.md)
 - [AI API 세팅 가이드](docs/ai-api-setup.md)
@@ -811,6 +813,8 @@ Phase 1.6 should be delivered incrementally:
 - who owns basis taxonomy
 
 ## References
+- Local-baseline service review: [English report](docs/service-analysis.md)
+- Local-baseline remediation proposal (revalidate before execution): [English plan](docs/superpowers/plans/2026-10-02-code-remediation.md)
 - OCR Engine Implementation Plan: [docs/ocr-engine-implementation-plan.md](docs/ocr-engine-implementation-plan.md)
 - Corporation Evidence Auto-Extraction Plan: [docs/corporation-evidence-auto-extraction-plan.md](docs/corporation-evidence-auto-extraction-plan.md)
 - Phase 1.7 Stabilization Plan: [docs/phase-1.7-stabilization-plan.md](docs/phase-1.7-stabilization-plan.md)
