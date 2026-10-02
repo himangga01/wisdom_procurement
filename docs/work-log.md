@@ -313,3 +313,35 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Reference files:
   - `backend/requirements.txt`
   - `backend/app/main.py`
+
+## 추가 업데이트 (2026-10-01)
+- 서비스 분석 결과를 영문 `docs/service-analysis.md`로 저장했다.
+- 실제 실행 구조, Phase별 구현 상태, 데이터 보존/추출/캐시/버전/삭제 문제와 기존 격리 검증 결과를 기록했다.
+- 저장소 `AGENTS.md`와 글로벌 `C:/Users/강지혜/.codex/AGENTS.md`에 서비스 분석 보고서 저장 및 재사용 규칙을 등록했다.
+- 서비스 분석 보고서의 영문 전용 예외를 명시하고 README에 보고서 링크를 추가했다.
+- 이번 작업은 문서와 지침 변경이며 애플리케이션 코드는 변경하지 않았다.
+
+## Additional Update (2026-10-01)
+- Saved the service analysis as the English report `docs/service-analysis.md`.
+- Recorded the actual runtime, phase coverage, persistence/extraction/cache/version/deletion findings, and the isolated verification evidence from the preceding analysis.
+- Added report persistence and reuse rules to repository and global `AGENTS.md` files.
+- Documented the English-only report exception and added a README link.
+- This update changes documentation and instructions only; application code was not modified.
+
+## 추가 업데이트 (2026-10-02)
+- 서로 다른 관점의 서브에이전트 3개로 병렬 코드/서비스 검토를 두 차례 수행했다.
+- 메인 세션에서 주요 지적을 소스 대조 및 합성 격리 실험으로 재검증하고, 검증되지 않은 공격/실제 모델/브라우저/OCR 정확도 주장은 범위를 제한했다.
+- 기존 작업 트리를 기준으로 53개 자체 코드/설정/스크립트 파일과 프로젝트 문서를 검토하고, 수용한 지적을 28개 항목으로 통합했다.
+- `docs/service-analysis.md`에 검토 기준, 두 차례 검토 이력, 수용/축소 판단, 근거와 검증 한계를 갱신했다. 기존 2026-10-01 검증 이력은 보존했다.
+- 영문 수정 계획 `docs/superpowers/plans/2026-10-02-code-remediation.md`에 단계별 파일, 계약, 회귀 검증, 의존성과 완료 조건을 작성했다.
+- 검토 전후 53개 코드/설정/스크립트의 SHA-256이 모두 동일함을 확인했다.
+- 실 서버 종료/재시작, 외부 AI 호출, 실제 환경 비밀값/개인 문서 열람, 애플리케이션 코드 수정은 수행하지 않았다. 사용자 지시에 따라 계획 실행 전 대기한다.
+
+## Additional Update (2026-10-02)
+- Completed two rounds of parallel code/service critique with three subagents using different and rotated perspectives.
+- Revalidated material criticisms in the main session using source inspection and isolated synthetic probes; narrowed unverified browser/exploit/model/OCR claims.
+- Reviewed 53 first-party application/configuration/script files and project documentation against the existing working tree; consolidated accepted findings into 28 groups.
+- Updated `docs/service-analysis.md` with the baseline, two-round decisions, evidence and limits while preserving the dated 2026-10-01 history.
+- Saved the English plan at `docs/superpowers/plans/2026-10-02-code-remediation.md`, including task files, interfaces, regressions, dependencies and release gates.
+- Confirmed identical before/after SHA-256 hashes for all 53 application/configuration/script files.
+- Did not stop/restart live servers, call external AI, inspect real secrets/personal documents or modify application code. Implementation remains unexecuted; waiting as requested.

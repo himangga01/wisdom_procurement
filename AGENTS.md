@@ -12,8 +12,16 @@
 ## 언어 및 문서 규칙
 - 사용자용 문서와 핵심 설계 문서는 한국어를 먼저 작성한다.
 - 모든 핵심 Markdown 파일은 영어 `AI / Engineering Version (English)` 섹션을 뒤에 둔다.
+- 서비스 분석 결과 `docs/service-analysis.md`는 사용자 지시에 따라 영문만 작성하며, 위 한국어 우선/이중 언어 규칙의 예외로 둔다.
 - 요구사항이 모호하면 멈추지 말고 가정을 기록하고 진행한다.
 - 미해결 사항은 `Questions for Product Owner` 섹션에 기록한다.
+
+## 서비스 분석 규칙
+- 서비스 분석 요청 시 `docs/service-analysis.md`가 있으면 먼저 읽고 기존 분석 기준으로 사용한다.
+- 현재 코드, 설계 문서, 의존성, 작업 트리 변경사항과 대조해 오래된 결론을 재검증한다.
+- 분석 후 같은 영문 Markdown 파일에 분석 일자, 검토 범위, 구현 상태, 근거, 검증 한계, 개선 우선순위와 미해결 질문을 갱신한다.
+- 갱신 시 기존 검증 이력과 무관한 지침을 보존하고, 계획/구현/실행 검증 상태를 구분한다.
+- 비밀값과 API 키 원문은 분석 결과에 저장하지 않는다.
 
 ## 단계 분리 규칙
 - Phase 1에서는 로그인, 크롤러, 최종 판단 엔진, 근거 조항 출력 기능을 구현하지 않는다.
@@ -84,8 +92,16 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 ## Language / Documentation Rules
 - stakeholder-facing markdown starts in Korean
 - then add `AI / Engineering Version (English)`
+- `docs/service-analysis.md` is English-only by explicit user instruction and is exempt from the Korean-first/bilingual rule
 - proceed with assumptions when ambiguous
 - log unresolved items under `Questions for Product Owner`
+
+## Service Analysis Rules
+- read `docs/service-analysis.md` first, when present, as the baseline for service analysis requests
+- compare it with current code, design documents, dependencies, and working-tree changes; revalidate stale findings
+- after each analysis, update the same English Markdown file with the analysis date, review scope, implementation status, evidence, verification limits, priorities, and unresolved questions
+- preserve historical verification evidence and unrelated instructions; distinguish planned behavior, implementation, and executed verification
+- never save secret values or API key contents in the analysis report
 
 ## Phase Guardrails
 - no auth, crawler, final judgment, or evidence rendering in phase 1

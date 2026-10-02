@@ -9,13 +9,31 @@ $manageScript = Join-Path $PSScriptRoot "manage-servers.ps1"
 
 New-Item -ItemType Directory -Force $tempDir | Out-Null
 
+function Resolve-PythonExe {
+  $venvPython = Join-Path $backendDir ".venv\Scripts\python.exe"
+  if (Test-Path $venvPython) {
+    return $venvPython
+  }
+
+  $candidates = @(
+    (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+    "$env:LocalAppData\Programs\Python\Python312\python.exe"
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  if ($candidates.Count -gt 0) {
+    return $candidates[0]
+  }
+
+  throw "Python executable not found."
+}
+
 try {
   powershell -ExecutionPolicy Bypass -File $manageScript -Action start -BackendPort 18111 -FrontendPort 5199 | Out-Null
 
-  & (Join-Path $backendDir ".venv\Scripts\python") -c "from pypdf import PdfWriter; w=PdfWriter(); w.add_blank_page(width=300,height=200); f=open(r'$samplePdf','wb'); w.write(f); f.close()"
+  & (Resolve-PythonExe) -c "from pypdf import PdfWriter; w=PdfWriter(); w.add_blank_page(width=300,height=200); f=open(r'$samplePdf','wb'); w.write(f); f.close()"
 
-  $corp = Invoke-RestMethod -Uri "$backendBase/api/corporations" -Method Post -ContentType "application/json" -Body (@{ name = "스모크법인" } | ConvertTo-Json)
-  $proj = Invoke-RestMethod -Uri "$backendBase/api/projects" -Method Post -ContentType "application/json" -Body (@{ name = "스모크프로젝트"; corporation_id = $corp.id } | ConvertTo-Json)
+  $corp = Invoke-RestMethod -Uri "$backendBase/api/corporations" -Method Post -ContentType "application/json" -Body (@{ name = "스모크 법인" } | ConvertTo-Json)
+  $proj = Invoke-RestMethod -Uri "$backendBase/api/projects" -Method Post -ContentType "application/json" -Body (@{ name = "스모크 프로젝트"; corporation_id = $corp.id } | ConvertTo-Json)
 
   $uploadJson = & curl.exe -s -X POST "$backendBase/api/documents" -F "project_id=$($proj.id)" -F "document_type=notice" -F "memo=smoke" -F "revision_note=r1" -F "file=@$samplePdf;type=application/pdf"
   if (-not $uploadJson) { throw "Document upload failed (empty response)." }

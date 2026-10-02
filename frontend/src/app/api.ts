@@ -1,5 +1,8 @@
 import type {
   AnalysisRecord,
+  BasisAnalysisRecord,
+  BasisDocumentBundle,
+  BasisDocumentRecord,
   Corporation,
   DashboardSummary,
   DocumentRecord,
@@ -49,4 +52,29 @@ export const api = {
     }),
   getLatestAnalysisByDocument: (documentId: number) =>
     request<AnalysisRecord>(`/api/analyses/latest/by-document/${documentId}`),
+  listBasisDocuments: () => request<BasisDocumentRecord[]>("/api/basis-documents"),
+  importBasisDocumentFromLocal: (body: Record<string, unknown>) =>
+    request<BasisDocumentRecord>("/api/basis-documents/import-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  analyzeBasisDocument: (basisDocumentId: number) =>
+    request<{ analysis_id: number; status: string; message: string }>(
+      `/api/basis-documents/${basisDocumentId}/analyze`,
+      {
+        method: "POST",
+      },
+    ),
+  reanalyzeBasisDocument: (basisDocumentId: number) =>
+    request<{ analysis_id: number; status: string; message: string }>(
+      `/api/basis-documents/${basisDocumentId}/reanalyze`,
+      {
+        method: "POST",
+      },
+    ),
+  getLatestBasisAnalysis: (basisDocumentId: number) =>
+    request<BasisAnalysisRecord>(`/api/basis-documents/${basisDocumentId}/analysis/latest`),
+  getLatestBasisByCategory: (category: string) =>
+    request<BasisDocumentBundle>(`/api/basis-documents/latest/by-category/${category}`),
 };

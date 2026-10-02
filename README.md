@@ -162,6 +162,8 @@ powershell -ExecutionPolicy Bypass -File scripts/manage-servers.ps1 -Action stop
 기본 포트는 `BE=18111`, `FE=5199`입니다. 필요하면 `-BackendPort`, `-FrontendPort` 옵션으로 바꿀 수 있습니다.
 
 ## 문서 링크
+- [서비스 분석 결과 (English)](docs/service-analysis.md)
+- [전수 리뷰 기반 코드 수정 계획 (English)](docs/superpowers/plans/2026-10-02-code-remediation.md)
 - [기술 설계서](/D:/project/wisdom_procurement/docs/technical-design.md)
 - [UX 설계서](/D:/project/wisdom_procurement/docs/ux-design.md)
 - [AI API 세팅 가이드](/D:/project/wisdom_procurement/docs/ai-api-setup.md)

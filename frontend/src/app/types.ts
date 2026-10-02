@@ -59,3 +59,40 @@ export type AnalysisRecord = {
   error_message: string;
   created_at: string;
 };
+
+export type BasisDocumentRecord = {
+  id: number;
+  title: string;
+  category: string;
+  original_file_name: string;
+  stored_file_path: string;
+  mime_type: string;
+  file_size: number;
+  source_type: string;
+  memo: string;
+  analysis_status: string;
+  latest_analysis_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BasisAnalysisRecord = {
+  id: number;
+  basis_document_id: number;
+  analysis_type: string;
+  model_provider: string;
+  model_name: string;
+  prompt_version: string;
+  input_hash: string;
+  output_json: string;
+  output_markdown: string;
+  token_usage_json: string;
+  status: string;
+  error_message: string;
+  created_at: string;
+};
+
+export type BasisDocumentBundle = {
+  document: BasisDocumentRecord;
+  analysis: BasisAnalysisRecord | null;
+};

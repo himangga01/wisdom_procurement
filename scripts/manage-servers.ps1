@@ -15,6 +15,37 @@ $StatusPath = Join-Path $TempDir "servers.status.json"
 $BackendUrl = "http://127.0.0.1:$BackendPort"
 $FrontendUrl = "http://127.0.0.1:$FrontendPort"
 
+function Resolve-PythonExe {
+  $venvPython = Join-Path $BackendDir ".venv\Scripts\python.exe"
+  if (Test-Path $venvPython) {
+    return $venvPython
+  }
+
+  $candidates = @(
+    (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+    "$env:LocalAppData\Programs\Python\Python312\python.exe"
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  if ($candidates.Count -gt 0) {
+    return $candidates[0]
+  }
+
+  throw "Python executable not found."
+}
+
+function Resolve-NpmCmd {
+  $candidates = @(
+    (Get-Command npm.cmd -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+    "C:\Program Files\nodejs\npm.cmd"
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  if ($candidates.Count -gt 0) {
+    return $candidates[0]
+  }
+
+  throw "npm.cmd not found."
+}
+
 function Ensure-Directories {
   New-Item -ItemType Directory -Force $TempDir | Out-Null
 }
@@ -121,7 +152,7 @@ function Get-ProjectProcessCandidates {
     $projectProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
       Where-Object {
         $_.Name -in @("cmd.exe", "node.exe", "python.exe", "powershell.exe") -and
-        $_.CommandLine -like "*D:\project\wisdom_procurement*"
+        $_.CommandLine -like "*$Root*"
       } |
       Select-Object -ExpandProperty ProcessId -Unique
 
@@ -152,12 +183,14 @@ function Start-ManagedServers {
   $backendErrLog = Join-Path $TempDir "backend.$runId.err.log"
   $frontendOutLog = Join-Path $TempDir "frontend.$runId.out.log"
   $frontendErrLog = Join-Path $TempDir "frontend.$runId.err.log"
+  $pythonExe = Resolve-PythonExe
+  $npmCmd = Resolve-NpmCmd
 
-  $backendCmd = 'set APP_PORT=' + $BackendPort + '&& cd /d "' + $BackendDir + '" && .\.venv\Scripts\python -m app.main'
-  $frontendCmd = 'set VITE_API_BASE_URL=' + $BackendUrl + '&& cd /d "' + $FrontendDir + '" && npm run dev -- --host 127.0.0.1 --port ' + $FrontendPort
+  $backendCmd = 'set APP_PORT=' + $BackendPort + '&& cd /d "' + $BackendDir + '" && "' + $pythonExe + '" -m app.main'
+  $frontendCmd = 'set VITE_API_BASE_URL=' + $BackendUrl + '&& cd /d "' + $FrontendDir + '" && "' + $npmCmd + '" run dev -- --host 127.0.0.1 --port ' + $FrontendPort
 
-  $backendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $backendCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput $backendOutLog -RedirectStandardError $backendErrLog
-  $frontendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $frontendCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput $frontendOutLog -RedirectStandardError $frontendErrLog
+  $backendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $backendCmd -PassThru -WindowStyle Hidden -UseNewEnvironment -RedirectStandardOutput $backendOutLog -RedirectStandardError $backendErrLog
+  $frontendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $frontendCmd -PassThru -WindowStyle Hidden -UseNewEnvironment -RedirectStandardOutput $frontendOutLog -RedirectStandardError $frontendErrLog
 
   $backendReady = Wait-UntilReady -Probe { Test-BackendHealth }
   $frontendReady = Wait-UntilReady -Probe { Test-HttpOk $FrontendUrl }
