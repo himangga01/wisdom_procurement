@@ -12,6 +12,7 @@ import {
 } from "../app/aiModel";
 import type { AiModelSelection, AiModelSettings, Corporation, DocumentRecord, Project } from "../app/types";
 import { useWorkOverlay } from "../app/workOverlay";
+import { HwpExportDialog } from "../features/documents/HwpExportDialog";
 
 function statusTone(status: string) {
   if (status === "completed" || status === "cached") return "active";
@@ -36,6 +37,7 @@ export function DocumentsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState("");
+  const [hwpExportSource, setHwpExportSource] = useState<DocumentRecord | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
     document_type: "general",
@@ -124,7 +126,7 @@ export function DocumentsPage() {
       await runWithOverlay(
         {
           title: "문서 분석 중",
-          description: "PDF/DOCX 텍스트 추출, OCR 확인, AI 요약을 순서대로 처리합니다.",
+          description: "PDF/DOCX/HWP/HWPX 텍스트 추출, OCR 확인, AI 요약을 순서대로 처리합니다.",
           steps: ["문서 텍스트 추출", "OCR 필요 여부 확인", "AI 요약 생성", "분석 결과 저장"],
           successMessage: "문서 분석이 완료되었습니다.",
           failureMessage: "문서 분석을 완료하지 못했습니다.",
@@ -232,7 +234,7 @@ export function DocumentsPage() {
             <div>
               <p className="eyebrow">문서 업로드</p>
               <h3>문서 파일 등록</h3>
-              <p className="section-copy">프로젝트, 문서 유형, 메모를 지정하고 PDF/DOCX 파일을 업로드합니다.</p>
+              <p className="section-copy">프로젝트, 문서 유형, 메모를 지정하고 PDF/DOCX/HWP/HWPX 파일을 업로드합니다.</p>
             </div>
           </div>
 
@@ -271,7 +273,7 @@ export function DocumentsPage() {
 
                 <label className="field field--full">
                   <span>파일 업로드</span>
-                  <input type="file" accept=".pdf,.docx" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+                  <input type="file" accept=".pdf,.docx,.hwp,.hwpx" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
                 </label>
 
                 <label className="field">
@@ -290,7 +292,7 @@ export function DocumentsPage() {
                 <p>
                   프로젝트: {selectedProject?.name ?? "-"} / 법인: {selectedCorporation?.name ?? "-"}
                 </p>
-                <span>지원 포맷은 PDF, DOCX만 허용됩니다.</span>
+                <span>지원 포맷은 PDF, DOCX, HWP, HWPX입니다.</span>
               </div>
 
               <div className="form-actions">
@@ -403,6 +405,11 @@ export function DocumentsPage() {
                           <button type="button" className="button-secondary" onClick={() => startEdit(d)}>
                             편집
                           </button>
+                          {/\.(hwp|hwpx)$/i.test(d.original_file_name) && (
+                            <button type="button" className="button-secondary" onClick={() => setHwpExportSource(d)}>
+                              한글 내보내기
+                            </button>
+                          )}
                           <Link to={`/documents/${d.id}/analysis`} className="link-button link-button--soft">
                             결과
                           </Link>
@@ -419,6 +426,8 @@ export function DocumentsPage() {
           </div>
         )}
       </div>
+
+      {hwpExportSource && <HwpExportDialog document={hwpExportSource} onClose={() => setHwpExportSource(null)} />}
 
       {editingId ? (
         <form className="surface-card form-card inline-editor" onSubmit={onUpdate}>

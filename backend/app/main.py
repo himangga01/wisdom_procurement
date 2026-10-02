@@ -1,5 +1,7 @@
 ﻿import hashlib
 import json
+import io
+import tempfile
 import mimetypes
 import os
 import re
@@ -47,6 +49,7 @@ from app.pipelines.basis_document import (
     validate_basis_index,
 )
 from app.pipelines.parser import extract_document
+from app.pipelines.hwp_engine import HWP_EXTENSIONS, HwpEngine, HwpEngineError, hwp_engine_status
 from app.pipelines.pdf_readers import pdf_reader_status as build_pdf_reader_status
 from app.services.basis_rule_candidates import (
     basis_rule_candidate_match_score,
@@ -133,12 +136,12 @@ NARA_PUBDATA_API_BASE_URL = os.getenv(
 )
 NARA_API_RESPONSE_TYPE = os.getenv("NARA_API_RESPONSE_TYPE", "json")
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx"} | HWP_EXTENSIONS
 BASIS_ALLOWED_EXTENSIONS = {".pdf"}
-EVIDENCE_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
+EVIDENCE_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"} | HWP_EXTENSIONS
 EVIDENCE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
-UNSUPPORTED_NARA_EXTENSIONS = {".hwp", ".hwpx", ".xlsx", ".xls", ".zip"}
-NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+UNSUPPORTED_NARA_EXTENSIONS = {".xlsx", ".xls", ".zip"}
+NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx"} | HWP_EXTENSIONS
 NARA_BUSINESS_TYPES = {"all", "construction", "service", "goods", "etc"}
 NARA_BUSINESS_TYPE_LABELS = {
     "all": "전체",
@@ -5189,6 +5192,8 @@ def run_analysis(
                 ("failed", "failed", now_iso(), document_id),
             )
             conn.commit()
+            if isinstance(exc, HwpEngineError):
+                return {"detail": str(exc), "code": exc.code}, exc.status_code
             return {"detail": f"Document parsing failed: {exc}"}, 500
 
         ocr_result = run_ocr_if_needed(parsed.text, file_path, parsed.kind, parsed.metadata)
@@ -5991,7 +5996,7 @@ def upload_corporation_evidence_document():
 
     suffix = Path(file.filename).suffix.lower()
     if suffix not in EVIDENCE_ALLOWED_EXTENSIONS:
-        return jsonify({"detail": "Only PDF, DOCX, JPG, JPEG, and PNG evidence files are supported"}), 400
+        return jsonify({"detail": "Only PDF, DOCX, HWP, HWPX, JPG, JPEG, and PNG evidence files are supported"}), 400
 
     corporation_id = parse_int(request.form.get("corporation_id"), 0) or None
     memo = clean_text(request.form.get("memo"))
@@ -6680,7 +6685,7 @@ def upload_document():
 
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
-        return jsonify({"detail": "Only PDF and DOCX are supported"}), 400
+        return jsonify({"detail": "Only PDF, DOCX, HWP and HWPX are supported"}), 400
 
     with db_conn() as conn:
         project = conn.execute("SELECT id FROM projects WHERE id=?", (project_id,)).fetchone()
@@ -6729,6 +6734,47 @@ def get_document(document_id: int):
     if not row:
         return jsonify({"detail": "Document not found"}), 404
     return jsonify(dict(row))
+
+
+@app.route("/api/settings/hwp-engine/status", methods=["GET"])
+def get_hwp_engine_status():
+    return jsonify(hwp_engine_status())
+
+
+@app.route("/api/documents/<int:document_id>/hwp-export", methods=["POST"])
+def export_hwp_document(document_id: int):
+    payload = get_json_payload()
+    with db_conn() as conn:
+        row = conn.execute("SELECT * FROM project_documents WHERE id=?", (document_id,)).fetchone()
+    if not row:
+        return jsonify({"detail": "Document not found"}), 404
+    source = Path(row["stored_file_path"]).resolve()
+    if source.suffix.lower() not in HWP_EXTENSIONS:
+        return jsonify({"detail": "HWP/HWPX 문서만 한글 문서로 내보낼 수 있습니다."}), 400
+    if not source.is_relative_to(STORAGE_ROOT.resolve()):
+        return jsonify({"detail": "문서 저장 경로를 확인할 수 없습니다."}), 400
+    output_format = payload.get("format", source.suffix[1:].lower())
+    if not isinstance(output_format, str) or output_format not in {"hwp", "hwpx"}:
+        return jsonify({"detail": "출력 형식은 hwp 또는 hwpx여야 합니다."}), 400
+    if "find" in payload and not isinstance(payload["find"], str):
+        return jsonify({"detail": "치환할 내용은 문자열이어야 합니다."}), 400
+    temporary_root = STORAGE_ROOT / "hwp-exports"
+    temporary_root.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix="export-", dir=temporary_root) as raw:
+            output = Path(raw) / ("result." + output_format)
+            result = HwpEngine().write(source, output, find=payload.get("find"), replace=payload.get("replace", ""))
+            data = output.read_bytes()
+        stem = Path(str(row["original_file_name"]).replace("\\", "/")).stem
+        name = "".join(char for char in stem if ord(char) >= 32) or "document"
+        response = send_file(io.BytesIO(data), as_attachment=True, download_name=f"{name}_export.{output_format}",
+                             mimetype="application/hwp+zip" if output_format == "hwpx" else "application/x-hwp",
+                             max_age=0)
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-HWP-Replaced-Count"] = str(result.replaced_count)
+        return response
+    except HwpEngineError as exc:
+        return jsonify({"detail": str(exc), "code": exc.code}), exc.status_code
 
 
 @app.route("/api/documents/<int:document_id>", methods=["PATCH"])

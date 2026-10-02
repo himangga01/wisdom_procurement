@@ -24,6 +24,9 @@ frontend/.env
 backend/storage/uploads/
 backend/storage/cache/
 backend/storage/logs/
+backend/storage/hwp-temp/
+backend/storage/hwp-exports/
+backend/tools/rhwp/
 backend/storage/ocr-samples/
 backend/tests/nara-notice-pdf-samples/
 backend/tests/nara-pdf-samples/

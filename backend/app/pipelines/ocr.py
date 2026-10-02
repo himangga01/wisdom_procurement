@@ -246,7 +246,8 @@ def run_ocr_if_needed(
     metadata: dict[str, Any] | None = None,
     force: bool = False,
 ) -> OcrResult:
-    if not force and not should_run_ocr(extracted_text):
+    native_hangul_text = kind in {"hwp", "hwpx"} and bool(extracted_text.strip()) and (metadata or {}).get("engine") == "rhwp"
+    if not force and (native_hangul_text or not should_run_ocr(extracted_text)):
         return OcrResult(
             text=extracted_text,
             status=OCR_STATUS_SKIPPED,

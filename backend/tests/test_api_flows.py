@@ -59,6 +59,102 @@ def make_docx_bytes(text: str) -> bytes:
 
 
 class ApiFlowTests(unittest.TestCase):
+    def require_native_hwp_engine(self) -> None:
+        from app.pipelines.hwp_engine import HwpEngine
+        if not HwpEngine().status()["available"]:
+            self.skipTest("Install the pinned RHWP CLI for native API acceptance")
+
+    def test_hwp_upload_analysis_and_edited_download_preserve_original(self) -> None:
+        self.require_native_hwp_engine()
+        from app.pipelines.hwp_engine import HwpEngine
+        corporation = self.create_corporation()
+        project = self.create_project(corporation["id"])
+        fixture_dir = Path(__file__).parent / "fixtures" / "hwp"
+        for suffix in ("hwp", "hwpx"):
+            with self.subTest(suffix=suffix):
+                source = (fixture_dir / f"synthetic.{suffix}").read_bytes()
+                uploaded = self.client.post("/api/documents", data={"project_id": str(project["id"]),
+                    "document_type": "notice", "file": (io.BytesIO(source), f"한글양식.{suffix}")})
+                self.assertEqual(uploaded.status_code, 201, uploaded.get_json())
+                document = uploaded.get_json()
+                analyzed = self.client.post(f"/api/documents/{document['id']}/analyze", json={})
+                self.assertEqual(analyzed.status_code, 200, analyzed.get_json())
+                stored = Path(document["stored_file_path"])
+                self.assertEqual(stored.read_bytes(), source)
+                refreshed = self.client.get(f"/api/documents/{document['id']}").get_json()
+                self.assertEqual(refreshed["ocr_status"], "skipped")
+                edited = self.client.post(f"/api/documents/{document['id']}/hwp-export", json={
+                    "format": "hwpx" if suffix == "hwp" else "hwp", "find": "RHWP_TEST_ORIGINAL",
+                    "replace": "API_검증_변경본"})
+                self.assertEqual(edited.status_code, 200, edited.get_json(silent=True))
+                self.assertIn("attachment", edited.headers["Content-Disposition"])
+                target = stored.parent / ("checked." + ("hwpx" if suffix == "hwp" else "hwp"))
+                target.write_bytes(edited.data)
+                self.assertIn("API_검증_변경본", HwpEngine().read(target).text)
+                self.assertEqual(stored.read_bytes(), source)
+
+    def test_hwp_export_rejects_other_document_formats_and_invalid_options(self) -> None:
+        corporation = self.create_corporation()
+        project = self.create_project(corporation["id"])
+        document = self.upload_document(project["id"])
+        response = self.client.post(f"/api/documents/{document['id']}/hwp-export", json={"format": "hwp"})
+        self.assertEqual(response.status_code, 400)
+        missing = self.client.post("/api/documents/999999/hwp-export", json={"format": "hwp"})
+        self.assertEqual(missing.status_code, 404)
+
+    def test_hwp_engine_status_exposes_ready_read_write_capability(self) -> None:
+        self.require_native_hwp_engine()
+        response = self.client.get("/api/settings/hwp-engine/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["available"])
+        self.assertEqual(response.get_json()["version"], "0.8.6")
+
+    def test_hwp_missing_engine_reports_setup_status(self) -> None:
+        from unittest.mock import patch
+        corporation = self.create_corporation()
+        project = self.create_project(corporation["id"])
+        source = (Path(__file__).parent / "fixtures" / "hwp" / "synthetic.hwp").read_bytes()
+        document = self.client.post("/api/documents", data={"project_id": str(project["id"]),
+            "file": (io.BytesIO(source), "retry.hwp")}).get_json()
+        with patch.dict(os.environ, {"RHWP_BIN_PATH": str(_TMP_DIR / "absent-rhwp.exe")}):
+            response = self.client.post(f"/api/documents/{document['id']}/analyze", json={})
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.get_json()["code"], "needs_hwp_setup")
+
+    def test_hwp_engine_setup_recovery_allows_retry(self) -> None:
+        self.require_native_hwp_engine()
+        from unittest.mock import patch
+        corporation = self.create_corporation()
+        project = self.create_project(corporation["id"])
+        source = (Path(__file__).parent / "fixtures" / "hwp" / "synthetic.hwp").read_bytes()
+        document = self.client.post("/api/documents", data={"project_id": str(project["id"]),
+            "file": (io.BytesIO(source), "retry.hwp")}).get_json()
+        with patch.dict(os.environ, {"RHWP_BIN_PATH": str(_TMP_DIR / "absent-rhwp.exe")}):
+            response = self.client.post(f"/api/documents/{document['id']}/analyze", json={})
+            self.assertEqual(response.status_code, 503)
+        retried = self.client.post(f"/api/documents/{document['id']}/reanalyze", json={})
+        self.assertEqual(retried.status_code, 200)
+
+    def test_hwp_corporation_evidence_is_read_without_automatic_profile_approval(self) -> None:
+        self.require_native_hwp_engine()
+        corporation = self.create_corporation()
+        source = (Path(__file__).parent / "fixtures" / "hwp" / "synthetic.hwp").read_bytes()
+        response = self.client.post("/api/corporation-evidence-documents", data={
+            "corporation_id": str(corporation["id"]), "document_type": "auto",
+            "file": (io.BytesIO(source), "추가증빙.hwp")})
+        self.assertEqual(response.status_code, 201, response.get_json())
+        evidence = response.get_json()
+        self.assertIn("RHWP_TEST_ORIGINAL", evidence["extracted_text"])
+        self.assertNotEqual(evidence.get("review_status"), "approved")
+
+    def test_hwp_nara_attachments_are_analyzable_without_accepting_spreadsheets(self) -> None:
+        attachments = runtime.collect_nara_attachments([{
+            "ntceSpecFileNm1": "공고.hwp", "ntceSpecDocUrl1": "https://example.com/a.hwp",
+            "ntceSpecFileNm2": "규격.hwpx", "ntceSpecDocUrl2": "https://example.com/b.hwpx",
+            "ntceSpecFileNm3": "내역.xlsx", "ntceSpecDocUrl3": "https://example.com/c.xlsx"}], runtime.NARA_SUPPORTED_EXTENSIONS)
+        self.assertEqual([a["support_status"] for a in attachments], ["supported", "supported", "unsupported"])
+        self.assertEqual(runtime.inline_content_type("규격.hwpx", "https://example.com/b.hwpx", "", b"PK\x03\x04"), "application/hwp+zip")
+
     def test_decode_http_body_falls_back_to_korean_legacy_encodings(self) -> None:
         encoded = "공고명: 미세먼지 저감숲".encode("cp949")
 
@@ -3797,8 +3893,8 @@ class ApiFlowTests(unittest.TestCase):
                         "bidNtceNm": "첨부 누락 재분석 보존 공고",
                         "prtcptPsblRgnNm": "서울",
                         "lcnsLmtNm": "정보통신공사업",
-                        "ntceSpecFileNm1": "unsupported.hwp",
-                        "ntceSpecDocUrl1": "https://example.com/unsupported.hwp",
+                        "ntceSpecFileNm1": "unsupported.xlsx",
+                        "ntceSpecDocUrl1": "https://example.com/unsupported.xlsx",
                     }
                 },
             )
@@ -3810,7 +3906,7 @@ class ApiFlowTests(unittest.TestCase):
                 detail_response = self.client.get(f"/api/nara/saved-notices/{notice_id}")
                 self.assertEqual(detail_response.status_code, 200)
                 latest = detail_response.get_json()
-                if "unsupported.hwp" in latest.get("raw_json", "") and "지원 가능한 첨부" in latest.get("error_message", ""):
+                if "unsupported.xlsx" in latest.get("raw_json", "") and "지원 가능한 첨부" in latest.get("error_message", ""):
                     break
                 time.sleep(0.05)
 

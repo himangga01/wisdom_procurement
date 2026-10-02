@@ -54,7 +54,7 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
     summary: "공공데이터 API를 통해 나라장터 공고를 검색하고 필요한 공고를 저장합니다.",
     details: [
       "검색 조건을 입력해 공고 목록을 조회합니다.",
-      "선택한 공고는 로컬 DB에 저장하고 PDF/DOCX 첨부 문서를 다운로드/분석합니다.",
+      "선택한 공고는 로컬 DB에 저장하고 PDF/DOCX/HWP/HWPX 첨부 문서를 다운로드/분석합니다.",
       "HTML 크롤링이 아니라 설정된 나라장터 API 키를 사용하는 화면입니다.",
     ],
   },
@@ -105,7 +105,7 @@ const MENU_GUIDES: Record<string, HelpGuide> = {
   },
   "/documents": {
     title: "문서 업로드 메뉴",
-    summary: "프로젝트에 속한 일반 PDF/DOCX 문서를 업로드하고 분석합니다.",
+    summary: "프로젝트에 속한 일반 PDF/DOCX/HWP/HWPX 문서를 업로드하고 분석합니다.",
     details: [
       "공고 첨부나 사업 문서처럼 프로젝트 단위로 관리할 파일을 등록합니다.",
       "업로드 후 텍스트 추출, OCR 보조, AI 요약 분석 상태를 확인합니다.",
@@ -234,7 +234,7 @@ const ACTION_GUIDES: Array<{ keys: string[]; guide: HelpGuide }> = [
       summary: "선택한 파일을 서버 저장소에 등록하고 필요한 분석 파이프라인을 시작합니다.",
       details: [
         "일반 문서는 프로젝트 문서로, 기준문서는 RAG용 기준문서로 분리되어 저장됩니다.",
-        "PDF/DOCX 지원 범위와 기준문서 PDF 전용 규칙을 확인해야 합니다.",
+        "PDF/DOCX/HWP/HWPX 지원 범위와 기준문서 PDF 전용 규칙을 확인해야 합니다.",
         "업로드 후 텍스트 추출, OCR 보조, 청킹, 인덱싱 상태를 화면에서 확인합니다.",
       ],
     },

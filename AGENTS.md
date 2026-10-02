@@ -67,8 +67,8 @@
 
 ## 깨면 안 되는 가정
 - Phase 1은 단일 관리자, 무인증, 단일 PC 운영이다.
-- 일반 업로드 지원 포맷은 PDF와 DOCX만 허용한다.
-- HWP는 구현 범위가 아니다.
+- 일반 업로드 지원 포맷은 PDF, DOCX, HWP 5, HWPX를 허용한다.
+- 2026-10-02 사용자 승인으로 HWP 제외 규칙을 변경했다. HWP/HWPX는 RHWP 어댑터로 읽고, 편집·변환은 원본을 보존한 별도 파일로 내보낸다.
 - 기준문서는 PDF만 허용한다.
 - 사용자가 수동으로 문서를 청킹하는 UX를 만들지 않는다.
 
@@ -159,7 +159,8 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 ## Do-Not-Break Assumptions
 - single admin only in phase 1
 - no auth in phase 1
-- PDF/DOCX only for target documents
+- PDF/DOCX/HWP 5/HWPX for target documents
+- HWP support was explicitly approved on 2026-10-02; use the RHWP adapter and preserve original files when editing/exporting
 - PDF only for basis documents
 - no manual chunking UX
 
@@ -183,8 +184,8 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 - API-based Nara board ingestion is allowed before Phase 3.
 - Do not implement HTML crawling in Phase 1.5.
 - Saved Nara notices are separate from project documents unless the user explicitly asks to link them.
-- Download and analyze PDF/DOCX attachments only.
-- Store HWP/HWPX/XLSX as unsupported attachment metadata.
+- Download and analyze PDF/DOCX/HWP/HWPX attachments; HWP/HWPX use the RHWP adapter.
+- Store XLS/XLSX/ZIP as unsupported attachment metadata.
 - Do not expose eligibility verdicts before the judgment engine phase.
 - Nara API settings screens may show configured status and masked keys only; never return full keys to the frontend.
 

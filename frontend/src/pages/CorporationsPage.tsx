@@ -871,7 +871,7 @@ export function CorporationsPage() {
             <input
               key={evidenceInputResetKey}
               type="file"
-              accept=".pdf,.docx,.jpg,.jpeg,.png"
+              accept=".pdf,.docx,.hwp,.hwpx,.jpg,.jpeg,.png"
               multiple
               data-demo-id="demo-evidence-file-input"
               onChange={(e) => setEvidenceFiles(Array.from(e.target.files ?? []))}

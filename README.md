@@ -4,11 +4,12 @@
 `SMART 조달청 계산기`는 단일 관리자 사용자(행정사)가 법인 정보를 관리하고, 프로젝트를 생성하고, 조달 관련 PDF/DOCX 문서를 프로젝트 단위로 업로드하여 AI 기반 요약과 구조화 결과를 확인하는 로컬 실행형 웹 어드민 포탈입니다.
 
 ## 현재 코드 기준 요약
-최종 문서 갱신일: 2026-08-21
+최종 문서 갱신일: 2026-10-02
 
 - 현재 PDF 리더 기본값은 `OpenDataLoader PDF` 우선 `auto` 모드이며, Java/패키지/timeout/변환 실패 시 `PyMuPDF`로 fallback합니다.
 - 일반 업로드 문서, 나라장터 공고 첨부 PDF, 기준문서 PDF는 같은 `extract_document()` 진입점을 사용하므로 현재 기본 PDF 리더 정책을 공유합니다.
 - DOCX 추출은 `python-docx` 기반이며, 문단뿐 아니라 표 cell 텍스트도 분석 입력에 포함합니다.
+- HWP 5/HWPX는 RHWP 0.8.6 어댑터로 프로젝트 문서·법인 증빙·나라장터 첨부에서 읽습니다. 문서 목록의 `한글 내보내기`에서 원본을 보존한 치환/형식 변환 파일을 다운로드합니다. 본문/번호가 바뀌는 변환은 차단합니다. [설치·검증·호환성 안내](docs/rhwp-integration.md)
 - 기준문서 RAG 검색 source는 운영 산출물인 `storage/basis-index/basis-index.json`입니다. JSON 인덱스가 없거나 DB와 불일치하면 검색/승인/판단 citation 사용을 막고 rebuild를 요구합니다.
 - 기준문서 재처리 중 원본 파일이 사라진 경우에도 기존 completed/indexed RAG 산출물이 있으면 기존 검색 지식을 보존합니다.
 - 나라장터 검색은 `전체·공사·용역·물품·기타` 업무유형을 지원하며, 전체 검색은 업무유형별 결과를 병합하고 일부 조회 실패를 별도로 표시합니다.
@@ -570,6 +571,7 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
   - 기본 테스트에는 치명적이지 않습니다. OCR을 실제로 검증할 때만 `backend/requirements-ocr.txt`를 설치합니다.
 
 ## 문서 링크
+- [HWP/HWPX 엔진 통합·설치·검증](docs/rhwp-integration.md)
 - [로컬 기준 서비스 분석 (English)](docs/service-analysis.md)
 - [로컬 기준 코드 수정 계획 (English, 최신 코드 재검증 필요)](docs/superpowers/plans/2026-10-02-code-remediation.md)
 - [기술 설계서](docs/technical-design.md)
@@ -617,6 +619,12 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 ---
 
 # AI / Engineering Version (English)
+
+## HWP/HWPX Engine Update (2026-10-02)
+- RHWP 0.8.6 reads HWP 5/HWPX through the shared parser for project documents, corporation evidence and Nara attachments.
+- Project documents offer find/replace and HWP/HWPX export into a new downloaded file. Originals remain unchanged; requested edits and serialized text are verified before publication.
+- Run `powershell -NoProfile -File scripts/setup-rhwp.ps1` to install the pinned Windows CLI. Runtime binaries are ignored by Git; the MIT notice is retained.
+- A real tourism-guide fixture exposed a list-number change during HWPX conversion; this conversion is rejected explicitly. Native HWP export remains supported. See [integration and verification notes](docs/rhwp-integration.md).
 
 ## Overview
 `SMART Procurement Calculator` is a local-first admin portal for a single administrator who manages corporations, creates projects, uploads procurement-related PDF/DOCX documents, and reviews AI-generated summaries and structured outputs.

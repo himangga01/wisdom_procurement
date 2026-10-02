@@ -6,6 +6,7 @@ from docx import Document
 
 from app.core.logging import get_logger, log_event, log_exception
 from app.pipelines.pdf_readers import read_pdf_document
+from app.pipelines.hwp_engine import HWP_EXTENSIONS, HwpEngine
 
 LOGGER = get_logger("pipelines.parser")
 
@@ -35,6 +36,12 @@ def extract_document(file_path: str | Path) -> ParsedDocument:
     )
 
     try:
+        if suffix in HWP_EXTENSIONS:
+            result = HwpEngine().read(path)
+            log_event(LOGGER, "document.extract.completed", domain="document", file_name=path.name,
+                      file_extension=suffix, kind=suffix[1:], char_count=len(result.text),
+                      metadata={"engine": "rhwp", "page_count": result.metadata["page_count"]})
+            return ParsedDocument(text=result.text, kind=suffix[1:], metadata=result.metadata)
         if suffix == ".pdf":
             result = read_pdf_document(path)
             log_event(
@@ -81,7 +88,7 @@ def extract_document(file_path: str | Path) -> ParsedDocument:
         )
         raise
 
-    error = ValueError("Unsupported file type. Only PDF and DOCX are allowed.")
+    error = ValueError("Unsupported file type. Only PDF, DOCX, HWP and HWPX are allowed.")
     log_exception(
         LOGGER,
         "document.extract.failed",

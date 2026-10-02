@@ -22,6 +22,7 @@ import type {
   CorporationReadiness,
   DashboardSummary,
   DocumentRecord,
+  HwpEngineStatus,
   ExternalAccessStatus,
   NaraNoticeSearchItem,
   NaraNoticeSearchResponse,
@@ -110,6 +111,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getHwpEngineStatus: () => request<HwpEngineStatus>("/api/settings/hwp-engine/status"),
+  exportHwpDocument: async (id: number, body: { format: "hwp" | "hwpx"; find?: string; replace?: string }) => {
+    const response = await fetch(buildApiUrl(`/api/documents/${id}/hwp-export`), withRuntimeHeaders({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "한글 문서를 내보내지 못했습니다.");
+    }
+    return response.blob();
+  },
   getDashboard: () => request<DashboardSummary>("/api/dashboard/summary"),
   getOperationsSummary: () => request<OperationsSummary>("/api/operations/summary"),
   getExternalAccessStatus: () => request<ExternalAccessStatus>("/api/external-access/status"),

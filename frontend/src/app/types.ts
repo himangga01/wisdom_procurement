@@ -1,3 +1,12 @@
+export type HwpEngineStatus = {
+  engine: string;
+  available: boolean;
+  version: string;
+  status: string;
+  read_formats: string[];
+  write_formats: string[];
+};
+
 export type DashboardSummary = {
   corporation_count: number;
   project_count: number;

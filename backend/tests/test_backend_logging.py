@@ -1,6 +1,7 @@
 import json
 import logging
 import tempfile
+from contextlib import ExitStack
 import unittest
 from pathlib import Path
 
@@ -53,8 +54,11 @@ class BackendLoggingTests(unittest.TestCase):
         self.assertIn("142-**-*****", message)
 
     def test_jsonl_logging_writes_info_and_error_files(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="wisdom_log_test_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="wisdom_log_test_") as tmp, ExitStack() as cleanup:
+            self.tearDown()
             log_dir = configure_backend_logging(Path(tmp), level="INFO", max_mb=1, backups=0)
+            # Windows cannot remove an open log; close test-owned handlers first.
+            cleanup.callback(self.tearDown)
             logger = get_logger("tests.backend_logging")
 
             log_event(

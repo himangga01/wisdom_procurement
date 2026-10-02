@@ -38,7 +38,17 @@ class BasisForceOcrContractTests(unittest.TestCase):
         self.assertIn("force_ocr=processing_options[\"force_ocr\"]", basis)
         self.assertIn("\"options\": processing_options", basis)
         self.assertIn("force: bool = False", ocr)
-        self.assertIn("if not force and not should_run_ocr(extracted_text):", ocr)
+        from unittest.mock import patch
+        from app.pipelines import ocr as pipeline
+        text = "Readable basis document. " * 10
+        with patch.object(pipeline, "run_ocr", return_value=pipeline.OcrResult(
+            text="Forced OCR result", status="completed", engine="fake", language="kor+eng")):
+            normal = pipeline.run_ocr_if_needed(text, "basis.pdf", "pdf", force=False)
+            forced = pipeline.run_ocr_if_needed(text, "basis.pdf", "pdf", force=True)
+        self.assertEqual(normal.text, text)
+        self.assertEqual(normal.status, "skipped")
+        self.assertEqual(forced.text, "Forced OCR result")
+        self.assertEqual(forced.status, "completed")
         self.assertIn("\"ocr.force_required\" if force else \"ocr.required\"", ocr)
 
     def test_frontend_exposes_upload_and_reprocess_force_ocr_controls(self) -> None:

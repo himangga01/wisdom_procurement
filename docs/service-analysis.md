@@ -321,3 +321,17 @@ configuration/dependencies (8 files)
   frontend/.env.example, frontend/index.html, frontend/package.json,
   frontend/tsconfig.json, frontend/vite.config.ts
 ```
+
+## Implementation Follow-Up: RHWP Integration (2026-10-02)
+
+This follow-up describes work on the newer local main baseline `3e08befd63da0071dc214c92e8824f039086dff6` plus the HWP integration working tree. The earlier review remains a dated assessment of the older local snapshot; its other findings have not been globally revalidated against this newer implementation. The old remediation plan was not executed as a whole.
+
+The user explicitly changed the HWP exclusion and approved a bounded adapter design. Project documents, corporation evidence and Nara attachments now accept HWP 5/HWPX through the existing common parser. Project documents offer separate edit/export downloads; basis documents remain PDF-only and existing DOCX contracts remain unchanged. The active runtime still uses Flask, persistent SQLite, the current PDF reader abstraction and the existing analysis/review workflows.
+
+RHWP 0.8.6 is installed from a checksum-verified official Windows release. Its subprocess adapter preserves originals, validates container signatures and extraction coverage, enforces an overall time budget, checks requested replacements independently, and verifies saved text before publication. Engine errors include setup-required, timeout, incomplete text and edit/conversion verification failures. Empty-body export is distinguished from an insufficient-text analysis result. Runtime binaries and private staging outputs are ignored; the MIT notice is retained.
+
+Verification: 236 backend tests completed with no failures and 9 opt-in/Java skips; frontend build passed; a real isolated Chromium flow downloaded an edited HWPX file and verified it with the native engine. Tests without the optional runtime verify setup-required behavior and skip only native acceptance cases. An independent reviewer identified edit-baseline trust, empty-body export and runtime-dependent tests; all three were corrected and covered.
+
+Two user-supplied HWP documents were tested through an offline local service API. The tourism registration form yielded 4,043 characters over two RHWP-rendered pages and passed native HWP editing plus HWPX/HWP round-trip checks. The tourism-hotel guide yielded 35,401 characters over 30 RHWP-rendered pages and passed reading, analysis and native HWP editing. Its HWPX conversion changes one list number despite upstream IR/page checks, so the independent text guard rejects that conversion with 422. This compatibility limit remains open; it is not a fully passed HWPX export.
+
+Both original hashes remained unchanged. Actual document bodies, private source paths, outputs and test databases were not committed. Testing used Python 3.12.10 on this PC; Python 3.13.13, actual Hancom visual fidelity, paid model calls and image-only HWP OCR were not tested. The explicit current feature contract and installation instructions are in [RHWP integration notes](rhwp-integration.md).

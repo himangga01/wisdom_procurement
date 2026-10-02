@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from app.core.logging import get_logger, log_event, log_exception, sanitize_log_value
 from app.core.text import clean_text, format_korean_won_amount, parse_int
 
-DEFAULT_NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+DEFAULT_NARA_SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".hwp", ".hwpx"}
 LOGGER = get_logger("services.nara_api")
 
 
@@ -408,6 +408,10 @@ class SafeAttachmentRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 def inline_content_type(file_name: str, url: str, upstream_content_type: str, body: bytes) -> str:
     suffix = attachment_extension(file_name, url, upstream_content_type)
+    if suffix == ".hwp":
+        return "application/x-hwp"
+    if suffix == ".hwpx":
+        return "application/hwp+zip"
     if body.startswith(b"%PDF") or suffix == ".pdf":
         return "application/pdf"
     if body.startswith(b"PK\x03\x04") or suffix == ".docx":

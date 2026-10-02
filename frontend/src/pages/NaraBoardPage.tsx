@@ -305,7 +305,7 @@ export function NaraBoardPage() {
   const onSave = async () => {
     if (!selectedNotice) return;
     const ok = window.confirm(
-      "선택한 공고를 저장하고 백그라운드에서 첨부 PDF/DOCX 다운로드와 분석을 진행합니다. HWP/HWPX/XLSX는 메타데이터만 저장합니다.",
+      "선택한 공고를 저장하고 백그라운드에서 첨부 PDF/DOCX/HWP/HWPX 다운로드와 분석을 진행합니다. XLS/XLSX/ZIP은 메타데이터만 저장합니다.",
     );
     if (!ok) return;
 

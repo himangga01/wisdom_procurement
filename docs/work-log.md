@@ -8805,3 +8805,31 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Marked the report and plan as older-local-baseline artifacts requiring revalidation before use against the newer implementation.
 - Excluded pre-existing local source changes and generated storage files from this publication.
 - Checked documentation diffs, links and secret patterns. No live server, build or application test was run for this documentation-only change.
+
+## 추가 업데이트 (2026-10-02) - RHWP 한글 문서 엔진 통합
+
+### 한국어 기록
+- 사용자가 요청한 순서대로 원격을 fetch하고, 기존 로컬 미커밋 코드/문서 14개를 `codex/local-snapshot-20261002`의 `0ec16cb`에 커밋·푸시했다. 생성된 기준문서 PDF는 로컬에 보존했다.
+- 로컬 `main`을 `3e08bef`까지 fast-forward한 뒤 최신 파서/서비스 구조를 기준으로 작업했다.
+- 사용자가 승인한 범위는 프로젝트 문서·법인 증빙·나라장터 첨부의 HWP/HWPX 읽기와, 원본을 보존한 문자열 치환/형식 변환 다운로드이다. 기준문서 PDF 규칙과 기존 DOCX 계약서는 유지했다.
+- RHWP 0.8.6 공식 Windows CLI의 SHA-256을 검증하고 설치했다. 소스 저장소는 변경하지 않았으며 MIT 고지를 보존했다. 바이너리와 처리 산출물은 Git에서 제외했다.
+- 공통 파서, HWP 상태/내보내기 API, 업로드 허용 형식, OCR 분기, 나라장터 MIME, 프론트엔드 업로드/내보내기 모달을 연결했다.
+- 원본 대비 요청한 치환 결과와 편집본을 대조하고, 변환 후 본문/번호를 재검증해 불일치 산출물의 다운로드를 막았다. 분석용 빈 텍스트 오류와 빈 문서 내보내기를 분리했다.
+- 독립 검토의 편집 검증 기준, 빈 파일 저장, 네이티브 테스트 설치 의존성 지적을 수용하고 회귀 검증을 추가했다.
+- 기존 Windows 로그 테스트의 열린 파일 정리 순서를 수정하고, HWP 미지원 전제와 OCR 소스 문자열에 의존하던 테스트를 현재 행동에 맞게 갱신했다.
+- 전체 unittest 236건에서 실패 없이 완료했고 9건은 Java/실자료 opt-in 조건으로 생략했다. Python 3.12.10에서 검증했으며 3.13.13은 이 PC에 없다.
+- 프론트엔드 빌드와 격리된 Chromium의 모달·치환·HWPX 다운로드·네이티브 재독을 확인했다.
+- 사용자 제공 관광사업 등록신청서는 읽기/분석/HWP 편집/HWPX 왕복을 확인했다. 관광호텔 안내서는 읽기/분석/HWP 편집을 확인했으나 HWPX 변환 시 항목 번호 한 곳이 바뀌어 해당 변환을 차단했다.
+- 두 실제 원본의 SHA-256은 전후 동일했다. 실제 문서와 처리 결과는 `temp/rhwp-acceptance-20261002`에만 두고 Git에 포함하지 않았다. 외부 AI 호출과 실제 한컴 시각 검증은 하지 않았다.
+- 설치/계약/검증/호환성 한계는 `docs/rhwp-integration.md`에 기록했다.
+
+### AI / Engineering Version (English)
+- Preserved and pushed the former local working tree as `0ec16cb` on `codex/local-snapshot-20261002`, then fast-forwarded local main to `3e08bef` before implementation.
+- Implemented the user-approved RHWP adapter for common HWP 5/HWPX parsing and project-document edit/export downloads. PDF-only basis ingestion and DOCX contract generation remain separate.
+- Verified the official 0.8.6 Windows archive checksum, installed the CLI, retained its MIT notice, and ignored runtime binaries/staging outputs. The supplied RHWP source checkout was not changed.
+- Added signature/container/coverage/deadline checks, explicit missing-runtime errors, source preservation, independently verified replacements and post-conversion text fidelity. Empty bodies are allowed for export verification but not successful analysis.
+- Accepted the independent review's three issues and added regressions; fixed Windows test-owned log cleanup and updated obsolete unsupported-format/source-string expectations.
+- Full unittest discovery completed 236 tests without failures, with 9 Java/real-corpus opt-in skips. Actual execution used Python 3.12.10; 3.13.13 is unavailable here.
+- Frontend build and an isolated Chromium export/download/native-reparse workflow passed.
+- Both user-supplied HWP documents passed reading, offline service analysis and edited HWP export with original hashes unchanged. The registration form also passed HWPX round-trip verification. HWPX conversion of the guide changes one list number; the independent guard rejects it instead of publishing altered output.
+- Private originals/artifacts/test databases were not committed. Paid model calls, Hancom visual fidelity and the standard 3.13.13 runtime were not verified. See `docs/rhwp-integration.md` for exact contracts and limits.
