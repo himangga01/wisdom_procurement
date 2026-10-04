@@ -37,7 +37,7 @@ Git으로 전달되지 않는 항목:
 - `backend/.env`: Gemini, OpenAI, 나라장터 API 키와 로컬 설정
 - `frontend/.env`: 로컬 프론트 API 설정
 - `backend/app.db`: 현재 법인, 프로젝트, 문서, 공고, 판단, 작업 이력 데이터
-- `backend/storage/uploads/`, `backend/storage/cache/`, `backend/storage/logs/`
+- `backend/storage/` 전체: 업로드, 기준문서/인덱스, 증빙, 계약서, 백업, OCR 중간 파일과 로그
 - `temp/`: 서버/ngrok 상태 파일과 임시 로그
 - ngrok 로컬 인증 설정
 - PaddleOCR/PaddleX 모델 캐시
@@ -53,19 +53,20 @@ Git으로 전달되지 않는 항목:
 주의:
 
 - `.env`와 `app.db`는 `.gitignore` 대상이므로 `git clone`만으로 기존 운영 상태가 복원되지 않습니다.
-- 저장소에는 `source/test_doc/`, `source/rag_doc/`, 일부 `backend/storage/`, 데모 영상 산출물이 이미 추적되어 있습니다.
-- DB는 추적되지 않으므로 새 clone에 포함된 일부 스토리지 파일은 DB 연결정보 없이 단독으로 존재할 수 있습니다.
+- 저장소에는 `source/test_doc/`, `source/rag_doc/`, 명시적 데모 영상 산출물이 추적되어 있습니다.
+- 2026-10-04부터 `backend/storage/` 전체는 운영 데이터로 분리해 Git 추적을 해제했습니다. 새 clone으로 운영 DB/스토리지/인덱스/백업이 이전되지 않습니다.
+- 기존 다른 PC에서 이 추적 해제 커밋을 pull하면 이전에 추적되던 스토리지 파일이 제거될 수 있으므로, 먼저 그 PC의 운영 DB와 스토리지를 별도 위치에 백업하세요. 이 정리 작업을 수행한 현재 PC에서는 `git rm --cached`로 로컬 파일을 보존했습니다.
 - 현재 Git pack 크기는 약 326 MiB이며, 초기 clone과 checkout에 시간이 걸릴 수 있습니다.
 
 ## 3. 보안 확인 사항
 
-현재 저장소의 `gpt api.txt`는 credential 패턴과 일치하는 추적 파일입니다. 값은 이 문서에 기록하지 않습니다.
+`gpt api.txt`는 과거 credential 패턴과 일치했던 파일입니다. 2026-10-04 현재 트리의 Git 추적을 해제하고 ignore 규칙을 추가했으며 로컬 파일은 보존했습니다. 과거 Git 이력에는 남아 있고 유효성은 시험하지 않았습니다. 값은 이 문서에 기록하지 않습니다.
 
 다른 PC에서 작업하기 전에 다음 조치가 필요합니다.
 
 1. 해당 키를 더 이상 신뢰하지 않고 발급 서비스에서 회전 또는 폐기합니다.
 2. 새 키는 `backend/.env`에만 입력합니다.
-3. `gpt api.txt`의 Git 제거와 과거 이력 정리는 별도 승인된 보안 작업으로 진행합니다.
+3. 현재 트리의 추적 해제와 별개로, 과거 Git 이력 정리는 명시적 승인 후 진행합니다. 이번 정리는 키 회전이나 이력 재작성을 수행하지 않습니다.
 4. 키 원문을 README, 작업 로그, 화면 캡처, 커밋 메시지에 남기지 않습니다.
 
 고정 ngrok 주소는 인증 기능이 없는 현재 포탈을 외부에 공개합니다. 개발/시연 중에만 실행하고 URL 공유 범위를 제한합니다.
@@ -311,7 +312,7 @@ Not transferred by Git:
 
 - `backend/.env`, `frontend/.env`
 - `backend/app.db`
-- ignored upload/cache/log/temp directories
+- all of `backend/storage/`, including uploaded sources, contracts/evidence, indexes, backups and OCR intermediates
 - ngrok authentication
 - PaddleOCR/PaddleX model caches
 
@@ -319,14 +320,13 @@ Already tracked in Git:
 
 - `source/test_doc/`
 - `source/rag_doc/`
-- parts of `backend/storage/`
 - demo video artifacts
 
-The repository pack is currently about 326 MiB. A fresh clone includes tracked artifacts but not the SQLite database, so some files may not have matching database rows.
+Since 2026-10-04, runtime storage is untracked. Before pulling this cleanup on another PC, back up its runtime DB and storage: tracked-file deletions can remove those existing files there. The cleanup checkout preserved local files with `git rm --cached`. Historical blobs remain in Git, so this change does not by itself shrink the old repository pack.
 
 ## Security Blocker
 
-The tracked file `gpt api.txt` matches a credential pattern. Do not reuse or reveal its value. Rotate or revoke the credential, place replacement keys only in `backend/.env`, and handle Git removal/history cleanup as an explicitly approved security task.
+The formerly tracked `gpt api.txt` matched a credential pattern. It is now ignored/untracked in the current tree and preserved locally, but remains in historical Git objects; validity was not tested. Do not reveal its value. Credential-owner revocation/replacement and any history rewrite remain separate actions.
 
 The fixed ngrok endpoint exposes the current unauthenticated single-admin portal. Run it only for controlled development or demonstration access.
 

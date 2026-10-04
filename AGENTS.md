@@ -23,6 +23,13 @@
 - 갱신 시 기존 검증 이력과 무관한 지침을 보존하고, 계획/구현/실행 검증 상태를 구분한다.
 - 비밀값과 API 키 원문은 분석 결과에 저장하지 않는다.
 
+## 분석 보고서 및 Git 추적 규칙
+- 요청받은 실질 분석에는 개인 공유 정책 `C:/Users/강지혜/.agents/analysis-policy.md`와 이 프로젝트 지침을 적용한다. 다른 PC에서는 해당 에이전트의 개인 정책 진입점을 사용하고, 프로젝트 Markdown을 공통 근거로 유지한다.
+- 서비스 분석 정본은 `docs/service-analysis.md`, Git 추적/제외 정책 분석 정본은 `docs/analysis/git-hygiene.md`이다. 다른 분석은 기존 관련 보고서가 있으면 재사용한다.
+- 분석 전에 정본 보고서와 현재 HEAD/작업 트리를 대조하고, 분석 후 일자·근거·실제 검증 한계를 갱신한다. 역사적 기록을 보존하고 비밀값은 기록하지 않는다.
+- 운영 데이터 `backend/storage/`, 로컬 비밀 설정, 설치된 도구, DB 보조 파일과 빌드 캐시는 커밋하지 않는다. 소스·설정 예시·고정 테스트 픽스처·명시적 공유 산출물은 별도로 유지한다.
+- 이미 추적된 생성 파일은 `.gitignore` 추가만으로 제외되지 않는다. 로컬 파일을 보존하는 `git rm --cached`로 추적을 해제하고, 다른 PC에서 업데이트하기 전 운영 데이터 보존 절차를 안내한다.
+
 ## 단계 분리 규칙
 - Phase 1에서는 로그인, 크롤러, 최종 판단 엔진, 근거 조항 출력 기능을 구현하지 않는다.
 - Phase 1.5의 나라장터 게시판은 공공데이터 API 기반 조회/저장/첨부 다운로드/요약까지만 허용한다.
@@ -132,6 +139,13 @@ Guide Codex and future AI coding agents to preserve phase-correct architecture, 
 - after each analysis, update the same English Markdown file with the analysis date, review scope, implementation status, evidence, verification limits, priorities, and unresolved questions
 - preserve historical verification evidence and unrelated instructions; distinguish planned behavior, implementation, and executed verification
 - never save secret values or API key contents in the analysis report
+
+## Analysis Reports and Git Tracking
+- Apply the shared personal analysis policy and this project guidance; portable project Markdown remains the common authority across agents.
+- Canonical reports: `docs/service-analysis.md` for service analysis and `docs/analysis/git-hygiene.md` for Git tracking/ignore policy. Reuse established reports for other analyses.
+- Read reports before analysis, compare HEAD/working-tree evidence, update dated findings and actual verification limits afterward, and preserve history without recording secrets.
+- Do not track runtime storage, local credentials/configuration, installed tools, database sidecars or build caches. Keep source, environment examples, stable fixtures and intentional shared deliverables.
+- Untrack already-versioned generated files with `git rm --cached` while preserving local data; document the runtime-data backup needed before another PC pulls those deletions.
 
 ## Phase Guardrails
 - no auth, crawler, final judgment, or evidence rendering in phase 1

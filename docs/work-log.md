@@ -8833,3 +8833,23 @@ Per user request, it must be updated whenever new work is performed in this thre
 - Frontend build and an isolated Chromium export/download/native-reparse workflow passed.
 - Both user-supplied HWP documents passed reading, offline service analysis and edited HWP export with original hashes unchanged. The registration form also passed HWPX round-trip verification. HWPX conversion of the guide changes one list number; the independent guard rejects it instead of publishing altered output.
 - Private originals/artifacts/test databases were not committed. Paid model calls, Hancom visual fidelity and the standard 3.13.13 runtime were not verified. See `docs/rhwp-integration.md` for exact contracts and limits.
+
+## 추가 업데이트 (2026-10-04) - Git 추적/ignore 정리
+
+### 한국어 기록
+- 사용자 요청으로 fetch/prune, fast-forward 전용 pull, 현재 main과 원격 상태를 확인했다. 시작 기준은 d96fb7f이며 원격과 같았다.
+- `.gitignore`에 운영 스토리지 전체, dotenv 변형/비밀 메모, SQLite sidecar, TypeScript/테스트/가상환경 캐시 제외 규칙을 추가했다.
+- 이미 추적되던 운영 스토리지 418개, TypeScript 캐시 1개, 비밀 메모 1개를 `git rm --cached`로 추적 해제했다. 420개 로컬 파일은 그대로 존재하며 크기/수정시간 변화가 없었다.
+- 소스, 환경 설정 예시, 고정 테스트 픽스처, 라이선스, 명시적 공유 자료는 유지했다. ignore 양성 24건과 유지 사례 10건이 모두 기대대로 동작했고 추적된 ignore 대상은 0개다.
+- 다른 PC pull 전 운영 DB/스토리지 백업 안내를 README와 인수인계 문서에 반영했다. 현재 트리 추적 해제와 키 소유자 조치/과거 이력 재작성을 구분했다.
+- `docs/analysis/git-hygiene.md`에 기준·정책·근거·검증 한계를 저장하고, AGENTS.md에 정본 및 분석 전후 재사용 규칙을 등록했다. 기존 서비스 분석의 R27/R02 후속 상태도 기록했다.
+- 애플리케이션 코드나 운영 파일은 변경하지 않았고 앱 테스트/빌드는 반복하지 않았다. 파일 값/비밀값 열람, 키 회전, 강제 푸시, 과거 이력 재작성, 보존 브랜치/작업 트리 삭제는 수행하지 않았다.
+
+### AI / Engineering Version (English)
+- Fetched/pruned and pulled main with fast-forward-only semantics; baseline d96fb7f matched origin/main.
+- Excluded complete runtime storage, local secret/dotenv variants, SQLite sidecars and build/test/environment caches.
+- Untracked 420 existing entries using cached-only removal: 418 runtime files, one TypeScript cache and one private note. All local files remained with unchanged size/mtime metadata.
+- Verified 24 ignored cases and 10 retained-source/example/fixture cases, with no tracked-ignored entries remaining.
+- Documented the runtime-data backup needed before another PC pulls the removal commit; kept source, stable fixtures, licenses and intentional shared artifacts.
+- Saved canonical Git hygiene evidence and project instruction bridges, and refreshed the relevant service-analysis follow-up without replacing historical evidence.
+- No application code/runtime-file edits, application test/build reruns, secret inspection, key rotation, force-push, history rewrite or preservation-branch/worktree deletion were performed.

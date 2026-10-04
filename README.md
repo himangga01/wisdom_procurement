@@ -4,7 +4,9 @@
 `SMART 조달청 계산기`는 단일 관리자 사용자(행정사)가 법인 정보를 관리하고, 프로젝트를 생성하고, 조달 관련 PDF/DOCX 문서를 프로젝트 단위로 업로드하여 AI 기반 요약과 구조화 결과를 확인하는 로컬 실행형 웹 어드민 포탈입니다.
 
 ## 현재 코드 기준 요약
-최종 문서 갱신일: 2026-10-02
+최종 문서 갱신일: 2026-10-04
+
+Git 추적 정책 갱신(2026-10-04): `backend/storage/` 운영 데이터와 비밀 설정/DB 보조 파일/빌드 캐시는 Git에서 제외합니다. 현재 PC 파일은 보존하며, 다른 PC에서 이 정리 커밋을 pull하기 전 운영 DB와 스토리지를 별도로 백업해야 합니다. [Git 제외 정책 및 검증 기록](docs/analysis/git-hygiene.md)
 
 - 현재 PDF 리더 기본값은 `OpenDataLoader PDF` 우선 `auto` 모드이며, Java/패키지/timeout/변환 실패 시 `PyMuPDF`로 fallback합니다.
 - 일반 업로드 문서, 나라장터 공고 첨부 PDF, 기준문서 PDF는 같은 `extract_document()` 진입점을 사용하므로 현재 기본 PDF 리더 정책을 공유합니다.
@@ -621,6 +623,8 @@ powershell -ExecutionPolicy Bypass -File scripts\manage-ngrok.ps1 stop
 # AI / Engineering Version (English)
 
 ## HWP/HWPX Engine Update (2026-10-02)
+
+Git tracking update (2026-10-04): runtime storage and local secret/build/database artifacts are excluded from source control. Back up another PC's runtime DB/storage before pulling the tracking-removal commit. See [Git hygiene evidence](docs/analysis/git-hygiene.md).
 - RHWP 0.8.6 reads HWP 5/HWPX through the shared parser for project documents, corporation evidence and Nara attachments.
 - Project documents offer find/replace and HWP/HWPX export into a new downloaded file. Originals remain unchanged; requested edits and serialized text are verified before publication.
 - Run `powershell -NoProfile -File scripts/setup-rhwp.ps1` to install the pinned Windows CLI. Runtime binaries are ignored by Git; the MIT notice is retained.
