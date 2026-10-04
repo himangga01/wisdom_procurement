@@ -45,7 +45,8 @@ git diff --cached --check
 
 - fetch/pull 시 `main`과 `origin/main`이 일치했고 pull은 `Already up to date`였다.
 - 인덱스 제거 전 파일 크기와 수정시간을 저장하고 제거 후 대조했다. 420개 모두 존재하며 메타데이터 변화는 0개였다. 이는 실제 관찰이며 임의의 파일 삭제/이동을 실행하지 않았다.
-- ignore 양성 24건과 소스/환경 예시/고정 픽스처 보존 10건을 실제 `git check-ignore`로 확인했고 실패는 0건이었다. 현재 인덱스에 ignore 규칙과 충돌하는 추적 파일은 0개다. 이후 현재 변경을 커밋·푸시하고 실제 원격 ref 및 깨끗한 작업 트리를 확인한다.
+- ignore 양성 24건과 소스/환경 예시/고정 픽스처 보존 10건을 실제 `git check-ignore`로 확인했고 실패는 0건이었다. 현재 인덱스에 ignore 규칙과 충돌하는 추적 파일은 0개다.
+- 정리 커밋 `af9618add0531dd05720938afaea406b2cf8dda1`을 `origin/main`에 푸시했다. `git ls-remote`의 main ref가 로컬 HEAD와 일치했고 ahead/behind는 `0/0`, 작업 트리의 porcelain 출력은 비어 있었다. 게시 후에도 420개 파일의 존재/크기/수정시간이 유지됨을 확인했다. 이 문서의 최종 증거 기록은 후속 문서 커밋으로 저장한다.
 - 원격 refs는 fetch의 prune 옵션으로 정리했다. 별도 worktree의 prune dry-run에는 제거 대상이 없었으며, 보존 브랜치/작업 트리는 삭제하지 않았다.
 
 ## 한계와 미해결 사항
@@ -68,6 +69,6 @@ This is the canonical Git tracking/ignore-policy report for the 2026-10-04 clean
 
 The initial index tracked 418 runtime-storage files, one TypeScript cache and one previously identified credential-shaped note. Four additional basis PDFs were untracked. The cleanup excludes the complete runtime storage tree and appropriate local secret/database/build/cache artifacts, then removes those 420 existing entries with `git rm --cached`. Source, environment examples, stable fixtures, licenses and intentional shared deliverables stay versioned.
 
-Local existence, sizes and modification times were checked before/after index removal: all 420 files remained, with zero metadata changes. Git fetch/prune and fast-forward-only pull confirmed the initial main/origin match. Ignore-rule checks, staged-diff checks and final commit/push/remote-ref verification complete the operation; no application tests or live restarts are needed for these metadata/documentation changes.
+Local existence, sizes and modification times were checked before/after index removal and publication: all 420 files remained, with zero metadata changes. Git fetch/prune and fast-forward-only pull confirmed the initial main/origin match. Cleanup commit `af9618add0531dd05720938afaea406b2cf8dda1` was pushed to origin/main; the actual remote ref matched HEAD, ahead/behind was 0/0, porcelain status was empty and tracked-ignored entries were zero. This final evidence is retained in a follow-up documentation commit. No application tests or live restarts were needed for these metadata/documentation changes.
 
 This does not rewrite historical objects, revoke credentials or shrink the old pack. The note's validity was not tested and its contents were not read or exposed. Another PC must back up its runtime DB/storage before pulling the tracked-file deletions; preservation in this checkout does not guarantee preservation elsewhere. Existing backup branches/worktrees remain intact. See [project instructions](../../AGENTS.md), [service analysis](../service-analysis.md) and [other-PC handoff](../other-pc-handoff-guide.md).
